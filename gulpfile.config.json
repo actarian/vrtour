@@ -1,0 +1,31 @@
+﻿{
+	"targets": {
+		"browser": {
+			"compile": [{
+				"input": "src/sass/vrtour.scss",
+				"output": "docs/css/vrtour.css",
+				"minify": false
+			}, {
+				"input": "src/js/vrtour.js",
+				"output": "docs/js/vrtour.js",
+				"minify": false
+			}],
+			"bundle": [{
+				"input": [
+					"node_modules/gsap/src/uncompressed/easing/EasePack.js",
+					"node_modules/gsap/src/uncompressed/TweenMax.js",
+					"node_modules/three/build/three.js"
+				],
+				"output": "docs/js/vrtour-vendors.js",
+				"minify": true
+			}]
+		}
+	},
+	"options": {
+		"tfs": false,
+		"server": {
+			"src": "./docs",
+			"port": 9999
+		}
+	}
+}
