@@ -463,6 +463,22 @@ var _drag = _interopRequireDefault(require("./shared/drag.listener"));
 
 function _interopRequireDefault(obj) { return obj && obj.__esModule ? obj : { default: obj }; }
 
+function _typeof(obj) { if (typeof Symbol === "function" && typeof Symbol.iterator === "symbol") { _typeof = function _typeof(obj) { return typeof obj; }; } else { _typeof = function _typeof(obj) { return obj && typeof Symbol === "function" && obj.constructor === Symbol && obj !== Symbol.prototype ? "symbol" : typeof obj; }; } return _typeof(obj); }
+
+function isNativeReflectConstruct() { if (typeof Reflect === "undefined" || !Reflect.construct) return false; if (Reflect.construct.sham) return false; if (typeof Proxy === "function") return true; try { Date.prototype.toString.call(Reflect.construct(Date, [], function () {})); return true; } catch (e) { return false; } }
+
+function _construct(Parent, args, Class) { if (isNativeReflectConstruct()) { _construct = Reflect.construct; } else { _construct = function _construct(Parent, args, Class) { var a = [null]; a.push.apply(a, args); var Constructor = Function.bind.apply(Parent, a); var instance = new Constructor(); if (Class) _setPrototypeOf(instance, Class.prototype); return instance; }; } return _construct.apply(null, arguments); }
+
+function _setPrototypeOf(o, p) { _setPrototypeOf = Object.setPrototypeOf || function _setPrototypeOf(o, p) { o.__proto__ = p; return o; }; return _setPrototypeOf(o, p); }
+
+function _toConsumableArray(arr) { return _arrayWithoutHoles(arr) || _iterableToArray(arr) || _nonIterableSpread(); }
+
+function _nonIterableSpread() { throw new TypeError("Invalid attempt to spread non-iterable instance"); }
+
+function _iterableToArray(iter) { if (Symbol.iterator in Object(iter) || Object.prototype.toString.call(iter) === "[object Arguments]") return Array.from(iter); }
+
+function _arrayWithoutHoles(arr) { if (Array.isArray(arr)) { for (var i = 0, arr2 = new Array(arr.length); i < arr.length; i++) { arr2[i] = arr[i]; } return arr2; } }
+
 function _classCallCheck(instance, Constructor) { if (!(instance instanceof Constructor)) { throw new TypeError("Cannot call a class as a function"); } }
 
 function _defineProperties(target, props) { for (var i = 0; i < props.length; i++) { var descriptor = props[i]; descriptor.enumerable = descriptor.enumerable || false; descriptor.configurable = true; if ("value" in descriptor) descriptor.writable = true; Object.defineProperty(target, descriptor.key, descriptor); } }
@@ -497,22 +513,35 @@ function () {
       aspect: 0
     };
     this.isUserInteracting = false;
-    this.lon = 0;
-    this.lat = 0;
-    this.phi = 0;
-    this.theta = 0;
+    this.longitude = 0;
+    this.latitude = 0;
     this.direction = 1;
     this.speed = 1;
+    this.inertia = new THREE.Vector3(0, 0, 0);
   }
 
   _createClass(VRTour, [{
-    key: "init",
-    value: function init() {
+    key: "load",
+    value: function load(jsonUrl) {
       var _this = this;
 
+      this.init();
+      fetch(jsonUrl).then(function (response) {
+        return response.json();
+      }).then(function (response) {
+        // console.log(response);
+        _this.views = response.views;
+        _this.index = 0;
+      });
+    }
+  }, {
+    key: "init",
+    value: function init() {
       var body = document.querySelector('body');
       var section = document.querySelector('.vrtour');
-      var container = section.querySelector('.vrtour__container'); // const shadow = section.querySelector('.vrtour__shadow');
+      var container = section.querySelector('.vrtour__container');
+      var debugInfo = section.querySelector('.debug__info');
+      var debugSave = section.querySelector('.debug__save'); // const shadow = section.querySelector('.vrtour__shadow');
 
       var title = section.querySelector('.vrtour__headline .title');
       var abstract = section.querySelector('.vrtour__headline .abstract');
@@ -520,27 +549,19 @@ function () {
       _dom.default.detect(body);
 
       body.classList.add('ready');
-      var tourTextureSrc = container.getAttribute('texture');
-      var loader = new THREE.TextureLoader();
-      loader.crossOrigin = '';
-      loader.load(tourTextureSrc, function (texture) {
-        // texture.wrapS = texture.wrapT = THREE.RepeatWrapping;
-        // texture.repeat.set(2, 2);
-        _this.tourTexture = texture;
-
-        _this.createScene();
-      });
       this.body = body;
       this.section = section;
-      this.container = container; // this.shadow = shadow;
+      this.container = container;
+      this.debugInfo = debugInfo;
+      this.debugSave = debugSave; // this.shadow = shadow;
 
       this.title = title;
       this.abstract = abstract;
-      this.loader = loader;
+      this.initRenderer();
     }
   }, {
-    key: "createScene",
-    value: function createScene() {
+    key: "initRenderer",
+    value: function initRenderer() {
       var _this2 = this;
 
       var renderer = new THREE.WebGLRenderer({
@@ -548,10 +569,15 @@ function () {
         antialias: true
       });
       renderer.shadowMap.enabled = true;
+      renderer.vr.enabled = true;
       renderer.setSize(window.innerWidth, window.innerHeight);
       this.renderer = renderer; // container.innerHTML = '';
 
       this.container.appendChild(renderer.domElement);
+      this.container.appendChild(WEBVR.createButton(renderer, {
+        referenceSpaceType: 'local'
+      }));
+      this.container.querySelector('[href]').setAttribute('target', '_blank');
       var scene = new THREE.Scene();
       this.scene = scene;
       /*
@@ -560,7 +586,8 @@ function () {
       this.scene = scene;
       */
 
-      var camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.01, 1100); // camera.position.set(0, 0, 0);
+      var camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.01, 1100);
+      camera.layers.enable(1); // camera.position.set(0, 0, 0);
 
       camera.target = new THREE.Vector3(0, 0, 0);
       this.camera = camera;
@@ -587,13 +614,13 @@ function () {
       var material = new THREE.ShaderMaterial({
       	uniforms: {
       		color: { value: new THREE.Color(0xffffff) },
-      		texture: { value: new THREE.TextureLoader().load("textures/sprites/disc.png") }
+      		texture: { value: new THREE.TextureLoader().load('textures/sprites/disc.png') }
       	},
       	vertexShader: document.getElementById('vertexshader').textContent,
       	fragmentShader: document.getElementById('fragmentshader').textContent,
       	alphaTest: 0.9
       });
-      // const particles = new THREE.Points(geometry, material);
+      // const points = new THREE.Points(geometry, material);
       */
       // const geometry = new THREE.Geometry();
 
@@ -608,14 +635,14 @@ function () {
       });
       const material = new THREE.PointsMaterial({
       	size: 50,
-      	map: THREE.ImageUtils.loadTexture("http://matthewachase.com/tru-dat-boo.png"),
+      	map: THREE.ImageUtils.loadTexture('http://matthewachase.com/tru-dat-boo.png'),
       	blending: THREE.AdditiveBlending,
       	transparent: true,
       	depthTest: false
             });
-            const particles = new THREE.Points(geometry, material);
-      scene.add(particles);
-      this.particles = particles;
+            const points = new THREE.Points(geometry, material);
+      scene.add(points);
+      this.points = points;
             */
       // const PARTICLE_SIZE = 20;
 
@@ -674,15 +701,17 @@ function () {
       */
 
       var rotation = new THREE.Euler(0.0, 0.0, 0.0, 'XYZ');
-      var environment = this.addEnvironment(scene, rotation, this.tourTexture);
+      var environment = this.addEnvironment(scene, rotation);
       this.environment = environment;
-      var pod = this.addPod(scene);
-      this.pod = pod;
-      var particles = this.addParticles(scene);
-      this.particles = particles;
+      var floor = this.addFloor(scene);
+      this.floor = floor;
+      var ceil = this.addCeil(scene);
+      this.ceil = ceil;
+      var points = this.addPoints(this.scene);
+      this.points = points;
       /*
-      const particleRef = new THREE.Vector3(0.0, 0.0, 1.0);
-      this.particleRef = particleRef;
+      const pointRef = new THREE.Vector3(0.0, 0.0, 1.0);
+      this.pointRef = pointRef;
       */
       // const shadow = this.addShadow(scene);
 
@@ -701,8 +730,8 @@ function () {
       */
 
       /*
-      const particles = addParticles(tour);
-      this.particles = particles;
+      const points = addPoints(tour);
+      this.points = points;
       */
 
       /*
@@ -717,15 +746,15 @@ function () {
       this.dragListener = dragListener;
       */
 
-      var lon, lat;
+      var longitude, latitude;
       var dragListener = new _drag.default(this.container, function (event) {
-        lon = _this2.lon;
-        lat = _this2.lat;
+        longitude = _this2.longitude;
+        latitude = _this2.latitude;
       }, function (event) {
-        _this2.lon = -event.distance.x * 0.1 + lon;
-        _this2.lat = event.distance.y * 0.1 + lat;
+        _this2.longitude = -event.distance.x * 0.1 + longitude;
+        _this2.latitude = event.distance.y * 0.1 + latitude;
         _this2.direction = event.distance.x ? event.distance.x / Math.abs(event.distance.x) * -1 : 1;
-        console.log('lon', _this2.lon, 'lat', _this2.lat, 'direction', _this2.direction);
+        console.log('longitude', _this2.longitude, 'latitude', _this2.latitude, 'direction', _this2.direction);
       }, function (event) {
         _this2.speed = Math.abs(event.strength.x) * 100;
         console.log('speed', _this2.speed);
@@ -735,24 +764,26 @@ function () {
       this.onMouseMove = this.onMouseMove.bind(this);
       this.onMouseWheel = this.onMouseWheel.bind(this);
       this.onClick = this.onClick.bind(this);
+      this.onSave = this.onSave.bind(this);
       window.addEventListener('resize', this.onWindowResize, false);
       document.addEventListener('mousemove', this.onMouseMove, false);
       document.addEventListener('wheel', this.onMouseWheel, false);
       this.container.addEventListener('click', this.onClick, false);
+      this.debugSave.addEventListener('click', this.onSave, false);
       this.section.classList.add('init');
-      this.play();
       this.onWindowResize();
+      this.animate(); // this.play();
     }
   }, {
     key: "addEnvironment",
-    value: function addEnvironment(parent, rotation, texture) {
+    value: function addEnvironment(parent, rotation) {
       var group = new THREE.Group(); //
 
       var geometry = new THREE.SphereBufferGeometry(500, 60, 40); // invert the geometry on the x-axis so that all of the faces point inward
 
       geometry.scale(-1, 1, 1);
       var material = new THREE.MeshBasicMaterial({
-        map: texture,
+        color: 0xffffff,
         // transparent: true,
         // opacity: 1.0,
         depthTest: false
@@ -781,12 +812,12 @@ function () {
       return group;
     }
   }, {
-    key: "addPod",
-    value: function addPod(parent) {
+    key: "addFloor",
+    value: function addFloor(parent) {
       var geometry = new THREE.PlaneGeometry(300, 300, 3, 3);
-      var textureLoader = new THREE.TextureLoader();
-      var texture = textureLoader.load('img/pod.jpg');
-      var textureAlpha = textureLoader.load('img/pod-alpha.jpg'); // assuming you want the texture to repeat in both directions:
+      var loader = new THREE.TextureLoader();
+      var texture = loader.load('img/floor.jpg');
+      var textureAlpha = loader.load('img/floor-alpha.jpg'); // assuming you want the texture to repeat in both directions:
       // texture.wrapS = THREE.RepeatWrapping;
       // texture.wrapT = THREE.RepeatWrapping;
       // how many times to repeat in each direction; the default is (1,1),
@@ -811,29 +842,197 @@ function () {
       return mesh;
     }
   }, {
-    key: "addParticles",
-    value: function addParticles(parent) {
-      var geometry = new THREE.BufferGeometry();
-      var vertices = [];
-      var textureLoader = new THREE.TextureLoader();
-      var sprite1 = textureLoader.load('img/pin.png'); // hack fix
+    key: "addCeil",
+    value: function addCeil(parent) {
+      var geometry = new THREE.PlaneGeometry(200, 200, 3, 3);
+      var loader = new THREE.TextureLoader();
+      var texture = loader.load('img/ceil.jpg');
+      var textureAlpha = loader.load('img/ceil-alpha.jpg'); // assuming you want the texture to repeat in both directions:
+      // texture.wrapS = THREE.RepeatWrapping;
+      // texture.wrapT = THREE.RepeatWrapping;
+      // how many times to repeat in each direction; the default is (1,1),
+      // which is probably why your example wasn't working
+      // texture.repeat.set( 4, 4 );
 
+      var material = new THREE.MeshBasicMaterial({
+        map: texture,
+        alphaMap: textureAlpha,
+        // blending: THREE.AdditiveBlending,
+        // depthTest: true,
+        transparent: true
+      });
+      var mesh = new THREE.Mesh(geometry, material); // mesh.material.side = THREE.DoubleSide;
+      // mesh.position.x = 0;
+
+      mesh.position.y = 400; // rotation.z is rotation around the z-axis, measured in radians (rather than degrees)
+      // Math.PI = 180 degrees, Math.PI / 2 = 90 degrees, etc.
+
+      mesh.rotation.x = Math.PI / 2;
+      parent.add(mesh);
+      return mesh;
+    }
+  }, {
+    key: "removePoints",
+    value: function removePoints() {
+      /*
+      if (this.points) {
+      	this.points.remove();
+      	delete this.points;
+      }
+      */
+    }
+  }, {
+    key: "addPoints",
+    value: function addPoints(parent) {
+      var loader = new THREE.TextureLoader(); // hack fix
+
+      var vertices = [];
       vertices.push(0, -10000, 0);
       vertices.push(0, 10000, 0); // hack fix
 
+      var geometry = new THREE.BufferGeometry();
       geometry.addAttribute('position', new THREE.Float32BufferAttribute(vertices, 3));
       var material = new THREE.PointsMaterial({
         size: 20,
-        map: sprite1,
+        map: loader.load('img/pin.png'),
         blending: THREE.AdditiveBlending,
         depthTest: false,
         transparent: false
       }); // materials[i].color.setHSL(1, 0, 0);
 
-      var particles = new THREE.Points(geometry, material);
-      parent.add(particles);
-      particles.vertices = vertices;
-      return particles;
+      var points = new THREE.Points(geometry, material);
+      points.vertices = vertices;
+      parent.add(points);
+      return points;
+    }
+  }, {
+    key: "addPoint",
+    value: function addPoint(position) {
+      var points = this.points;
+      var geometry = points.geometry;
+      var vertices = points.vertices;
+      vertices.push(position.x, position.y, position.z);
+      vertices.needsUpdate = true;
+      points.material.needsUpdate = true;
+      geometry.addAttribute('position', new THREE.Float32BufferAttribute(vertices, 3));
+    }
+  }, {
+    key: "createPoint",
+    value: function createPoint(intersection) {
+      console.log(intersection);
+      var position = intersection.point.clone();
+      this.addPoint(position); // p.multiplyScalar(1);
+
+      /*
+      const positions = new Float32Array([...geometry.attributes.position.array, p.x, p.y, p.z]);
+      const attribute = new THREE.BufferAttribute(positions, 3);
+      attribute.dynamic = true;
+      geometry.addAttribute('position', attribute);
+      positions.needsUpdate = true;
+      geometry.setDrawRange(0, positions.length);
+      geometry.verticesNeedUpdate = true;
+      geometry.elementsNeedUpdate = true;
+      // geometry.computeVertexNormals();
+      console.log(geometry);
+      */
+
+      this.view.points.push({
+        id: 2,
+        position: position.toArray(),
+        type: 1,
+        name: 'Point 2',
+        key: 'POINT2'
+      });
+      /*
+      geometry.vertices.push(p);
+      // geometry.colors.push(new THREE.Color(Math.random(), Math.random(), Math.random()));
+      geometry.verticesNeedUpdate = true;
+      geometry.elementsNeedUpdate = true;
+      geometry.computeVertexNormals();
+      */
+      // console.log(p);
+    }
+  }, {
+    key: "onInitView",
+    value: function onInitView(previous, current) {
+      var _this3 = this;
+
+      if (previous) {
+        this.onExitView(previous).then(function () {
+          _this3.onEnterView(current);
+        });
+      } else {
+        this.onEnterView(current);
+      }
+    }
+  }, {
+    key: "onEnterView",
+    value: function onEnterView(view) {
+      var _this4 = this;
+
+      // const tourTextureSrc = container.getAttribute('texture');
+      var loader = new THREE.TextureLoader();
+      loader.crossOrigin = '';
+      loader.load(view.image, function (texture) {
+        /*
+        // texture.wrapS = texture.wrapT = THREE.RepeatWrapping;
+        // texture.repeat.set(2, 2);
+        this.tourTexture = texture;
+        this.createScene();
+        */
+
+        /*
+        if (this.environment.sphere.material.map) {
+        	this.environment.sphere.material.map.dispose();
+        }
+        */
+        _this4.environment.sphere.material.map = texture;
+        _this4.environment.sphere.material.map.needsUpdate = true;
+        _this4.environment.sphere.material.needsUpdate = true;
+        console.log(texture, _this4.environment.sphere.material.map);
+        view.points.forEach(function (point) {
+          return _this4.addPoint(_construct(THREE.Vector3, _toConsumableArray(point.position)));
+        });
+
+        if (view.camera) {
+          _this4.latitude = view.camera.latitude;
+          _this4.longitude = view.camera.longitude;
+        }
+      });
+    }
+  }, {
+    key: "onSave",
+    value: function onSave(event) {
+      this.view.camera = {
+        latitude: this.latitude,
+        longitude: this.longitude
+      };
+      this.saveData(this.views, 'vr.json');
+    }
+  }, {
+    key: "saveData",
+    value: function saveData(data) {
+      var filename = arguments.length > 1 && arguments[1] !== undefined ? arguments[1] : 'console.json';
+
+      if (!data) {
+        console.error('Console.save: No data');
+        return;
+      }
+
+      if (_typeof(data) === 'object') {
+        data = JSON.stringify(data, undefined, 4);
+      }
+
+      var blob = new Blob([data], {
+        type: 'text/json'
+      });
+      var event = document.createEvent('MouseEvents');
+      var anchor = document.createElement('a');
+      anchor.download = filename;
+      anchor.href = window.URL.createObjectURL(blob);
+      anchor.dataset.downloadurl = ['text/json', anchor.download, anchor.href].join(':');
+      event.initMouseEvent('click', true, false, window, 0, 0, 0, 0, 0, false, false, false, false, 0, null);
+      anchor.dispatchEvent(event);
     }
   }, {
     key: "enter",
@@ -842,7 +1041,7 @@ function () {
   }, {
     key: "tourCubesAppearAnimation",
     value: function tourCubesAppearAnimation(factor, duration, delay) {
-      var _this3 = this;
+      var _this5 = this;
 
       var cubes = this.tour.cubes;
       factor = factor || 1.5;
@@ -865,21 +1064,21 @@ function () {
         });
       });
       setTimeout(function () {
-        _this3.randomRotateVRTourRows(_this3.tour.rows);
+        _this5.randomRotateVRTourRows(_this5.tour.rows);
 
-        TweenMax.set(_this3.title, {
+        TweenMax.set(_this5.title, {
           transform: 'translate3d(0,80px,0)'
         });
-        TweenMax.to(_this3.title, 0.4, {
+        TweenMax.to(_this5.title, 0.4, {
           transform: 'translate3d(0,0,0)',
           opacity: 1,
           delay: 1,
           ease: Sine.easeInOut
         });
-        TweenMax.set(_this3.abstract, {
+        TweenMax.set(_this5.abstract, {
           transform: 'translate3d(0,80px,0)'
         });
-        TweenMax.to(_this3.abstract, 0.4, {
+        TweenMax.to(_this5.abstract, 0.4, {
           transform: 'translate3d(0,0,0)',
           opacity: 1,
           delay: 1.2,
@@ -915,7 +1114,7 @@ function () {
   }, {
     key: "randomRotateVRTourRows",
     value: function randomRotateVRTourRows(rows) {
-      var _this4 = this;
+      var _this6 = this;
 
       // console.log(rows);
       var dir = Math.random() > 0.5 ? 1 : -1;
@@ -926,7 +1125,7 @@ function () {
         delay: 1,
         ease: Sine.easeInOut,
         onComplete: function onComplete() {
-          _this4.randomRotateVRTourRows(rows);
+          _this6.randomRotateVRTourRows(rows);
         }
       });
     }
@@ -943,7 +1142,7 @@ function () {
       /*
       var attributes = geometry.attributes;
       raycaster.setFromCamera( mouse, camera );
-      intersects = raycaster.intersectObject( particles );
+      intersects = raycaster.intersectObject( points );
       if ( intersects.length > 0 ) {
       	if ( INTERSECTED != intersects[ 0 ].index ) {
       		attributes.size.array[ INTERSECTED ] = PARTICLE_SIZE;
@@ -961,61 +1160,47 @@ function () {
   }, {
     key: "onClick",
     value: function onClick(event) {
-      var _this5 = this;
-
-      if (!event.shiftKey) {
-        return;
-      } // this.tourCubesWaveAnimation(this.tour.cubes);
-
-
+      // this.tourCubesWaveAnimation(this.tour.cubes);
       var raycaster = this.raycaster; // update the picking ray with the camera and mouse position
 
       raycaster.setFromCamera(this.mouse, this.camera); // calculate objects intersecting the picking ray
 
-      var intersections = raycaster.intersectObjects(this.environment.children);
+      if (event.shiftKey) {
+        var intersections = raycaster.intersectObjects(this.environment.children);
 
-      if (intersections) {
-        intersections.forEach(function (intersection) {
-          console.log(intersection);
-          var particles = _this5.particles;
-          console.log(_this5.particles);
-          var geometry = particles.geometry;
-          var p = intersection.point.clone(); // p.multiplyScalar(1);
+        if (intersections) {
+          var intersection = intersections.find(function (x) {
+            return x !== undefined;
+          });
+          this.createPoint(intersection);
+        }
 
-          /*
-          const positions = new Float32Array([...particles.geometry.attributes.position.array, p.x, p.y, p.z]);
-          const attribute = new THREE.BufferAttribute(positions, 3);
-          attribute.dynamic = true;
-          geometry.addAttribute('position', attribute);
-          positions.needsUpdate = true;
-          particles.geometry.setDrawRange(0, positions.length);
-          particles.geometry.verticesNeedUpdate = true;
-          particles.geometry.elementsNeedUpdate = true;
-          // particles.geometry.computeVertexNormals();
-                      console.log(particles.geometry);
-                      */
+        console.log(intersections);
+        /*
+        for (var i = 0; i < intersects.length; i++ ) {
+        	console.log(intersections[i])
+        	intersects[i].object.material.color.set( 0xff0000 );
+        }
+        */
+      } else {
+        raycaster.params.Points.threshold = 10.0;
 
-          particles.vertices.push(p.x, p.y, p.z);
-          particles.vertices.needsUpdate = true;
-          particles.geometry.addAttribute('position', new THREE.Float32BufferAttribute(particles.vertices, 3));
-          /*
-          geometry.vertices.push(p);
-          // geometry.colors.push(new THREE.Color(Math.random(), Math.random(), Math.random()));
-          geometry.verticesNeedUpdate = true;
-          geometry.elementsNeedUpdate = true;
-          geometry.computeVertexNormals();
-          */
-          // console.log(p);
-        });
+        var _intersections = raycaster.intersectObjects([this.points]);
+
+        if (_intersections) {
+          var _intersection = _intersections.find(function (x) {
+            return x !== undefined;
+          });
+
+          if (_intersection) {
+            var index = _intersection.index;
+            var point = _intersection.point;
+            var debugInfo = "".concat(index, " => {").concat(point.x, ", ").concat(point.y, ", ").concat(point.z, "}");
+            console.log(index, point, debugInfo);
+            this.debugInfo.innerHTML = debugInfo;
+          }
+        }
       }
-
-      console.log(intersections);
-      /*
-      for (var i = 0; i < intersects.length; i++ ) {
-      	console.log(intersections[i])
-      	intersects[i].object.material.color.set( 0xff0000 );
-      }
-      */
     }
   }, {
     key: "onWindowResize",
@@ -1095,12 +1280,12 @@ function () {
       */
 
       /*
-      this.particles.geometry.vertices.forEach((vertex, i) => {
+      this.points.geometry.vertices.forEach((vertex, i) => {
       	const local = this.tour.localToWorld(vertex.clone());
-      	const distance = local.distanceTo(this.particleRef);
+      	const distance = local.distanceTo(this.pointRef);
       	const s = Math.max(0, Math.min(1, (1 - distance))) * 5;
-      	this.particles.geometry.colors[i] = new THREE.Color(s, s, s);
-      	this.particles.geometry.colorsNeedUpdate = true;
+      	this.points.geometry.colors[i] = new THREE.Color(s, s, s);
+      	this.points.geometry.colorsNeedUpdate = true;
       });
       */
       this.updateCamera();
@@ -1112,29 +1297,28 @@ function () {
     value: function updateCamera() {
       var camera = this.camera;
       var direction = this.direction;
+      var inertia = this.inertia;
       var speed = this.speed;
-      var lat = this.lat;
-      var lon = this.lon;
-      var phi = this.phi;
-      var theta = this.theta;
+      var latitude = this.latitude;
+      var longitude = this.longitude;
 
       if (this.dragListener.dragging === false) {
-        lon += 0.01 * direction * speed;
+        // longitude += 0.01 * direction * speed;
         speed = Math.max(1, speed * 0.98);
+        inertia.multiplyScalar(0.98);
       }
 
-      lat = Math.max(-85, Math.min(85, lat));
-      phi = THREE.Math.degToRad(90 - lat);
-      theta = THREE.Math.degToRad(lon);
+      latitude = Math.max(-85, Math.min(85, latitude));
+      var phi = THREE.Math.degToRad(90 - latitude);
+      var theta = THREE.Math.degToRad(longitude);
       camera.target.x = 500 * Math.sin(phi) * Math.cos(theta);
       camera.target.y = 500 * Math.cos(phi);
       camera.target.z = 500 * Math.sin(phi) * Math.sin(theta);
       camera.lookAt(camera.target);
-      this.lat = lat;
-      this.lon = lon;
-      this.phi = phi;
-      this.theta = theta;
+      this.latitude = latitude;
+      this.longitude = longitude;
       this.speed = speed;
+      this.inertia = inertia;
       /*
       // distortion
       camera.position.copy( camera.target ).negate();
@@ -1143,19 +1327,46 @@ function () {
   }, {
     key: "play",
     value: function play() {
-      var _this6 = this;
+      var _this7 = this;
 
       var clock = new THREE.Clock();
 
       var loop = function loop(time) {
         var delta = clock.getDelta();
 
-        _this6.render(delta);
+        _this7.render(delta);
 
         window.requestAnimationFrame(loop);
       };
 
       loop();
+    }
+  }, {
+    key: "animate",
+    value: function animate() {
+      var _this8 = this;
+
+      this.renderer.setAnimationLoop(function () {
+        _this8.render();
+      });
+    }
+  }, {
+    key: "index",
+    get: function get() {
+      return this.index_;
+    },
+    set: function set(index) {
+      this.index_ = index;
+      this.view = this.views[index];
+    }
+  }, {
+    key: "view",
+    get: function get() {
+      return this.view_;
+    },
+    set: function set(view) {
+      this.onInitView(this.view_, view);
+      this.view_ = view;
     }
   }]);
 
@@ -1165,7 +1376,7 @@ function () {
 var tour = new VRTour();
 
 window.onload = function () {
-  tour.init();
+  tour.load('data/vr.json');
   setTimeout(function () {
     console.log(tour.tour);
     tour.enter();

@@ -1,0 +1,180 @@
+{
+	"views": [
+		{
+			"id": 1,
+			"name": "Scene 1",
+			"image": "img/panorama-01.jpg",
+			"points": [
+				{
+					"id": 1,
+					"position": [
+						124.29046901090334,
+						-112.9935452521287,
+						-470.109251736104
+					],
+					"type": 1,
+					"name": "Point 1",
+					"key": "POINT1"
+				},
+				{
+					"id": 2,
+					"position": [
+						53.14573673283093,
+						-122.90068955723918,
+						-481.3915645023296
+					],
+					"type": 1,
+					"name": "Point 2",
+					"key": "POINT2"
+				},
+				{
+					"id": 2,
+					"position": [
+						151.101530422629,
+						-5.473990833251904,
+						-476.21879936030854
+					],
+					"type": 1,
+					"name": "Point 2",
+					"key": "POINT2"
+				},
+				{
+					"id": 2,
+					"position": [
+						247.66822764325119,
+						-119.62225778733901,
+						-417.1032628592007
+					],
+					"type": 1,
+					"name": "Point 2",
+					"key": "POINT2"
+				},
+				{
+					"id": 2,
+					"position": [
+						146.4012070928344,
+						-198.6398761118411,
+						-434.3292639378201
+					],
+					"type": 1,
+					"name": "Point 2",
+					"key": "POINT2"
+				}
+			],
+			"camera": {
+				"latitude": -4.1,
+				"longitude": 268
+			}
+		},
+		{
+			"id": 2,
+			"name": "Scene 2",
+			"image": "img/panorama-02.jpg",
+			"points": [
+				{
+					"id": 1,
+					"position": [
+						0,
+						0,
+						0
+					],
+					"type": 1,
+					"name": "Point 1",
+					"key": "POINT1"
+				}
+			],
+			"camera": {
+				"latitude": 0.5,
+				"longitude": 176.2
+			}
+		},
+		{
+			"id": 3,
+			"name": "Scene 3",
+			"image": "img/panorama-03.jpg",
+			"points": [
+				{
+					"id": 1,
+					"position": [
+						0,
+						0,
+						0
+					],
+					"type": 1,
+					"name": "Point 1",
+					"key": "POINT1"
+				}
+			],
+			"camera": {
+				"latitude": 0.5,
+				"longitude": 176.2
+			}
+		},
+		{
+			"id": 4,
+			"name": "Scene 4",
+			"image": "img/panorama-04.jpg",
+			"points": [
+				{
+					"id": 1,
+					"position": [
+						0,
+						0,
+						0
+					],
+					"type": 1,
+					"name": "Point 1",
+					"key": "POINT1"
+				}
+			],
+			"camera": {
+				"latitude": 0.5,
+				"longitude": 176.2
+			}
+		},
+		{
+			"id": 5,
+			"name": "Scene 5",
+			"image": "img/panorama-05.jpg",
+			"points": [
+				{
+					"id": 1,
+					"position": [
+						0,
+						0,
+						0
+					],
+					"type": 1,
+					"name": "Point 1",
+					"key": "POINT1"
+				}
+			],
+			"camera": {
+				"latitude": 0.5,
+				"longitude": 176.2
+			}
+		},
+		{
+			"id": 6,
+			"name": "Scene 6",
+			"image": "img/panorama-06.jpg",
+			"points": [
+				{
+					"id": 1,
+					"position": [
+						0,
+						0,
+						0
+					],
+					"type": 1,
+					"name": "Point 1",
+					"key": "POINT1"
+				}
+			],
+			"camera": {
+				"latitude": 0.5,
+				"longitude": 176.2
+			}
+		}
+	]
+}
