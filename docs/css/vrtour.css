@@ -8,9 +8,7 @@ body {
 .vrtour {
   position: relative;
   width: 100%;
-  background: #f3f3f3 url("../img/vrtour-background.jpg");
-  background-repeat: no-repeat;
-  background-size: cover; }
+  background: black; }
 
 .vrtour__shadow {
   display: none; }
@@ -23,7 +21,8 @@ body {
     top: 0;
     left: 0;
     width: 100%;
-    height: 100%; }
+    height: 100%;
+    background: black; }
 
 .vrtour__headline {
   position: relative;

@@ -1,6 +1,7 @@
 /* jshint esversion: 6 */
 /* global window, document, TweenMax, THREE, WEBVR */
 
+import html2canvas from 'html2canvas';
 import Dom from './shared/dom';
 import DragListener from './shared/drag.listener';
 
@@ -9,8 +10,31 @@ THREE.Euler.prototype.add = function(euler) {
 	return this;
 };
 
-const USE_ORTHO = false;
-const SHOW_HELPERS = false;
+const shaderPoint = {
+	vertexShader: `
+	attribute float size;
+	attribute vec4 ca;
+	varying vec4 vColor;
+	void main() {
+		vColor = ca;
+		vec4 mvPosition = modelViewMatrix * vec4(position, 1.0);
+		gl_PointSize = size * (400.0 / -mvPosition.z);
+		gl_Position = projectionMatrix * mvPosition;
+	}
+	`,
+	fragmentShader: `
+	uniform vec3 color;
+	uniform sampler2D texture;
+	varying vec4 vColor;
+	void main() {
+		vec4 textureColor = texture2D(texture, gl_PointCoord);
+		// if (textureColor.a < 0.5) discard;
+		gl_FragColor = textureColor * vec4(color * vColor.xyz, 1.0);
+		// float depth = gl_FragCoord.z / gl_FragCoord.w;
+		gl_FragColor = vec4(vec3(1.0), gl_FragColor.w);
+	}
+	`,
+};
 
 class VRTour {
 
@@ -45,7 +69,6 @@ class VRTour {
 	load(jsonUrl) {
 		this.init();
 		fetch(jsonUrl).then(response => response.json()).then(response => {
-			// console.log(response);
 			this.views = response.views;
 			this.index = 0;
 		});
@@ -74,204 +97,22 @@ class VRTour {
 	}
 
 	initRenderer() {
-		const renderer = new THREE.WebGLRenderer({
-			alpha: true,
-			antialias: true
-		});
-		renderer.shadowMap.enabled = true;
-		renderer.vr.enabled = true;
-		renderer.setSize(window.innerWidth, window.innerHeight);
-		this.renderer = renderer;
-		// container.innerHTML = '';
-		this.container.appendChild(renderer.domElement);
-		this.container.appendChild(WEBVR.createButton(renderer, { referenceSpaceType: 'local' }));
-		this.container.querySelector('[href]').setAttribute('target', '_blank');
-
-		const scene = new THREE.Scene();
-		this.scene = scene;
-
-		/*
-		const scene = new THREE.Scene();
-		scene.fog = new THREE.FogExp2(0x000000, 0.1); // new THREE.Fog(0x000000, 0, 10);
-		this.scene = scene;
-		*/
-
-		const camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.01, 1100);
-		camera.layers.enable(1);
-		// camera.position.set(0, 0, 0);
-		camera.target = new THREE.Vector3(0, 0, 0);
-		this.camera = camera;
-
-		/*
-		var vertex;
-		var color = new THREE.Color();
-		for ( var i = 0, l = vertices.length; i < l; i ++ ) {
-			vertex = vertices[ i ];
-			vertex.toArray( positions, i * 3 );
-			color.setHSL( 0.01 + 0.1 * ( i / l ), 1.0, 0.5 );
-			color.toArray( colors, i * 3 );
-			sizes[ i ] = PARTICLE_SIZE * 0.5;
-		}
-		*/
-
-		/*
-		const positions = new Float32Array(0 * 3);
-		const colors = new Float32Array(0 * 3);
-		const sizes = new Float32Array(0);
-
-		const geometry = new THREE.BufferGeometry();
-		geometry.addAttribute('position', new THREE.BufferAttribute(positions, 3));
-		geometry.addAttribute('customColor', new THREE.BufferAttribute(colors, 3));
-		geometry.addAttribute('size', new THREE.BufferAttribute(sizes, 1));
-		var material = new THREE.ShaderMaterial({
-			uniforms: {
-				color: { value: new THREE.Color(0xffffff) },
-				texture: { value: new THREE.TextureLoader().load('textures/sprites/disc.png') }
-			},
-			vertexShader: document.getElementById('vertexshader').textContent,
-			fragmentShader: document.getElementById('fragmentshader').textContent,
-			alphaTest: 0.9
-		});
-		// const points = new THREE.Points(geometry, material);
-		*/
-		// const geometry = new THREE.Geometry();
-		/*
-		const geometry = new THREE.BufferGeometry();
-		const positions = new Float32Array(0 * 3);
-		geometry.addAttribute('position', new THREE.BufferAttribute(positions, 3));
-		const material = new THREE.PointsMaterial({
-			size: 5,
-			vertexColors: THREE.VertexColors,
-			depthTest: false,
-		});
-		const material = new THREE.PointsMaterial({
-			size: 50,
-			map: THREE.ImageUtils.loadTexture('http://matthewachase.com/tru-dat-boo.png'),
-			blending: THREE.AdditiveBlending,
-			transparent: true,
-			depthTest: false
-        });
-        const points = new THREE.Points(geometry, material);
-		scene.add(points);
-		this.points = points;
-        */
-
-		// const PARTICLE_SIZE = 20;
-
-		const raycaster = new THREE.Raycaster();
-		this.raycaster = raycaster;
-
-		/*
-		let camera;
-		if (USE_ORTHO) {
-			const width = 10;
-			const height = width / this.container.offsetWidth * this.container.offsetHeight;
-			camera = new THREE.OrthographicCamera(-width, width, height, -height, 0.01, 1000);
-		} else {
-			camera = new THREE.PerspectiveCamera(50, window.innerWidth / window.innerHeight, 0.01, 1000);
-		}
-		// const camera = new THREE.OrthographicCamera(window.innerWidth / -2, window.innerWidth / 2, window.innerHeight / 2, window.innerHeight / -2, 0.01, 1000);
-		camera.position.set(0, 5.0, 12.0);
-		camera.up = new THREE.Vector3(0, 0, -1);
-		camera.lookAt(new THREE.Vector3(0, 0, 0));
-		this.camera = camera;
-		*/
-
-		/*
-		const ambient = new THREE.AmbientLight(0x222222);
-		scene.add(ambient);
-		this.ambient = ambient;
-		*/
-
-		/*
-		// color : Integer, intensity : Float, distance : Number, decay : Float
-		const light = new THREE.PointLight(0xffffff, 1000, 1000, 1);
-		light.position.set(0, 0, 0);
-		scene.add(light);
-		this.light = light;
-		*/
-
-		/*
-		let light1;
-		light1 = new THREE.DirectionalLight(0xffffff, 4.0);
-		// light1.castShadow = true;
-		// light1.shadowCameraVisible = true;
-		// light1.mapSize.width = 2048;
-		// light1.mapSize.height = 2048;
-		scene.add(light1);
-		this.light1 = light1;
-		if (SHOW_HELPERS) {
-			const light1Helper = new THREE.DirectionalLightHelper(light1, 1);
-			scene.add(light1Helper);
-		}
-		const light2 = new THREE.DirectionalLight(0xffffff, 4.0);
-		scene.add(light2);
-		this.light2 = light2;
-		if (SHOW_HELPERS) {
-			const light2Helper = new THREE.DirectionalLightHelper(light2, 1);
-			scene.add(light2Helper);
-		}
-		*/
-
-		const rotation = new THREE.Euler(0.0, 0.0, 0.0, 'XYZ');
-		const environment = this.addEnvironment(scene, rotation);
-		this.environment = environment;
-
-		const floor = this.addFloor(scene);
-		this.floor = floor;
-
-		const ceil = this.addCeil(scene);
-		this.ceil = ceil;
-
-		const points = this.addPoints(this.scene);
-		this.points = points;
-
-		/*
-		const pointRef = new THREE.Vector3(0.0, 0.0, 1.0);
-		this.pointRef = pointRef;
-		*/
-		// const shadow = this.addShadow(scene);
-		/*
-		const tourRotation = new THREE.Euler(0.0, Math.PI * 1.2, 0.0, 'XYZ');
-		const tourDragRotation = new THREE.Euler(0, 0, 0, 'XYZ');
-		const tourStartDragRotation = new THREE.Euler(0, 0, 0, 'XYZ');
-		const tourSpeedRotation = new THREE.Euler(0, 0, 0, 'XYZ');
-		const tour = this.addVRTour(scene, tourRotation, this.tourTexture);
-		this.tourRotation = tourRotation;
-		this.tourDragRotation = tourDragRotation;
-		this.tourStartDragRotation = tourStartDragRotation;
-		this.tourSpeedRotation = tourSpeedRotation;
-		this.tourRotation = tourRotation;
-		this.tour = tour;
-		*/
-		/*
-		const points = addPoints(tour);
-		this.points = points;
-		*/
-		/*
-		const dragListener = new DragListener(this.container, (e) => {
-			tourStartDragRotation.copy(tourDragRotation);
-		}, (e) => {
-			tourDragRotation.copy(tourStartDragRotation).add(new THREE.Euler(0, Math.PI * e.strength.x, 0, 'XYZ'));
-			tourSpeedRotation.set(0, 0.1, 0, 'XYZ');
-		}, (e) => {
-			tourSpeedRotation.set(0, Math.PI * e.speed.x, 0, 'XYZ');
-		});
-		this.dragListener = dragListener;
-		*/
-		let longitude, latitude;
-		const dragListener = new DragListener(this.container, (event) => {
-			longitude = this.longitude;
-			latitude = this.latitude;
-		}, (event) => {
-			this.longitude = -event.distance.x * 0.1 + longitude;
-			this.latitude = event.distance.y * 0.1 + latitude;
-			this.direction = event.distance.x ? (event.distance.x / Math.abs(event.distance.x) * -1) : 1;
-			console.log('longitude', this.longitude, 'latitude', this.latitude, 'direction', this.direction);
-		}, (event) => {
-			this.speed = Math.abs(event.strength.x) * 100;
-			console.log('speed', this.speed);
-		});
+		const scene = this.scene = this.addScene();
+		const camera = this.camera = this.addCamera();
+		const environment = this.environment = this.addEnvironment(scene);
+		const floor = this.floor = this.addFloor(scene);
+		const ceil = this.ceil = this.addCeil(scene);
+		const points = this.points = this.addPoints(scene);
+		// renderer
+		const renderer = this.renderer = this.addRenderer();
+		// controllers
+		const left = this.left = this.addControllerLeft(renderer, scene);
+		const right = this.right = this.addControllerRight(renderer, scene);
+		// hands
+		// const hands = this.hands = this.addHands();
+		// raycaster
+		const raycaster = this.raycaster = new THREE.Raycaster();
+		const dragListener = this.dragListener = this.addDragListener();
 		this.dragListener = dragListener;
 		this.onWindowResize = this.onWindowResize.bind(this);
 		this.onMouseMove = this.onMouseMove.bind(this);
@@ -289,17 +130,49 @@ class VRTour {
 		// this.play();
 	}
 
-	addEnvironment(parent, rotation) {
+	addScene() {
+		const scene = new THREE.Scene();
+		// scene.background = new THREE.Color(0x000000);
+		return scene;
+	}
+
+	addCamera() {
+		const camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.01, 1100);
+		camera.layers.enable(1);
+		// camera.position.set(0, 0, 0);
+		camera.target = new THREE.Vector3(0, 0, 0);
+		return camera;
+	}
+
+	addRenderer() {
+		const renderer = new THREE.WebGLRenderer({
+			alpha: false,
+			antialias: true,
+		});
+		// renderer.shadowMap.enabled = true;
+		renderer.vr.enabled = true;
+		renderer.setSize(window.innerWidth, window.innerHeight);
+		renderer.setClearColor(0x000000, 1);
+		this.renderer = renderer;
+		// container.innerHTML = '';
+		this.container.appendChild(renderer.domElement);
+		this.container.appendChild(WEBVR.createButton(renderer, { referenceSpaceType: 'local' }));
+		this.container.querySelector('[href]').setAttribute('target', '_blank');
+		return renderer;
+	}
+
+	addEnvironment(parent) {
+		const rotation = new THREE.Euler(0.0, 0.0, 0.0, 'XYZ');
 		const group = new THREE.Group();
 		//
 		var geometry = new THREE.SphereBufferGeometry(500, 60, 40);
 		// invert the geometry on the x-axis so that all of the faces point inward
 		geometry.scale(-1, 1, 1);
 		const material = new THREE.MeshBasicMaterial({
-			color: 0xffffff,
-			// transparent: true,
-			// opacity: 1.0,
-			depthTest: false,
+			color: 0x000000,
+			// depthTest: false,
+			transparent: true,
+			opacity: 0.0,
 		});
 		/*
 		const material = new THREE.MeshStandardMaterial({
@@ -329,25 +202,16 @@ class VRTour {
 		const loader = new THREE.TextureLoader();
 		const texture = loader.load('img/floor.jpg');
 		const textureAlpha = loader.load('img/floor-alpha.jpg');
-		// assuming you want the texture to repeat in both directions:
-		// texture.wrapS = THREE.RepeatWrapping;
-		// texture.wrapT = THREE.RepeatWrapping;
-		// how many times to repeat in each direction; the default is (1,1),
-		// which is probably why your example wasn't working
-		// texture.repeat.set( 4, 4 );
 		const material = new THREE.MeshBasicMaterial({
 			map: texture,
 			alphaMap: textureAlpha,
+			alphaTest: 0.5,
 			// blending: THREE.AdditiveBlending,
 			// depthTest: true,
 			transparent: true
 		});
 		const mesh = new THREE.Mesh(geometry, material);
-		// mesh.material.side = THREE.DoubleSide;
-		// mesh.position.x = 0;
 		mesh.position.y = -300;
-		// rotation.z is rotation around the z-axis, measured in radians (rather than degrees)
-		// Math.PI = 180 degrees, Math.PI / 2 = 90 degrees, etc.
 		mesh.rotation.x = -Math.PI / 2;
 		parent.add(mesh);
 		return mesh;
@@ -358,28 +222,106 @@ class VRTour {
 		const loader = new THREE.TextureLoader();
 		const texture = loader.load('img/ceil.jpg');
 		const textureAlpha = loader.load('img/ceil-alpha.jpg');
-		// assuming you want the texture to repeat in both directions:
-		// texture.wrapS = THREE.RepeatWrapping;
-		// texture.wrapT = THREE.RepeatWrapping;
-		// how many times to repeat in each direction; the default is (1,1),
-		// which is probably why your example wasn't working
-		// texture.repeat.set( 4, 4 );
 		const material = new THREE.MeshBasicMaterial({
 			map: texture,
 			alphaMap: textureAlpha,
+			alphaTest: 0.5,
 			// blending: THREE.AdditiveBlending,
 			// depthTest: true,
 			transparent: true
 		});
 		const mesh = new THREE.Mesh(geometry, material);
-		// mesh.material.side = THREE.DoubleSide;
-		// mesh.position.x = 0;
 		mesh.position.y = 400;
-		// rotation.z is rotation around the z-axis, measured in radians (rather than degrees)
-		// Math.PI = 180 degrees, Math.PI / 2 = 90 degrees, etc.
 		mesh.rotation.x = Math.PI / 2;
 		parent.add(mesh);
 		return mesh;
+	}
+
+	addControllerLeft(renderer, scene) {
+		const controller = renderer.vr.getController(0);
+		const cylinder = controller.cylinder = this.addControllerCylinder(controller, 0);
+		controller.addEventListener('selectstart', (event) => {
+			this.onSelectStart(event);
+		});
+		controller.addEventListener('selectend', (event) => {
+			this.onSelectEnd(event);
+		});
+		scene.add(controller);
+		return controller;
+	}
+
+	addControllerRight(renderer, scene) {
+		const controller = renderer.vr.getController(1);
+		const cylinder = controller.cylinder = this.addControllerCylinder(controller, 1);
+		/*
+		controller.addEventListener('selectstart', (event) => {
+			this.onSelectStart(event);
+		});
+		controller.addEventListener('selectend', (event) => {
+			this.onSelectEnd(event);
+		});
+		*/
+		scene.add(controller);
+		return controller;
+	}
+
+	addControllerCylinder(controller, i) {
+		// pointer
+		const modifier = new THREE.SubdivisionModifier(2);
+		const geometry = new THREE.CylinderGeometry(4, 4, 30, 12);
+		const smoothGeometry = modifier.modify(geometry);
+		const smoothBufferGeometry = new THREE.BufferGeometry().fromGeometry(smoothGeometry);
+		const material = new THREE.MeshStandardMaterial({
+			color: i === 0 ? 0x0000ff : 0xff0000,
+			roughness: 0.2,
+			metalness: 0.1,
+		});
+		const mesh = new THREE.Mesh(smoothBufferGeometry, material);
+		controller.add(mesh);
+	}
+
+	addHands() {
+		const hands = [];
+		const left = this.left;
+		const right = this.right;
+		const file = 'https://cdn.glitch.com/7ae766be-18fb-4945-ad9d-8cc3be027694%2Fhand.obj?1558677422910';
+		const loader = new THREE.OBJLoader();
+		loader.load(file, (group) => {
+			const texture = new THREE.TextureLoader().load('https://cdn.glitch.com/7ae766be-18fb-4945-ad9d-8cc3be027694%2FBazC_SkinMat.jpg?1558678160164');
+			const hand = group.children[0];
+			hand.geometry.rotateZ(-Math.PI / 2);
+			hand.geometry.rotateY(Math.PI);
+			hand.geometry.translate(1, -0.2, 0.25);
+			hand.geometry.scale(0.1, 0.1, 0.1);
+			hand.material = new THREE.MeshMatcapMaterial({ matcap: texture });
+			hand.scale.x = -1;
+			const leftHand = hand.clone();
+			right.add(leftHand);
+			hands.push(leftHand);
+			hand.scale.x = 1;
+			// const bills = this.addBillsToHand(hand);
+			const rightHand = hand.clone();
+			left.add(rightHand);
+			hands.push(rightHand);
+		});
+		return hands;
+	}
+
+	addDragListener() {
+		let longitude, latitude;
+		const dragListener = new DragListener(this.container, (event) => {
+			longitude = this.longitude;
+			latitude = this.latitude;
+		}, (event) => {
+			this.longitude = -event.distance.x * 0.1 + longitude;
+			this.latitude = event.distance.y * 0.1 + latitude;
+			this.direction = event.distance.x ? (event.distance.x / Math.abs(event.distance.x) * -1) : 1;
+			// console.log('longitude', this.longitude, 'latitude', this.latitude, 'direction', this.direction);
+		}, (event) => {
+			this.speed = Math.abs(event.strength.x) * 100;
+			// console.log('speed', this.speed);
+		});
+		return dragListener;
 	}
 
 	removePoints() {
@@ -393,41 +335,132 @@ class VRTour {
 
 	addPoints(parent) {
 		const loader = new THREE.TextureLoader();
+		const geometry = new THREE.BufferGeometry();
 		// hack fix
 		const vertices = [];
 		vertices.push(0, -10000, 0);
 		vertices.push(0, 10000, 0);
-		// hack fix
-		const geometry = new THREE.BufferGeometry();
 		geometry.addAttribute('position', new THREE.Float32BufferAttribute(vertices, 3));
+		// hack fix
+		const colors = new Array(100 * 3).fill(0);
+		const colorsAttribute = new THREE.Float32BufferAttribute(colors, 3);
+		const sizes = new Array(100).fill(10);
+		geometry.addAttribute('color', colorsAttribute);
+		geometry.addAttribute('customColor', new THREE.Float32BufferAttribute(colors, 3));
+		geometry.addAttribute('size', new THREE.Float32BufferAttribute(sizes, 1));
+		/*
 		const material = new THREE.PointsMaterial({
-			size: 20,
+			size: 15,
 			map: loader.load('img/pin.png'),
+			vertexColors: THREE.VertexColors,
 			blending: THREE.AdditiveBlending,
-			depthTest: false,
-			transparent: false
+			depthTest: true,
+			transparent: true
+		});
+		*/
+		/*
+		const material = new THREE.ShaderMaterial({
+			uniforms: {
+				color: { value: new THREE.Color(0xffffff) },
+				texture: { value: loader.load('img/pin.png') }
+			},
+			vertexColors: THREE.VertexColors,
+			blending: THREE.AdditiveBlending,
+			depthTest: true,
+			transparent: true,
+			vertexShader: shaderPoint.vertexShader,
+			fragmentShader: shaderPoint.fragmentShader,
+			alphaTest: 0.9
+		});
+		*/
+		const material = new THREE.ShaderMaterial({
+			uniforms: {
+				amplitude: { value: 1.0 },
+				color: { value: new THREE.Color(0xffffff) },
+				texture: { value: loader.load('img/pin.png') }
+			},
+			vertexShader: shaderPoint.vertexShader,
+			fragmentShader: shaderPoint.fragmentShader,
+			transparent: true
 		});
 		// materials[i].color.setHSL(1, 0, 0);
 		const points = new THREE.Points(geometry, material);
 		points.vertices = vertices;
+		points.colors = colors;
+		points.colorsAttribute = colorsAttribute;
+		points.scale.set(0.95, 0.95, 0.95);
 		parent.add(points);
 		return points;
 	}
 
-	addPoint(position) {
+	addPoint(position, i) {
 		const points = this.points;
 		const geometry = points.geometry;
 		const vertices = points.vertices;
+		const index = vertices.length / 3;
 		vertices.push(position.x, position.y, position.z);
-		vertices.needsUpdate = true;
-		points.material.needsUpdate = true;
 		geometry.addAttribute('position', new THREE.Float32BufferAttribute(vertices, 3));
+		const colorsAttribute = points.colorsAttribute;
+		colorsAttribute.setXYZ(index, 0, 0, 0);
+		points.material.needsUpdate = true;
+		// console.log(index, 'start');
+		const from = { opacity: 0 };
+		TweenMax.to(from, 0.5, {
+			opacity: 1,
+			delay: 0.1 * i,
+			onUpdate: () => {
+				// console.log(index, from.opacity);
+				colorsAttribute.setXYZ(index, from.opacity, from.opacity, from.opacity);
+				colorsAttribute.needsUpdate = true;
+				points.material.needsUpdate = true;
+			},
+			onCompleted: () => {
+				// console.log(index, 'completed');
+			}
+		});
+	}
+
+	removePoint(i) {
+		return new Promise((resolve, reject) => {
+			const points = this.points;
+			const geometry = points.geometry;
+			const vertices = points.vertices;
+			const index = vertices.length / 3;
+			const colorsAttribute = points.colorsAttribute;
+			colorsAttribute.setXYZ(index, 1, 1, 1);
+			points.material.needsUpdate = true;
+			// console.log(index, 'start');
+			const from = { opacity: 1 };
+			TweenMax.to(from, 0.5, {
+				opacity: 0,
+				delay: 0.0 * i,
+				onUpdate: () => {
+					// console.log(index, from.opacity);
+					colorsAttribute.setXYZ(index, from.opacity, from.opacity, from.opacity);
+					colorsAttribute.needsUpdate = true;
+					points.material.needsUpdate = true;
+				},
+				onCompleted: () => {
+					// console.log(index, 'completed');
+					vertices.splice(vertices.length - 3, 3);
+					geometry.addAttribute('position', new THREE.Float32BufferAttribute(vertices, 3));
+					resolve();
+				}
+			});
+		});
 	}
 
 	createPoint(intersection) {
-		console.log(intersection);
+		// console.log(intersection);
 		const position = intersection.point.clone();
-		this.addPoint(position);
+		this.addPoint(position, 0);
+		this.view.points.push({
+			id: 2,
+			position: position.toArray(),
+			type: 1,
+			name: 'Point 2',
+			key: 'POINT2',
+		});
 		// p.multiplyScalar(1);
 		/*
 		const positions = new Float32Array([...geometry.attributes.position.array, p.x, p.y, p.z]);
@@ -441,13 +474,6 @@ class VRTour {
 		// geometry.computeVertexNormals();
 		console.log(geometry);
 		*/
-		this.view.points.push({
-			id: 2,
-			position: position.toArray(),
-			type: 1,
-			name: 'Point 2',
-			key: 'POINT2',
-		});
 		/*
 		geometry.vertices.push(p);
 		// geometry.colors.push(new THREE.Color(Math.random(), Math.random(), Math.random()));
@@ -459,152 +485,111 @@ class VRTour {
 	}
 
 	onInitView(previous, current) {
-		if (previous) {
+		console.log(previous, current);
+		this.onExitPoints(previous).then(() => {
+			console.log(this.points.vertices);
 			this.onExitView(previous).then(() => {
-				this.onEnterView(current);
+				// if (!previous) {
+				this.onEnterView(current).then(() => {
+					this.onEnterPoints(current);
+					console.log(this.points.vertices);
+				});
+				// }
 			});
-		} else {
-			this.onEnterView(current);
-		}
+		});
+	}
+
+	onExitView(view) {
+		return new Promise((resolve, reject) => {
+			if (view) {
+				TweenMax.to(this.environment.sphere.material, 0.4, {
+					opacity: 0,
+					delay: 0.0,
+					onCompleted: () => {
+						setTimeout(() => {
+							resolve(view);
+						}, 250);
+					}
+				});
+			} else {
+				resolve(view);
+			}
+		});
 	}
 
 	onEnterView(view) {
-		// const tourTextureSrc = container.getAttribute('texture');
-		const loader = new THREE.TextureLoader();
-		loader.crossOrigin = '';
-		loader.load(view.image, (texture) => {
-			/*
-			// texture.wrapS = texture.wrapT = THREE.RepeatWrapping;
-			// texture.repeat.set(2, 2);
-			this.tourTexture = texture;
-			this.createScene();
-			*/
-			/*
-			if (this.environment.sphere.material.map) {
-				this.environment.sphere.material.map.dispose();
-			}
-			*/
-			this.environment.sphere.material.map = texture;
-			this.environment.sphere.material.map.needsUpdate = true;
-			this.environment.sphere.material.needsUpdate = true;
-			console.log(texture, this.environment.sphere.material.map);
-
-			view.points.forEach(point => this.addPoint(new THREE.Vector3(...point.position)));
-
-			if (view.camera) {
-				this.latitude = view.camera.latitude;
-				this.longitude = view.camera.longitude;
-			}
-		});
-	}
-
-	onSave(event) {
-		this.view.camera = {
-			latitude: this.latitude,
-			longitude: this.longitude,
-		};
-		this.saveData(this.views, 'vr.json');
-	}
-
-	saveData(data, filename = 'console.json') {
-		if (!data) {
-			console.error('Console.save: No data');
-			return;
-		}
-		if (typeof data === 'object') {
-			data = JSON.stringify(data, undefined, 4);
-		}
-		const blob = new Blob([data], { type: 'text/json' });
-		const event = document.createEvent('MouseEvents');
-		const anchor = document.createElement('a');
-		anchor.download = filename;
-		anchor.href = window.URL.createObjectURL(blob);
-		anchor.dataset.downloadurl = ['text/json', anchor.download, anchor.href].join(':');
-		event.initMouseEvent('click', true, false, window, 0, 0, 0, 0, 0, false, false, false, false, 0, null);
-		anchor.dispatchEvent(event);
-	}
-
-	enter() {
-		// this.tourCubesAppearAnimation();
-	}
-
-	tourCubesAppearAnimation(factor, duration, delay) {
-		const cubes = this.tour.cubes;
-		factor = factor || 1.5;
-		duration = duration || 1.4;
-		delay = delay || 0.01;
-		cubes.forEach((cube, i) => {
-			const position = cube.position_;
-			cube.position.set(position.x * factor, position.y * factor, position.z * factor);
-			TweenMax.to(cube.position, duration, {
-				x: position.x,
-				y: position.y,
-				z: position.z,
-				delay: i * delay,
-				ease: Elastic.easeOut,
-			});
-			TweenMax.to(cube.material, duration * 0.2, {
-				opacity: 1,
-				delay: i * delay,
-				ease: Sine.easeInOut,
-			});
-		});
-		setTimeout(() => {
-			this.randomRotateVRTourRows(this.tour.rows);
-			TweenMax.set(this.title, { transform: 'translate3d(0,80px,0)' });
-			TweenMax.to(this.title, 0.4, {
-				transform: 'translate3d(0,0,0)',
-				opacity: 1,
-				delay: 1,
-				ease: Sine.easeInOut,
-			});
-			TweenMax.set(this.abstract, { transform: 'translate3d(0,80px,0)' });
-			TweenMax.to(this.abstract, 0.4, {
-				transform: 'translate3d(0,0,0)',
-				opacity: 1,
-				delay: 1.2,
-				ease: Sine.easeInOut,
-			});
-		}, delay * cubes.length + duration);
-	}
-
-	tourCubesWaveAnimation(cubes, factor, duration, delay) {
-		factor = factor || 1.5;
-		duration = duration || 1.4;
-		delay = delay || 0.01;
-		cubes.forEach((cube, i) => {
-			const position = cube.position_;
-			TweenMax.to(cube.position, 0.3, {
-				x: position.x * factor,
-				y: position.y * factor,
-				z: position.z * factor,
-				delay: i * delay,
-				ease: Sine.easeOut,
-				onComplete: () => {
-					TweenMax.to(cube.position, duration, {
-						x: position.x,
-						y: position.y,
-						z: position.z,
-						ease: Elastic.easeOut,
+		return new Promise((resolve, reject) => {
+			if (view) {
+				setTimeout(() => {
+					// const tourTextureSrc = container.getAttribute('texture');
+					const loader = new THREE.TextureLoader();
+					loader.crossOrigin = '';
+					loader.load(view.image, (texture) => {
+						/*
+						// texture.wrapS = texture.wrapT = THREE.RepeatWrapping;
+						// texture.repeat.set(2, 2);
+						this.tourTexture = texture;
+						this.createScene();
+						*/
+						/*
+						if (this.environment.sphere.material.map) {
+							this.environment.sphere.material.map.dispose();
+						}
+						*/
+						if (view.camera) {
+							this.latitude = view.camera.latitude;
+							this.longitude = view.camera.longitude;
+						}
+						const material = this.environment.sphere.material;
+						material.opacity = 0;
+						material.color.setHex(0xffffff);
+						material.map = texture;
+						material.map.needsUpdate = true;
+						material.needsUpdate = true;
+						TweenMax.to(material, 0.6, {
+							opacity: 1,
+							delay: 0.1,
+							onCompleted: () => {
+								resolve(view);
+							}
+						});
 					});
-				}
-			});
+				}, 100);
+			} else {
+				reject(view);
+			}
 		});
 	}
 
-	randomRotateVRTourRows(rows) {
-		// console.log(rows);
-		const dir = Math.random() > 0.5 ? 1 : -1;
-		const row = rows[Math.floor(Math.random() * rows.length)];
-		const rotation = row.rotation;
-		TweenMax.to(rotation, 0.5, {
-			y: rotation.y + dir * Math.PI / 2,
-			delay: 1,
-			ease: Sine.easeInOut,
-			onComplete: () => {
-				this.randomRotateVRTourRows(rows);
-			}
-		});
+	onEnterPoints(view) {
+		view.points.forEach((point, i) => this.addPoint(new THREE.Vector3(...point.position), i));
+	}
+
+	onExitPoints(view) {
+		if (view) {
+			return Promise.all(view.points.map((point, i) => this.removePoint(i)));
+		} else {
+			return Promise.resolve();
+		}
+	}
+
+	// events
+
+	onWindowResize() {
+		const container = this.container,
+			renderer = this.renderer,
+			camera = this.camera;
+		const size = this.size;
+		size.width = container.offsetWidth;
+		size.height = container.offsetHeight;
+		size.aspect = size.width / size.height;
+		if (renderer) {
+			renderer.setSize(size.width, size.height);
+		}
+		if (camera) {
+			camera.aspect = size.width / size.height;
+			camera.updateProjectionMatrix();
+		}
 	}
 
 	onMouseMove(event) {
@@ -634,6 +619,13 @@ class VRTour {
 		*/
 	}
 
+	onMouseWheel(event) {
+		const camera = this.camera;
+		const fov = camera.fov + event.deltaY * 0.01;
+		camera.fov = THREE.Math.clamp(fov, 30, 75);
+		camera.updateProjectionMatrix();
+	}
+
 	onClick(event) {
 		// this.tourCubesWaveAnimation(this.tour.cubes);
 		const raycaster = this.raycaster;
@@ -646,7 +638,7 @@ class VRTour {
 				const intersection = intersections.find(x => x !== undefined);
 				this.createPoint(intersection);
 			}
-			console.log(intersections);
+			// console.log(intersections);
 			/*
 			for (var i = 0; i < intersects.length; i++ ) {
 				console.log(intersections[i])
@@ -664,34 +656,21 @@ class VRTour {
 					const debugInfo = `${index} => {${point.x}, ${point.y}, ${point.z}}`;
 					console.log(index, point, debugInfo);
 					this.debugInfo.innerHTML = debugInfo;
+					this.index = (this.index + 1) % this.views.length;
 				}
 			}
 		}
 	}
 
-	onWindowResize() {
-		const container = this.container,
-			renderer = this.renderer,
-			camera = this.camera;
-		const size = this.size;
-		size.width = container.offsetWidth;
-		size.height = container.offsetHeight;
-		size.aspect = size.width / size.height;
-		if (renderer) {
-			renderer.setSize(size.width, size.height);
-		}
-		if (camera) {
-			camera.aspect = size.width / size.height;
-			camera.updateProjectionMatrix();
-		}
+	onSave(event) {
+		this.view.camera = {
+			latitude: this.latitude,
+			longitude: this.longitude,
+		};
+		this.saveData({ views: this.views }, 'vr.json');
 	}
 
-	onMouseWheel(event) {
-		const camera = this.camera;
-		const fov = camera.fov + event.deltaY * 0.01;
-		camera.fov = THREE.Math.clamp(fov, 30, 75);
-		camera.updateProjectionMatrix();
-	}
+	// animation
 
 	doParallax() {
 		// parallax
@@ -747,7 +726,7 @@ class VRTour {
 		*/
 		this.updateCamera();
 		this.renderer.render(this.scene, this.camera);
-		this.doParallax();
+		// this.doParallax();
 	}
 
 	updateCamera() {
@@ -779,6 +758,7 @@ class VRTour {
 		*/
 	}
 
+	/*
 	play() {
 		const clock = new THREE.Clock();
 		const loop = (time) => {
@@ -788,6 +768,7 @@ class VRTour {
 		};
 		loop();
 	}
+	*/
 
 	animate() {
 		this.renderer.setAnimationLoop(() => {
@@ -795,14 +776,89 @@ class VRTour {
 		});
 	}
 
+	// utils
+
+	saveData(data, filename = 'console.json') {
+		if (!data) {
+			console.error('Console.save: No data');
+			return;
+		}
+		if (typeof data === 'object') {
+			data = JSON.stringify(data, undefined, 4);
+		}
+		const blob = new Blob([data], { type: 'text/json' });
+		const event = document.createEvent('MouseEvents');
+		const anchor = document.createElement('a');
+		anchor.download = filename;
+		anchor.href = window.URL.createObjectURL(blob);
+		anchor.dataset.downloadurl = ['text/json', anchor.download, anchor.href].join(':');
+		event.initMouseEvent('click', true, false, window, 0, 0, 0, 0, 0, false, false, false, false, 0, null);
+		anchor.dispatchEvent(event);
+		// this.getSnapshot();
+	}
+
+	getSnapshot() {
+		html2canvas(document.querySelector('.page')).then(canvas => {
+			document.body.appendChild(canvas);
+		});
+	}
+
 }
 
-var tour = new VRTour();
+const tour = new VRTour();
 
 window.onload = () => {
 	tour.load('data/vr.json');
-	setTimeout(() => {
-		console.log(tour.tour);
-		tour.enter();
-	}, 1000);
 };
+
+/*
+let camera;
+if (USE_ORTHO) {
+	const width = 10;
+	const height = width / this.container.offsetWidth * this.container.offsetHeight;
+	camera = new THREE.OrthographicCamera(-width, width, height, -height, 0.01, 1000);
+} else {
+	camera = new THREE.PerspectiveCamera(50, window.innerWidth / window.innerHeight, 0.01, 1000);
+}
+// const camera = new THREE.OrthographicCamera(window.innerWidth / -2, window.innerWidth / 2, window.innerHeight / 2, window.innerHeight / -2, 0.01, 1000);
+camera.position.set(0, 5.0, 12.0);
+camera.up = new THREE.Vector3(0, 0, -1);
+camera.lookAt(new THREE.Vector3(0, 0, 0));
+this.camera = camera;
+*/
+
+/*
+const ambient = new THREE.AmbientLight(0x222222);
+scene.add(ambient);
+this.ambient = ambient;
+*/
+
+/*
+// color : Integer, intensity : Float, distance : Number, decay : Float
+const light = new THREE.PointLight(0xffffff, 1000, 1000, 1);
+light.position.set(0, 0, 0);
+scene.add(light);
+this.light = light;
+*/
+
+/*
+let light1;
+light1 = new THREE.DirectionalLight(0xffffff, 4.0);
+// light1.castShadow = true;
+// light1.shadowCameraVisible = true;
+// light1.mapSize.width = 2048;
+// light1.mapSize.height = 2048;
+scene.add(light1);
+this.light1 = light1;
+if (SHOW_HELPERS) {
+	const light1Helper = new THREE.DirectionalLightHelper(light1, 1);
+	scene.add(light1Helper);
+}
+const light2 = new THREE.DirectionalLight(0xffffff, 4.0);
+scene.add(light2);
+this.light2 = light2;
+if (SHOW_HELPERS) {
+	const light2Helper = new THREE.DirectionalLightHelper(light2, 1);
+	scene.add(light2Helper);
+}
+*/

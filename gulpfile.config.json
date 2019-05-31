@@ -15,7 +15,9 @@
 					"node_modules/gsap/src/uncompressed/easing/EasePack.js",
 					"node_modules/gsap/src/uncompressed/TweenMax.js",
 					"node_modules/three/build/three.js",
-					"node_modules/three/examples/js/vr/WebVR.js"
+					"node_modules/three/examples/js/vr/WebVR.js",
+					"node_modules/three/examples/js/modifiers/SubdivisionModifier.js",
+					"node_modules/three/examples/js/loaders/OBJLoader.js"
 				],
 				"output": "docs/js/vrtour-vendors.js",
 				"minify": true

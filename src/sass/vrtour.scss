@@ -10,9 +10,10 @@ body {
 .vrtour {
 	position: relative;
 	width: 100%;
-	background: #f3f3f3 url('../img/vrtour-background.jpg');
-	background-repeat: no-repeat;
-	background-size: cover;
+	// background: #f3f3f3 url('../img/vrtour-background.jpg');
+	// background-repeat: no-repeat;
+	// background-size: cover;
+	background: black;
 }
 
 .vrtour__shadow {
@@ -29,6 +30,7 @@ body {
 		left: 0;
 		width: 100%;
 		height: 100%;
+		background: black;
 	}
 }
 
