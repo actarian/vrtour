@@ -9437,14 +9437,16 @@ function () {
     key: "addScene",
     value: function addScene() {
       var scene = new THREE.Scene(); // scene.background = new THREE.Color(0x000000);
+      // scene.background = new THREE.Color(0x404040);
+      // scene.fog = new THREE.Fog(scene.background, 10, 700);
 
       return scene;
     }
   }, {
     key: "addCamera",
     value: function addCamera() {
-      var camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.01, 1100);
-      camera.layers.enable(1); // camera.position.set(0, 0, 0);
+      var camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.01, 1100); // camera.layers.enable(1);
+      // camera.position.set(0, 0, 0);
 
       camera.target = new THREE.Vector3(0, 0, 0);
       return camera;
@@ -9455,18 +9457,19 @@ function () {
       var renderer = new THREE.WebGLRenderer({
         alpha: false,
         antialias: true
-      }); // renderer.shadowMap.enabled = true;
+      });
+      this.renderer = renderer; // renderer.shadowMap.enabled = true;
 
-      renderer.vr.enabled = true;
-      renderer.setSize(window.innerWidth, window.innerHeight);
       renderer.setClearColor(0x000000, 1);
-      this.renderer = renderer; // container.innerHTML = '';
+      renderer.setPixelRatio(window.devicePixelRatio);
+      renderer.setSize(window.innerWidth, window.innerHeight);
+      renderer.vr.enabled = true; // container.innerHTML = '';
 
       this.container.appendChild(renderer.domElement);
       this.container.appendChild(WEBVR.createButton(renderer, {
         referenceSpaceType: 'local'
-      }));
-      this.container.querySelector('[href]').setAttribute('target', '_blank');
+      })); // this.container.querySelector('[href]').setAttribute('target', '_blank');
+
       return renderer;
     }
   }, {
@@ -9482,7 +9485,8 @@ function () {
         color: 0x000000,
         // depthTest: false,
         transparent: true,
-        opacity: 0.0
+        opacity: 0.0,
+        wireframe: true
       });
       /*
       const material = new THREE.MeshStandardMaterial({
@@ -9830,6 +9834,7 @@ function () {
     value: function onInitView(previous, current) {
       var _this5 = this;
 
+      return;
       console.log(previous, current);
       this.onExitPoints(previous).then(function () {
         console.log(_this5.points.vertices);
