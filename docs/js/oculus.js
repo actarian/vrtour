@@ -288,11 +288,22 @@ function () {
   }, {
     key: "animate",
     value: function animate() {
-      var _this4 = this;
+      var left = this.left;
+      var right = this.right;
+      var renderer = this.renderer;
+      var scene = this.scene;
+      var camera = this.camera;
+      var handleController = this.handleController.bind(this);
+      var handleBills = this.handleBills.bind(this);
 
-      this.renderer.setAnimationLoop(function () {
-        _this4.render();
-      });
+      var render = function render() {
+        handleController(left);
+        handleController(right);
+        handleBills();
+        renderer.render(scene, camera);
+      };
+
+      this.renderer.setAnimationLoop(render);
     }
   }]);
 

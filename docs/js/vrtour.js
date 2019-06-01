@@ -9172,7 +9172,6 @@ function () {
       this.debugSave.addEventListener('click', this.onSave, false);
       this.section.classList.add('init');
       this.onWindowResize();
-      this.animate(); // this.play();
     }
   }, {
     key: "addScene",
@@ -9195,6 +9194,8 @@ function () {
   }, {
     key: "addRenderer",
     value: function addRenderer() {
+      var _this2 = this;
+
       var renderer = new THREE.WebGLRenderer({
         alpha: false,
         antialias: true
@@ -9211,6 +9212,9 @@ function () {
         referenceSpaceType: 'local'
       })); // this.container.querySelector('[href]').setAttribute('target', '_blank');
 
+      renderer.setAnimationLoop(function () {
+        _this2.render();
+      });
       return renderer;
     }
   }, {
@@ -9300,15 +9304,15 @@ function () {
   }, {
     key: "addControllerLeft",
     value: function addControllerLeft(renderer, scene) {
-      var _this2 = this;
+      var _this3 = this;
 
       var controller = renderer.vr.getController(0);
       var cylinder = controller.cylinder = this.addControllerCylinder(controller, 0);
       controller.addEventListener('selectstart', function (event) {
-        _this2.onSelectStart(event);
+        _this3.onSelectStart(event);
       });
       controller.addEventListener('selectend', function (event) {
-        _this2.onSelectEnd(event);
+        _this3.onSelectEnd(event);
       });
       scene.add(controller);
       return controller;
@@ -9379,18 +9383,18 @@ function () {
   }, {
     key: "addDragListener",
     value: function addDragListener() {
-      var _this3 = this;
+      var _this4 = this;
 
       var longitude, latitude;
       var dragListener = new _drag.default(this.container, function (event) {
-        longitude = _this3.longitude;
-        latitude = _this3.latitude;
+        longitude = _this4.longitude;
+        latitude = _this4.latitude;
       }, function (event) {
-        _this3.longitude = -event.distance.x * 0.1 + longitude;
-        _this3.latitude = event.distance.y * 0.1 + latitude;
-        _this3.direction = event.distance.x ? event.distance.x / Math.abs(event.distance.x) * -1 : 1; // console.log('longitude', this.longitude, 'latitude', this.latitude, 'direction', this.direction);
+        _this4.longitude = -event.distance.x * 0.1 + longitude;
+        _this4.latitude = event.distance.y * 0.1 + latitude;
+        _this4.direction = event.distance.x ? event.distance.x / Math.abs(event.distance.x) * -1 : 1; // console.log('longitude', this.longitude, 'latitude', this.latitude, 'direction', this.direction);
       }, function (event) {
-        _this3.speed = Math.abs(event.strength.x) * 100; // console.log('speed', this.speed);
+        _this4.speed = Math.abs(event.strength.x) * 100; // console.log('speed', this.speed);
       });
       return dragListener;
     }
@@ -9505,10 +9509,10 @@ function () {
   }, {
     key: "removePoint",
     value: function removePoint(i) {
-      var _this4 = this;
+      var _this5 = this;
 
       return new Promise(function (resolve, reject) {
-        var points = _this4.points;
+        var points = _this5.points;
         var geometry = points.geometry;
         var vertices = points.vertices;
         var index = vertices.length / 3;
@@ -9576,19 +9580,19 @@ function () {
   }, {
     key: "onInitView",
     value: function onInitView(previous, current) {
-      var _this5 = this;
+      var _this6 = this;
 
       return;
       console.log(previous, current);
       this.onExitPoints(previous).then(function () {
-        console.log(_this5.points.vertices);
+        console.log(_this6.points.vertices);
 
-        _this5.onExitView(previous).then(function () {
+        _this6.onExitView(previous).then(function () {
           // if (!previous) {
-          _this5.onEnterView(current).then(function () {
-            _this5.onEnterPoints(current);
+          _this6.onEnterView(current).then(function () {
+            _this6.onEnterPoints(current);
 
-            console.log(_this5.points.vertices);
+            console.log(_this6.points.vertices);
           }); // }
 
         });
@@ -9597,11 +9601,11 @@ function () {
   }, {
     key: "onExitView",
     value: function onExitView(view) {
-      var _this6 = this;
+      var _this7 = this;
 
       return new Promise(function (resolve, reject) {
         if (view) {
-          TweenMax.to(_this6.environment.sphere.material, 0.4, {
+          TweenMax.to(_this7.environment.sphere.material, 0.4, {
             opacity: 0,
             delay: 0.0,
             onCompleted: function onCompleted() {
@@ -9618,7 +9622,7 @@ function () {
   }, {
     key: "onEnterView",
     value: function onEnterView(view) {
-      var _this7 = this;
+      var _this8 = this;
 
       return new Promise(function (resolve, reject) {
         if (view) {
@@ -9640,11 +9644,11 @@ function () {
               }
               */
               if (view.camera) {
-                _this7.latitude = view.camera.latitude;
-                _this7.longitude = view.camera.longitude;
+                _this8.latitude = view.camera.latitude;
+                _this8.longitude = view.camera.longitude;
               }
 
-              var material = _this7.environment.sphere.material;
+              var material = _this8.environment.sphere.material;
               material.opacity = 0;
               material.color.setHex(0xffffff);
               material.map = texture;
@@ -9667,24 +9671,24 @@ function () {
   }, {
     key: "onEnterPoints",
     value: function onEnterPoints(view) {
-      var _this8 = this;
+      var _this9 = this;
 
       if (!this.points) {
         var points = this.points = this.addPoints(scene);
       }
 
       view.points.forEach(function (point, i) {
-        return _this8.addPoint(_construct(THREE.Vector3, _toConsumableArray(point.position)), i);
+        return _this9.addPoint(_construct(THREE.Vector3, _toConsumableArray(point.position)), i);
       });
     }
   }, {
     key: "onExitPoints",
     value: function onExitPoints(view) {
-      var _this9 = this;
+      var _this10 = this;
 
       if (view) {
         return Promise.all(view.points.map(function (point, i) {
-          return _this9.removePoint(i);
+          return _this10.removePoint(i);
         }));
       } else {
         return Promise.resolve();
@@ -9909,16 +9913,7 @@ function () {
     	loop();
     }
     */
-
-  }, {
-    key: "animate",
-    value: function animate() {
-      var _this10 = this;
-
-      this.renderer.setAnimationLoop(function () {
-        _this10.render();
-      });
-    } // utils
+    // utils
 
   }, {
     key: "saveData",

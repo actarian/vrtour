@@ -229,9 +229,20 @@ export class Oculus {
 	}
 
 	animate() {
-		this.renderer.setAnimationLoop(() => {
-			this.render();
-		});
+		const left = this.left;
+		const right = this.right;
+		const renderer = this.renderer;
+		const scene = this.scene;
+		const camera = this.camera;
+		const handleController = this.handleController.bind(this);
+		const handleBills = this.handleBills.bind(this);
+		const render = function() {
+			handleController(left);
+			handleController(right);
+			handleBills();
+			renderer.render(scene, camera);
+		}
+		this.renderer.setAnimationLoop(render);
 	}
 
 }

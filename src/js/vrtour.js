@@ -128,8 +128,6 @@ class VRTour {
 		this.debugSave.addEventListener('click', this.onSave, false);
 		this.section.classList.add('init');
 		this.onWindowResize();
-		this.animate();
-		// this.play();
 	}
 
 	addScene() {
@@ -163,6 +161,9 @@ class VRTour {
 		this.container.appendChild(renderer.domElement);
 		this.container.appendChild(WEBVR.createButton(renderer, { referenceSpaceType: 'local' }));
 		// this.container.querySelector('[href]').setAttribute('target', '_blank');
+		renderer.setAnimationLoop(() => {
+			this.render();
+		});
 		return renderer;
 	}
 
@@ -781,12 +782,6 @@ class VRTour {
 		loop();
 	}
 	*/
-
-	animate() {
-		this.renderer.setAnimationLoop(() => {
-			this.render();
-		});
-	}
 
 	// utils
 
