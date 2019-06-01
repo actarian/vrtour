@@ -9,6 +9,10 @@
 				"input": "src/js/vrtour.js",
 				"output": "docs/js/vrtour.js",
 				"minify": false
+			}, {
+				"input": "src/js/oculus.js",
+				"output": "docs/js/oculus.js",
+				"minify": false
 			}],
 			"bundle": [{
 				"input": [

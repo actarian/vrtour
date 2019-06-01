@@ -12,26 +12,16 @@ export class Oculus {
 		this.normal = new THREE.Vector3();
 		this.relativeVelocity = new THREE.Vector3();
 		this.clock = new THREE.Clock();
-		this.init();
-		this.animate();
 	}
 
 	init() {
-		const container = document.createElement('div');
-		document.body.appendChild(container);
-		const info = document.createElement('div');
-		info.style.position = 'absolute';
-		info.style.top = '10px';
-		info.style.width = '100%';
-		info.style.textAlign = 'center';
-		info.innerHTML = '<a href="https://threejs.org" target="_blank" rel="noopener">three.js</a> vr - make it rain<br><a href="https://poly.google.com/view/btWmPNVSKUc" target="_blank">hand</a> by poly';
-		container.appendChild(info);
-		//
+		const section = document.querySelector('.vrtour');
+		const container = section.querySelector('.vrtour__container');
 		const scene = this.scene = this.addScene();
 		const camera = this.camera = this.addCamera();
 		const room = this.room = this.addRoom(scene);
 		const bills = this.bills = this.addBillsToFloor(room);
-		const renderer = this.renderer = this.addRenderer();
+		const renderer = this.renderer = this.addRenderer(container);
 		// controllers
 		const left = this.left = this.addControllerLeft(renderer, scene);
 		const right = this.right = this.addControllerRight(renderer, scene);
@@ -65,7 +55,7 @@ export class Oculus {
 		return room;
 	}
 
-	addRenderer() {
+	addRenderer(container) {
 		const renderer = new THREE.WebGLRenderer({ antialias: true });
 		renderer.setPixelRatio(window.devicePixelRatio);
 		renderer.setSize(window.innerWidth, window.innerHeight);
@@ -239,7 +229,16 @@ export class Oculus {
 	}
 
 	animate() {
-		renderer.setAnimationLoop(render);
+		this.renderer.setAnimationLoop(() => {
+			this.render();
+		});
 	}
 
 }
+
+const oculus = new Oculus();
+
+window.onload = () => {
+	oculus.init();
+	oculus.animate();
+};

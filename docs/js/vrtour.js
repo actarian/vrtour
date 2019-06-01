@@ -8843,136 +8843,6 @@ Object.defineProperty(exports, "__esModule", {
 });
 exports.default = void 0;
 
-var _utils = _interopRequireDefault(require("./utils"));
-
-function _interopRequireDefault(obj) { return obj && obj.__esModule ? obj : { default: obj }; }
-
-function _classCallCheck(instance, Constructor) { if (!(instance instanceof Constructor)) { throw new TypeError("Cannot call a class as a function"); } }
-
-function _defineProperties(target, props) { for (var i = 0; i < props.length; i++) { var descriptor = props[i]; descriptor.enumerable = descriptor.enumerable || false; descriptor.configurable = true; if ("value" in descriptor) descriptor.writable = true; Object.defineProperty(target, descriptor.key, descriptor); } }
-
-function _createClass(Constructor, protoProps, staticProps) { if (protoProps) _defineProperties(Constructor.prototype, protoProps); if (staticProps) _defineProperties(Constructor, staticProps); return Constructor; }
-
-var Dom =
-/*#__PURE__*/
-function () {
-  function Dom() {
-    _classCallCheck(this, Dom);
-  }
-
-  _createClass(Dom, null, [{
-    key: "detect",
-    value: function detect(node) {
-      var userAgent = navigator.userAgent.toLowerCase();
-      var explorer = userAgent.indexOf('msie') > -1;
-      var firefox = userAgent.indexOf('firefox') > -1;
-      var opera = userAgent.toLowerCase().indexOf('op') > -1;
-      var chrome = userAgent.indexOf('chrome') > -1;
-      var safari = userAgent.indexOf('safari') > -1;
-
-      if (chrome && safari) {
-        safari = false;
-      }
-
-      if (chrome && opera) {
-        chrome = false;
-      }
-
-      var android = userAgent.match(/android/i);
-      var blackberry = userAgent.match(/blackberry/i);
-      var ios = userAgent.match(/iphone|ipad|ipod/i);
-      var operamini = userAgent.match(/opera mini/i);
-      var iemobile = userAgent.match(/iemobile/i) || navigator.userAgent.match(/wpdesktop/i);
-      var mobile = android || blackberry || ios || operamini || iemobile;
-      var overscroll = navigator.platform === 'MacIntel' && typeof navigator.getBattery === 'function';
-      var classList = {
-        chrome: chrome,
-        explorer: explorer,
-        firefox: firefox,
-        safari: safari,
-        opera: opera,
-        android: android,
-        blackberry: blackberry,
-        ios: ios,
-        operamini: operamini,
-        iemobile: iemobile,
-        mobile: mobile,
-        overscroll: overscroll
-      };
-      Object.assign(Dom, classList);
-      Object.keys(classList).forEach(function (x) {
-        if (classList[x]) {
-          node.classList.add(x);
-        }
-      });
-
-      var onTouchStart = function onTouchStart() {
-        document.removeEventListener('touchstart', onTouchStart);
-        Dom.touch = true;
-        node.classList.add('touch');
-      };
-
-      document.addEventListener('touchstart', onTouchStart);
-
-      var onMouseDown = function onMouseDown() {
-        document.removeEventListener('mousedown', onMouseDown);
-        Dom.mouse = true;
-        node.classList.add('mouse');
-      };
-
-      document.addEventListener('mousedown', onMouseDown);
-
-      var onScroll = function onScroll() {
-        var now = _utils.default.now();
-
-        if (Dom.lastScrollTime) {
-          var diff = now - Dom.lastScrollTime;
-
-          if (diff < 5) {
-            document.removeEventListener('scroll', onScroll);
-            Dom.fastscroll = true;
-            node.classList.add('fastscroll');
-            console.log('scroll', diff);
-          }
-        }
-
-        Dom.lastScrollTime = now;
-      };
-
-      document.addEventListener('scroll', onScroll);
-    }
-  }, {
-    key: "fragmentFirstElement",
-    value: function fragmentFirstElement(fragment) {
-      return Array.prototype.slice.call(fragment.children).find(function (x) {
-        return x.nodeType === Node.ELEMENT_NODE;
-      });
-    }
-  }, {
-    key: "fragmentFromHTML",
-    value: function fragmentFromHTML(html) {
-      return document.createRange().createContextualFragment(html);
-    }
-  }, {
-    key: "scrollTop",
-    value: function scrollTop() {
-      return document && document.defaultView ? document.defaultView.pageYOffset : 0;
-    }
-  }]);
-
-  return Dom;
-}();
-
-exports.default = Dom;
-
-},{"./utils":4}],3:[function(require,module,exports){
-"use strict";
-
-Object.defineProperty(exports, "__esModule", {
-  value: true
-});
-exports.default = void 0;
-
 function _classCallCheck(instance, Constructor) { if (!(instance instanceof Constructor)) { throw new TypeError("Cannot call a class as a function"); } }
 
 function _defineProperties(target, props) { for (var i = 0; i < props.length; i++) { var descriptor = props[i]; descriptor.enumerable = descriptor.enumerable || false; descriptor.configurable = true; if ("value" in descriptor) descriptor.writable = true; Object.defineProperty(target, descriptor.key, descriptor); } }
@@ -9163,140 +9033,10 @@ function () {
 
 exports.default = DragListener;
 
-},{}],4:[function(require,module,exports){
-"use strict";
-
-Object.defineProperty(exports, "__esModule", {
-  value: true
-});
-exports.default = void 0;
-
-function _classCallCheck(instance, Constructor) { if (!(instance instanceof Constructor)) { throw new TypeError("Cannot call a class as a function"); } }
-
-function _defineProperties(target, props) { for (var i = 0; i < props.length; i++) { var descriptor = props[i]; descriptor.enumerable = descriptor.enumerable || false; descriptor.configurable = true; if ("value" in descriptor) descriptor.writable = true; Object.defineProperty(target, descriptor.key, descriptor); } }
-
-function _createClass(Constructor, protoProps, staticProps) { if (protoProps) _defineProperties(Constructor.prototype, protoProps); if (staticProps) _defineProperties(Constructor, staticProps); return Constructor; }
-
-/* jshint esversion: 6 */
-
-/* global window, document */
-var Utils =
-/*#__PURE__*/
-function () {
-  function Utils() {
-    _classCallCheck(this, Utils);
-  }
-
-  _createClass(Utils, null, [{
-    key: "now",
-    value: function now() {
-      return Date.now ? Date.now() : new Date().getTime();
-    }
-  }, {
-    key: "performanceNow",
-    value: function performanceNow() {
-      return performance ? performance.timing.navigationStart + performance.now() : Utils.now();
-    }
-  }, {
-    key: "throttle",
-    value: function throttle(callback, wait, options) {
-      var context = null,
-          result = null,
-          args = null,
-          timeout = null;
-      var previous = 0;
-
-      if (!options) {
-        options = {};
-      }
-
-      var later = function later() {
-        previous = options.leading === false ? 0 : Utils.now();
-        timeout = null;
-        result = callback.apply(context, args);
-
-        if (!timeout) {
-          context = args = null;
-        }
-      };
-
-      return function () {
-        context = this;
-        args = arguments;
-        var now = Utils.now();
-
-        if (!previous && options.leading === false) {
-          previous = now;
-        }
-
-        var remaining = wait - (now - previous);
-
-        if (remaining <= 0 || remaining > wait) {
-          if (timeout) {
-            clearTimeout(timeout);
-            timeout = null;
-          }
-
-          previous = now;
-          result = callback.apply(context, args);
-
-          if (!timeout) {
-            context = args = null;
-          }
-        } else if (!timeout && options.trailing !== false) {
-          timeout = setTimeout(later, remaining);
-        }
-
-        return result;
-      };
-    }
-  }, {
-    key: "debounce",
-    value: function debounce(callback) {
-      var _this = this,
-          _arguments = arguments;
-
-      var wait = arguments.length > 1 && arguments[1] !== undefined ? arguments[1] : 10;
-      var immediate = arguments.length > 2 && arguments[2] !== undefined ? arguments[2] : true;
-      var timeout;
-      return function () {
-        var context = _this,
-            args = _arguments;
-
-        var later = function later() {
-          timeout = null;
-
-          if (!immediate) {
-            callback.apply(context, args);
-          }
-        };
-
-        var callNow = immediate && !timeout;
-
-        if (timeout) {
-          clearTimeout(timeout);
-        }
-
-        timeout = setTimeout(later, wait);
-
-        if (callNow) {
-          callback.apply(context, args);
-        }
-      };
-    }
-  }]);
-
-  return Utils;
-}();
-
-exports.default = Utils;
-
-},{}],5:[function(require,module,exports){
+},{}],3:[function(require,module,exports){
 "use strict";
 
 var _html2canvas = _interopRequireDefault(require("html2canvas"));
-
-var _dom = _interopRequireDefault(require("./shared/dom"));
 
 var _drag = _interopRequireDefault(require("./shared/drag.listener"));
 
@@ -9366,13 +9106,17 @@ function () {
     value: function load(jsonUrl) {
       var _this = this;
 
-      this.init();
-      fetch(jsonUrl).then(function (response) {
-        return response.json();
-      }).then(function (response) {
-        _this.views = response.views;
-        _this.index = 0;
-      });
+      try {
+        this.init();
+        fetch(jsonUrl).then(function (response) {
+          return response.json();
+        }).then(function (response) {
+          _this.views = response.views;
+          _this.index = 0;
+        });
+      } catch (error) {
+        this.debugInfo.innerHTML = error;
+      }
     }
   }, {
     key: "init",
@@ -9382,21 +9126,19 @@ function () {
       var container = section.querySelector('.vrtour__container');
       var debugInfo = section.querySelector('.debug__info');
       var debugSave = section.querySelector('.debug__save'); // const shadow = section.querySelector('.vrtour__shadow');
+      // const title = section.querySelector('.vrtour__headline .title');
+      // const abstract = section.querySelector('.vrtour__headline .abstract');
+      // Dom.detect(body);
+      // body.classList.add('ready');
 
-      var title = section.querySelector('.vrtour__headline .title');
-      var abstract = section.querySelector('.vrtour__headline .abstract');
-
-      _dom.default.detect(body);
-
-      body.classList.add('ready');
       this.body = body;
       this.section = section;
       this.container = container;
       this.debugInfo = debugInfo;
       this.debugSave = debugSave; // this.shadow = shadow;
+      // this.title = title;
+      // this.abstract = abstract;
 
-      this.title = title;
-      this.abstract = abstract;
       this.initRenderer();
     }
   }, {
@@ -9406,8 +9148,7 @@ function () {
       var camera = this.camera = this.addCamera();
       var environment = this.environment = this.addEnvironment(scene);
       var floor = this.floor = this.addFloor(scene);
-      var ceil = this.ceil = this.addCeil(scene);
-      var points = this.points = this.addPoints(scene); // renderer
+      var ceil = this.ceil = this.addCeil(scene); // renderer
 
       var renderer = this.renderer = this.addRenderer(); // controllers
 
@@ -9475,17 +9216,16 @@ function () {
   }, {
     key: "addEnvironment",
     value: function addEnvironment(parent) {
-      var rotation = new THREE.Euler(0.0, 0.0, 0.0, 'XYZ');
       var group = new THREE.Group(); //
 
-      var geometry = new THREE.SphereBufferGeometry(500, 60, 40); // invert the geometry on the x-axis so that all of the faces point inward
+      var geometry = new THREE.SphereBufferGeometry(500, 16, 16); // invert the geometry on the x-axis so that all of the faces point inward
 
       geometry.scale(-1, 1, 1);
       var material = new THREE.MeshBasicMaterial({
-        color: 0x000000,
+        color: 0xffffff,
         // depthTest: false,
-        transparent: true,
-        opacity: 0.0,
+        transparent: false,
+        opacity: 1.0,
         wireframe: true
       });
       /*
@@ -9507,7 +9247,11 @@ function () {
       group.add(sphere);
       group.sphere = sphere; //
 
+      /*
+      const rotation = new THREE.Euler(0.0, 0.0, 0.0, 'XYZ');
       group.rotation.set(rotation.x, rotation.y, rotation.z);
+      */
+
       parent.add(group);
       return group;
     }
@@ -9925,6 +9669,10 @@ function () {
     value: function onEnterPoints(view) {
       var _this8 = this;
 
+      if (!this.points) {
+        var points = this.points = this.addPoints(scene);
+      }
+
       view.points.forEach(function (point, i) {
         return _this8.addPoint(_construct(THREE.Vector3, _toConsumableArray(point.position)), i);
       });
@@ -10024,7 +9772,7 @@ function () {
         }
         */
 
-      } else {
+      } else if (this.points) {
         raycaster.params.Points.threshold = 10.0;
 
         var _intersections = raycaster.intersectObjects([this.points]);
@@ -10284,5 +10032,5 @@ if (SHOW_HELPERS) {
 }
 */
 
-},{"./shared/dom":2,"./shared/drag.listener":3,"html2canvas":1}]},{},[5]);
+},{"./shared/drag.listener":2,"html2canvas":1}]},{},[3]);
 //# sourceMappingURL=vrtour.js.map

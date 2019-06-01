@@ -2,7 +2,6 @@
 /* global window, document, TweenMax, THREE, WEBVR */
 
 import html2canvas from 'html2canvas';
-import Dom from './shared/dom';
 import DragListener from './shared/drag.listener';
 
 THREE.Euler.prototype.add = function(euler) {
@@ -67,11 +66,15 @@ class VRTour {
 	}
 
 	load(jsonUrl) {
-		this.init();
-		fetch(jsonUrl).then(response => response.json()).then(response => {
-			this.views = response.views;
-			this.index = 0;
-		});
+		try {
+			this.init();
+			fetch(jsonUrl).then(response => response.json()).then(response => {
+				this.views = response.views;
+				this.index = 0;
+			});
+		} catch (error) {
+			this.debugInfo.innerHTML = error;
+		}
 	}
 
 	init() {
@@ -81,18 +84,18 @@ class VRTour {
 		const debugInfo = section.querySelector('.debug__info');
 		const debugSave = section.querySelector('.debug__save');
 		// const shadow = section.querySelector('.vrtour__shadow');
-		const title = section.querySelector('.vrtour__headline .title');
-		const abstract = section.querySelector('.vrtour__headline .abstract');
-		Dom.detect(body);
-		body.classList.add('ready');
+		// const title = section.querySelector('.vrtour__headline .title');
+		// const abstract = section.querySelector('.vrtour__headline .abstract');
+		// Dom.detect(body);
+		// body.classList.add('ready');
 		this.body = body;
 		this.section = section;
 		this.container = container;
 		this.debugInfo = debugInfo;
 		this.debugSave = debugSave;
 		// this.shadow = shadow;
-		this.title = title;
-		this.abstract = abstract;
+		// this.title = title;
+		// this.abstract = abstract;
 		this.initRenderer();
 	}
 
@@ -102,7 +105,6 @@ class VRTour {
 		const environment = this.environment = this.addEnvironment(scene);
 		const floor = this.floor = this.addFloor(scene);
 		const ceil = this.ceil = this.addCeil(scene);
-		const points = this.points = this.addPoints(scene);
 		// renderer
 		const renderer = this.renderer = this.addRenderer();
 		// controllers
@@ -165,17 +167,16 @@ class VRTour {
 	}
 
 	addEnvironment(parent) {
-		const rotation = new THREE.Euler(0.0, 0.0, 0.0, 'XYZ');
 		const group = new THREE.Group();
 		//
-		var geometry = new THREE.SphereBufferGeometry(500, 60, 40);
+		var geometry = new THREE.SphereBufferGeometry(500, 16, 16);
 		// invert the geometry on the x-axis so that all of the faces point inward
 		geometry.scale(-1, 1, 1);
 		const material = new THREE.MeshBasicMaterial({
-			color: 0x000000,
+			color: 0xffffff,
 			// depthTest: false,
-			transparent: true,
-			opacity: 0.0,
+			transparent: false,
+			opacity: 1.0,
 			wireframe: true
 		});
 		/*
@@ -196,7 +197,10 @@ class VRTour {
 		group.add(sphere);
 		group.sphere = sphere;
 		//
+		/*
+		const rotation = new THREE.Euler(0.0, 0.0, 0.0, 'XYZ');
 		group.rotation.set(rotation.x, rotation.y, rotation.z);
+		*/
 		parent.add(group);
 		return group;
 	}
@@ -567,6 +571,9 @@ class VRTour {
 	}
 
 	onEnterPoints(view) {
+		if (!this.points) {
+			const points = this.points = this.addPoints(scene);
+		}
 		view.points.forEach((point, i) => this.addPoint(new THREE.Vector3(...point.position), i));
 	}
 
@@ -650,7 +657,7 @@ class VRTour {
 				intersects[i].object.material.color.set( 0xff0000 );
 			}
 			*/
-		} else {
+		} else if (this.points) {
 			raycaster.params.Points.threshold = 10.0;
 			const intersections = raycaster.intersectObjects([this.points]);
 			if (intersections) {
