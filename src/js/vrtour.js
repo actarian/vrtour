@@ -47,6 +47,7 @@ class VRTour {
 		this.direction = 1;
 		this.speed = 1;
 		this.inertia = new THREE.Vector3(0, 0, 0);
+		this.init();
 	}
 
 	get index() {
@@ -67,7 +68,6 @@ class VRTour {
 
 	load(jsonUrl) {
 		try {
-			this.init();
 			fetch(jsonUrl).then(response => response.json()).then(response => {
 				this.views = response.views;
 				this.index = 0;
@@ -163,24 +163,21 @@ class VRTour {
 		this.container.appendChild(renderer.domElement);
 		this.container.appendChild(WEBVR.createButton(renderer, { referenceSpaceType: 'local' }));
 		// this.container.querySelector('[href]').setAttribute('target', '_blank');
-		renderer.setAnimationLoop(() => {
-			this.render();
-		});
 		return renderer;
 	}
 
 	addEnvironment(parent) {
 		const group = new THREE.Group();
 		//
-		var geometry = new THREE.SphereBufferGeometry(500, 16, 16);
+		var geometry = new THREE.SphereBufferGeometry(500, 32, 32);
 		// invert the geometry on the x-axis so that all of the faces point inward
 		geometry.scale(-1, 1, 1);
 		const material = new THREE.MeshBasicMaterial({
-			color: 0xffffff,
+			color: 0x000000,
 			// depthTest: false,
-			transparent: false,
-			opacity: 1.0,
-			wireframe: true
+			transparent: true,
+			opacity: 0.0,
+			// wireframe: true
 		});
 		/*
 		const material = new THREE.MeshStandardMaterial({
@@ -251,8 +248,8 @@ class VRTour {
 	addControllerLeft(renderer, scene) {
 		const controller = renderer.vr.getController(0);
 		const cylinder = controller.cylinder = this.addControllerCylinder(controller, 0);
-		controller.addEventListener('selectstart', this.onSelectStart);
-		controller.addEventListener('selectend', this.onSelectEnd);
+		controller.addEventListener('selectstart', this.onSelectStart.bind(controller));
+		controller.addEventListener('selectend', this.onSelectEnd.bind(controller));
 		scene.add(controller);
 		return controller;
 	}
@@ -261,8 +258,8 @@ class VRTour {
 		const controller = renderer.vr.getController(1);
 		const cylinder = controller.cylinder = this.addControllerCylinder(controller, 1);
 		/*
-		controller.addEventListener('selectstart', this.onSelectStart);
-		controller.addEventListener('selectend', this.onSelectEnd);
+		controller.addEventListener('selectstart', this.onSelectStart.bind(controller));
+		controller.addEventListener('selectend', this.onSelectEnd.bind(controller));
 		*/
 		scene.add(controller);
 		return controller;
@@ -487,16 +484,23 @@ class VRTour {
 		// console.log(p);
 	}
 
+	onSelectStart() {
+		this.userData.isSelecting = true;
+	}
+
+	onSelectEnd() {
+		this.userData.isSelecting = false;
+	}
+
 	onInitView(previous, current) {
-		return;
-		console.log(previous, current);
+		// console.log(previous, current);
 		this.onExitPoints(previous).then(() => {
-			console.log(this.points.vertices);
+			// console.log(this.points.vertices);
 			this.onExitView(previous).then(() => {
 				// if (!previous) {
 				this.onEnterView(current).then(() => {
 					this.onEnterPoints(current);
-					console.log(this.points.vertices);
+					// console.log(this.points.vertices);
 				});
 				// }
 			});
@@ -567,7 +571,7 @@ class VRTour {
 
 	onEnterPoints(view) {
 		if (!this.points) {
-			const points = this.points = this.addPoints(scene);
+			const points = this.points = this.addPoints(this.scene);
 		}
 		view.points.forEach((point, i) => this.addPoint(new THREE.Vector3(...point.position), i));
 	}
@@ -714,46 +718,34 @@ class VRTour {
 		*/
 	}
 
-	render(delta) {
-		/*
-		if (!this.dragListener.dragging) {
-			this.tourRotation.y += this.tourSpeedRotation.y;
-			this.tourSpeedRotation.y += (0.002 - this.tourSpeedRotation.y) / 50;
-		}
-		this.tour.rotation.copy(this.tourRotation).add(this.tourDragRotation);
-		*/
-		/*
-		this.points.geometry.vertices.forEach((vertex, i) => {
-			const local = this.tour.localToWorld(vertex.clone());
-			const distance = local.distanceTo(this.pointRef);
-			const s = Math.max(0, Math.min(1, (1 - distance))) * 5;
-			this.points.geometry.colors[i] = new THREE.Color(s, s, s);
-			this.points.geometry.colorsNeedUpdate = true;
+	animate() {
+		const renderer = this.renderer;
+		renderer.setAnimationLoop(() => {
+			this.render();
 		});
-		*/
-		this.updateCamera();
-		this.renderer.render(this.scene, this.camera);
+	}
+
+	render(delta) {
+		const renderer = this.renderer;
+		if (!renderer.vr.isPresenting()) {
+			this.updateCamera();
+		}
+		renderer.render(this.scene, this.camera);
 		// this.doParallax();
 	}
 
 	updateCamera() {
-		const renderer = this.renderer;
-		if (renderer.vr.isPresenting()) {
-			return;
-		}
 		const camera = this.camera;
 		const direction = this.direction;
 		const inertia = this.inertia;
 		let speed = this.speed;
 		let latitude = this.latitude;
 		let longitude = this.longitude;
-
 		if (this.dragListener && this.dragListener.dragging === false) {
 			// longitude += 0.01 * direction * speed;
 			speed = Math.max(1, speed * 0.98);
 			inertia.multiplyScalar(0.98);
 		}
-
 		latitude = Math.max(-85, Math.min(85, latitude));
 		const phi = THREE.Math.degToRad(90 - latitude);
 		const theta = THREE.Math.degToRad(longitude);
@@ -770,18 +762,6 @@ class VRTour {
 		camera.position.copy( camera.target ).negate();
 		*/
 	}
-
-	/*
-	play() {
-		const clock = new THREE.Clock();
-		const loop = (time) => {
-			const delta = clock.getDelta();
-			this.render(delta);
-			window.requestAnimationFrame(loop);
-		};
-		loop();
-	}
-	*/
 
 	// utils
 
@@ -815,6 +795,7 @@ class VRTour {
 const tour = new VRTour();
 
 // window.onload = () => {
+tour.animate();
 tour.load('data/vr.json');
 // };
 

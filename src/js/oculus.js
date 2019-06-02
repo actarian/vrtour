@@ -67,8 +67,8 @@ export class Oculus {
 
 	addControllerLeft(renderer, scene) {
 		const controller = renderer.vr.getController(0);
-		controller.addEventListener('selectstart', this.onSelectStart);
-		controller.addEventListener('selectend', this.onSelectEnd);
+		controller.addEventListener('selectstart', this.onSelectStart.bind(controller));
+		controller.addEventListener('selectend', this.onSelectEnd.bind(controller));
 		scene.add(controller);
 		return controller;
 	}
@@ -76,8 +76,8 @@ export class Oculus {
 	addControllerRight(renderer, scene) {
 		const controller = renderer.vr.getController(1);
 		/*
-		controller.addEventListener('selectstart', this.onSelectStart);
-		controller.addEventListener('selectend', this.onSelectEnd);
+		controller.addEventListener('selectstart', this.onSelectStart.bind(controller));
+		controller.addEventListener('selectend', this.onSelectEnd.bind(controller));
 		*/
 		scene.add(controller);
 		return controller;
@@ -136,12 +136,12 @@ export class Oculus {
 			hand.material = new THREE.MeshMatcapMaterial({ matcap: texture });
 			hand.scale.x = -1;
 			const leftHand = hand.clone();
-			right.add(leftHand);
+			left.add(leftHand);
 			hands.push(leftHand);
 			hand.scale.x = 1;
 			const bills = this.addBillsToHand(hand);
 			const rightHand = hand.clone();
-			left.add(rightHand);
+			right.add(rightHand);
 			hands.push(rightHand);
 		});
 		return hands;

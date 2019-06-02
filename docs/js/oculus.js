@@ -96,8 +96,8 @@ function () {
     key: "addControllerLeft",
     value: function addControllerLeft(renderer, scene) {
       var controller = renderer.vr.getController(0);
-      controller.addEventListener('selectstart', this.onSelectStart);
-      controller.addEventListener('selectend', this.onSelectEnd);
+      controller.addEventListener('selectstart', this.onSelectStart.bind(controller));
+      controller.addEventListener('selectend', this.onSelectEnd.bind(controller));
       scene.add(controller);
       return controller;
     }
@@ -106,8 +106,8 @@ function () {
     value: function addControllerRight(renderer, scene) {
       var controller = renderer.vr.getController(1);
       /*
-      controller.addEventListener('selectstart', this.onSelectStart);
-      controller.addEventListener('selectend', this.onSelectEnd);
+      controller.addEventListener('selectstart', this.onSelectStart.bind(controller));
+      controller.addEventListener('selectend', this.onSelectEnd.bind(controller));
       */
 
       scene.add(controller);
@@ -180,14 +180,14 @@ function () {
         });
         hand.scale.x = -1;
         var leftHand = hand.clone();
-        right.add(leftHand);
+        left.add(leftHand);
         hands.push(leftHand);
         hand.scale.x = 1;
 
         var bills = _this2.addBillsToHand(hand);
 
         var rightHand = hand.clone();
-        left.add(rightHand);
+        right.add(rightHand);
         hands.push(rightHand);
       });
       return hands;

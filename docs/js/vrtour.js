@@ -9099,6 +9099,7 @@ function () {
     this.direction = 1;
     this.speed = 1;
     this.inertia = new THREE.Vector3(0, 0, 0);
+    this.init();
   }
 
   _createClass(VRTour, [{
@@ -9107,7 +9108,6 @@ function () {
       var _this = this;
 
       try {
-        this.init();
         fetch(jsonUrl).then(function (response) {
           return response.json();
         }).then(function (response) {
@@ -9198,8 +9198,6 @@ function () {
   }, {
     key: "addRenderer",
     value: function addRenderer() {
-      var _this2 = this;
-
       var renderer = new THREE.WebGLRenderer({
         alpha: false,
         antialias: true
@@ -9216,9 +9214,6 @@ function () {
         referenceSpaceType: 'local'
       })); // this.container.querySelector('[href]').setAttribute('target', '_blank');
 
-      renderer.setAnimationLoop(function () {
-        _this2.render();
-      });
       return renderer;
     }
   }, {
@@ -9226,15 +9221,15 @@ function () {
     value: function addEnvironment(parent) {
       var group = new THREE.Group(); //
 
-      var geometry = new THREE.SphereBufferGeometry(500, 16, 16); // invert the geometry on the x-axis so that all of the faces point inward
+      var geometry = new THREE.SphereBufferGeometry(500, 32, 32); // invert the geometry on the x-axis so that all of the faces point inward
 
       geometry.scale(-1, 1, 1);
       var material = new THREE.MeshBasicMaterial({
-        color: 0xffffff,
+        color: 0x000000,
         // depthTest: false,
-        transparent: false,
-        opacity: 1.0,
-        wireframe: true
+        transparent: true,
+        opacity: 0.0 // wireframe: true
+
       });
       /*
       const material = new THREE.MeshStandardMaterial({
@@ -9310,8 +9305,8 @@ function () {
     value: function addControllerLeft(renderer, scene) {
       var controller = renderer.vr.getController(0);
       var cylinder = controller.cylinder = this.addControllerCylinder(controller, 0);
-      controller.addEventListener('selectstart', this.onSelectStart);
-      controller.addEventListener('selectend', this.onSelectEnd);
+      controller.addEventListener('selectstart', this.onSelectStart.bind(controller));
+      controller.addEventListener('selectend', this.onSelectEnd.bind(controller));
       scene.add(controller);
       return controller;
     }
@@ -9321,8 +9316,8 @@ function () {
       var controller = renderer.vr.getController(1);
       var cylinder = controller.cylinder = this.addControllerCylinder(controller, 1);
       /*
-      controller.addEventListener('selectstart', this.onSelectStart);
-      controller.addEventListener('selectend', this.onSelectEnd);
+      controller.addEventListener('selectstart', this.onSelectStart.bind(controller));
+      controller.addEventListener('selectend', this.onSelectEnd.bind(controller));
       */
 
       scene.add(controller);
@@ -9377,18 +9372,18 @@ function () {
   }, {
     key: "addDragListener",
     value: function addDragListener() {
-      var _this3 = this;
+      var _this2 = this;
 
       var longitude, latitude;
       var dragListener = new _drag.default(this.container, function (event) {
-        longitude = _this3.longitude;
-        latitude = _this3.latitude;
+        longitude = _this2.longitude;
+        latitude = _this2.latitude;
       }, function (event) {
-        _this3.longitude = -event.distance.x * 0.1 + longitude;
-        _this3.latitude = event.distance.y * 0.1 + latitude;
-        _this3.direction = event.distance.x ? event.distance.x / Math.abs(event.distance.x) * -1 : 1; // console.log('longitude', this.longitude, 'latitude', this.latitude, 'direction', this.direction);
+        _this2.longitude = -event.distance.x * 0.1 + longitude;
+        _this2.latitude = event.distance.y * 0.1 + latitude;
+        _this2.direction = event.distance.x ? event.distance.x / Math.abs(event.distance.x) * -1 : 1; // console.log('longitude', this.longitude, 'latitude', this.latitude, 'direction', this.direction);
       }, function (event) {
-        _this3.speed = Math.abs(event.strength.x) * 100; // console.log('speed', this.speed);
+        _this2.speed = Math.abs(event.strength.x) * 100; // console.log('speed', this.speed);
       });
       return dragListener;
     }
@@ -9503,10 +9498,10 @@ function () {
   }, {
     key: "removePoint",
     value: function removePoint(i) {
-      var _this4 = this;
+      var _this3 = this;
 
       return new Promise(function (resolve, reject) {
-        var points = _this4.points;
+        var points = _this3.points;
         var geometry = points.geometry;
         var vertices = points.vertices;
         var index = vertices.length / 3;
@@ -9572,21 +9567,28 @@ function () {
       // console.log(p);
     }
   }, {
+    key: "onSelectStart",
+    value: function onSelectStart() {
+      this.userData.isSelecting = true;
+    }
+  }, {
+    key: "onSelectEnd",
+    value: function onSelectEnd() {
+      this.userData.isSelecting = false;
+    }
+  }, {
     key: "onInitView",
     value: function onInitView(previous, current) {
-      var _this5 = this;
+      var _this4 = this;
 
-      return;
-      console.log(previous, current);
+      // console.log(previous, current);
       this.onExitPoints(previous).then(function () {
-        console.log(_this5.points.vertices);
-
-        _this5.onExitView(previous).then(function () {
+        // console.log(this.points.vertices);
+        _this4.onExitView(previous).then(function () {
           // if (!previous) {
-          _this5.onEnterView(current).then(function () {
-            _this5.onEnterPoints(current);
+          _this4.onEnterView(current).then(function () {
+            _this4.onEnterPoints(current); // console.log(this.points.vertices);
 
-            console.log(_this5.points.vertices);
           }); // }
 
         });
@@ -9595,11 +9597,11 @@ function () {
   }, {
     key: "onExitView",
     value: function onExitView(view) {
-      var _this6 = this;
+      var _this5 = this;
 
       return new Promise(function (resolve, reject) {
         if (view) {
-          TweenMax.to(_this6.environment.sphere.material, 0.4, {
+          TweenMax.to(_this5.environment.sphere.material, 0.4, {
             opacity: 0,
             delay: 0.0,
             onCompleted: function onCompleted() {
@@ -9616,7 +9618,7 @@ function () {
   }, {
     key: "onEnterView",
     value: function onEnterView(view) {
-      var _this7 = this;
+      var _this6 = this;
 
       return new Promise(function (resolve, reject) {
         if (view) {
@@ -9638,11 +9640,11 @@ function () {
               }
               */
               if (view.camera) {
-                _this7.latitude = view.camera.latitude;
-                _this7.longitude = view.camera.longitude;
+                _this6.latitude = view.camera.latitude;
+                _this6.longitude = view.camera.longitude;
               }
 
-              var material = _this7.environment.sphere.material;
+              var material = _this6.environment.sphere.material;
               material.opacity = 0;
               material.color.setHex(0xffffff);
               material.map = texture;
@@ -9665,24 +9667,24 @@ function () {
   }, {
     key: "onEnterPoints",
     value: function onEnterPoints(view) {
-      var _this8 = this;
+      var _this7 = this;
 
       if (!this.points) {
-        var points = this.points = this.addPoints(scene);
+        var points = this.points = this.addPoints(this.scene);
       }
 
       view.points.forEach(function (point, i) {
-        return _this8.addPoint(_construct(THREE.Vector3, _toConsumableArray(point.position)), i);
+        return _this7.addPoint(_construct(THREE.Vector3, _toConsumableArray(point.position)), i);
       });
     }
   }, {
     key: "onExitPoints",
     value: function onExitPoints(view) {
-      var _this9 = this;
+      var _this8 = this;
 
       if (view) {
         return Promise.all(view.points.map(function (point, i) {
-          return _this9.removePoint(i);
+          return _this8.removePoint(i);
         }));
       } else {
         return Promise.resolve();
@@ -9842,37 +9844,29 @@ function () {
       */
     }
   }, {
+    key: "animate",
+    value: function animate() {
+      var _this9 = this;
+
+      var renderer = this.renderer;
+      renderer.setAnimationLoop(function () {
+        _this9.render();
+      });
+    }
+  }, {
     key: "render",
     value: function render(delta) {
-      /*
-      if (!this.dragListener.dragging) {
-      	this.tourRotation.y += this.tourSpeedRotation.y;
-      	this.tourSpeedRotation.y += (0.002 - this.tourSpeedRotation.y) / 50;
-      }
-      this.tour.rotation.copy(this.tourRotation).add(this.tourDragRotation);
-      */
+      var renderer = this.renderer;
 
-      /*
-      this.points.geometry.vertices.forEach((vertex, i) => {
-      	const local = this.tour.localToWorld(vertex.clone());
-      	const distance = local.distanceTo(this.pointRef);
-      	const s = Math.max(0, Math.min(1, (1 - distance))) * 5;
-      	this.points.geometry.colors[i] = new THREE.Color(s, s, s);
-      	this.points.geometry.colorsNeedUpdate = true;
-      });
-      */
-      this.updateCamera();
-      this.renderer.render(this.scene, this.camera); // this.doParallax();
+      if (!renderer.vr.isPresenting()) {
+        this.updateCamera();
+      }
+
+      renderer.render(this.scene, this.camera); // this.doParallax();
     }
   }, {
     key: "updateCamera",
     value: function updateCamera() {
-      var renderer = this.renderer;
-
-      if (renderer.vr.isPresenting()) {
-        return;
-      }
-
       var camera = this.camera;
       var direction = this.direction;
       var inertia = this.inertia;
@@ -9901,19 +9895,7 @@ function () {
       // distortion
       camera.position.copy( camera.target ).negate();
       */
-    }
-    /*
-    play() {
-    	const clock = new THREE.Clock();
-    	const loop = (time) => {
-    		const delta = clock.getDelta();
-    		this.render(delta);
-    		window.requestAnimationFrame(loop);
-    	};
-    	loop();
-    }
-    */
-    // utils
+    } // utils
 
   }, {
     key: "saveData",
@@ -9972,6 +9954,7 @@ function () {
 
 var tour = new VRTour(); // window.onload = () => {
 
+tour.animate();
 tour.load('data/vr.json'); // };
 
 /*
