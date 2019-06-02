@@ -95,15 +95,9 @@ function () {
   }, {
     key: "addControllerLeft",
     value: function addControllerLeft(renderer, scene) {
-      var _this = this;
-
       var controller = renderer.vr.getController(0);
-      controller.addEventListener('selectstart', function (event) {
-        _this.onSelectStart(event);
-      });
-      controller.addEventListener('selectend', function (event) {
-        _this.onSelectEnd(event);
-      });
+      controller.addEventListener('selectstart', this.onSelectStart);
+      controller.addEventListener('selectend', this.onSelectEnd);
       scene.add(controller);
       return controller;
     }
@@ -112,12 +106,8 @@ function () {
     value: function addControllerRight(renderer, scene) {
       var controller = renderer.vr.getController(1);
       /*
-      controller.addEventListener('selectstart', (event) => {
-      	this.onSelectStart(event);
-      });
-      controller.addEventListener('selectend', (event) => {
-      	this.onSelectEnd(event);
-      });
+      controller.addEventListener('selectstart', this.onSelectStart);
+      controller.addEventListener('selectend', this.onSelectEnd);
       */
 
       scene.add(controller);
@@ -154,7 +144,7 @@ function () {
   }, {
     key: "addBillsToHand",
     value: function addBillsToHand(hand) {
-      var _this2 = this;
+      var _this = this;
 
       var room = this.room;
       var bills = new Array(10).fill(0).map(function (x, i) {
@@ -162,7 +152,7 @@ function () {
         bill.position.set(i * 0.003 + 0.02, -0.05, 0);
         bill.rotation.set(random() * 0.3, random() * 0.1, -Math.PI / 2);
         hand.add(bill);
-        _this2.right.userData.bill = bill; // pointer to last bill
+        _this.right.userData.bill = bill; // pointer to last bill
 
         return bill;
       });
@@ -171,7 +161,7 @@ function () {
   }, {
     key: "addHands",
     value: function addHands() {
-      var _this3 = this;
+      var _this2 = this;
 
       var hands = [];
       var left = this.left;
@@ -194,7 +184,7 @@ function () {
         hands.push(leftHand);
         hand.scale.x = 1;
 
-        var bills = _this3.addBillsToHand(hand);
+        var bills = _this2.addBillsToHand(hand);
 
         var rightHand = hand.clone();
         left.add(rightHand);
@@ -311,12 +301,10 @@ function () {
 }();
 
 exports.Oculus = Oculus;
-var oculus = new Oculus();
+var oculus = new Oculus(); // window.onload = () => {
 
-window.onload = function () {
-  oculus.init();
-  oculus.animate();
-};
+oculus.init();
+oculus.animate(); // };
 
 },{}]},{},[1]);
 //# sourceMappingURL=oculus.js.map

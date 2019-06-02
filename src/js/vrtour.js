@@ -114,8 +114,10 @@ class VRTour {
 		// const hands = this.hands = this.addHands();
 		// raycaster
 		const raycaster = this.raycaster = new THREE.Raycaster();
-		const dragListener = this.dragListener = this.addDragListener();
-		this.dragListener = dragListener;
+		if (!renderer.vr.isPresenting()) {
+			const dragListener = this.dragListener = this.addDragListener();
+			this.dragListener = dragListener;
+		}
 		this.onWindowResize = this.onWindowResize.bind(this);
 		this.onMouseMove = this.onMouseMove.bind(this);
 		this.onMouseWheel = this.onMouseWheel.bind(this);
@@ -139,7 +141,7 @@ class VRTour {
 	}
 
 	addCamera() {
-		const camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.01, 1100);
+		const camera = new THREE.PerspectiveCamera(70, window.innerWidth / window.innerHeight, 0.01, 1100);
 		// camera.layers.enable(1);
 		// camera.position.set(0, 0, 0);
 		camera.target = new THREE.Vector3(0, 0, 0);
@@ -249,12 +251,8 @@ class VRTour {
 	addControllerLeft(renderer, scene) {
 		const controller = renderer.vr.getController(0);
 		const cylinder = controller.cylinder = this.addControllerCylinder(controller, 0);
-		controller.addEventListener('selectstart', (event) => {
-			this.onSelectStart(event);
-		});
-		controller.addEventListener('selectend', (event) => {
-			this.onSelectEnd(event);
-		});
+		controller.addEventListener('selectstart', this.onSelectStart);
+		controller.addEventListener('selectend', this.onSelectEnd);
 		scene.add(controller);
 		return controller;
 	}
@@ -263,12 +261,8 @@ class VRTour {
 		const controller = renderer.vr.getController(1);
 		const cylinder = controller.cylinder = this.addControllerCylinder(controller, 1);
 		/*
-		controller.addEventListener('selectstart', (event) => {
-			this.onSelectStart(event);
-		});
-		controller.addEventListener('selectend', (event) => {
-			this.onSelectEnd(event);
-		});
+		controller.addEventListener('selectstart', this.onSelectStart);
+		controller.addEventListener('selectend', this.onSelectEnd);
 		*/
 		scene.add(controller);
 		return controller;
@@ -743,17 +737,23 @@ class VRTour {
 	}
 
 	updateCamera() {
+		const renderer = this.renderer;
+		if (renderer.vr.isPresenting()) {
+			return;
+		}
 		const camera = this.camera;
 		const direction = this.direction;
 		const inertia = this.inertia;
 		let speed = this.speed;
 		let latitude = this.latitude;
 		let longitude = this.longitude;
-		if (this.dragListener.dragging === false) {
+
+		if (this.dragListener && this.dragListener.dragging === false) {
 			// longitude += 0.01 * direction * speed;
 			speed = Math.max(1, speed * 0.98);
 			inertia.multiplyScalar(0.98);
 		}
+
 		latitude = Math.max(-85, Math.min(85, latitude));
 		const phi = THREE.Math.degToRad(90 - latitude);
 		const theta = THREE.Math.degToRad(longitude);
@@ -814,9 +814,9 @@ class VRTour {
 
 const tour = new VRTour();
 
-window.onload = () => {
-	tour.load('data/vr.json');
-};
+// window.onload = () => {
+tour.load('data/vr.json');
+// };
 
 /*
 let camera;

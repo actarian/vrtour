@@ -67,12 +67,8 @@ export class Oculus {
 
 	addControllerLeft(renderer, scene) {
 		const controller = renderer.vr.getController(0);
-		controller.addEventListener('selectstart', (event) => {
-			this.onSelectStart(event);
-		});
-		controller.addEventListener('selectend', (event) => {
-			this.onSelectEnd(event);
-		});
+		controller.addEventListener('selectstart', this.onSelectStart);
+		controller.addEventListener('selectend', this.onSelectEnd);
 		scene.add(controller);
 		return controller;
 	}
@@ -80,12 +76,8 @@ export class Oculus {
 	addControllerRight(renderer, scene) {
 		const controller = renderer.vr.getController(1);
 		/*
-		controller.addEventListener('selectstart', (event) => {
-			this.onSelectStart(event);
-		});
-		controller.addEventListener('selectend', (event) => {
-			this.onSelectEnd(event);
-		});
+		controller.addEventListener('selectstart', this.onSelectStart);
+		controller.addEventListener('selectend', this.onSelectEnd);
 		*/
 		scene.add(controller);
 		return controller;
@@ -249,7 +241,7 @@ export class Oculus {
 
 const oculus = new Oculus();
 
-window.onload = () => {
-	oculus.init();
-	oculus.animate();
-};
+// window.onload = () => {
+oculus.init();
+oculus.animate();
+// };
