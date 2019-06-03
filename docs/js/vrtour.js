@@ -9485,6 +9485,7 @@ var shaderPoint = {
   vertexShader: "\n\tattribute float size;\n\tattribute vec4 ca;\n\tvarying vec4 vColor;\n\tvoid main() {\n\t\tvColor = ca;\n\t\tvec4 mvPosition = modelViewMatrix * vec4(position, 1.0);\n\t\tgl_PointSize = size * (400.0 / -mvPosition.z);\n\t\tgl_Position = projectionMatrix * mvPosition;\n\t}\n\t",
   fragmentShader: "\n\tuniform vec3 color;\n\tuniform sampler2D texture;\n\tvarying vec4 vColor;\n\tvoid main() {\n\t\tvec4 textureColor = texture2D(texture, gl_PointCoord);\n\t\t// if (textureColor.a < 0.5) discard;\n\t\tgl_FragColor = textureColor * vec4(color * vColor.xyz, 1.0);\n\t\t// float depth = gl_FragCoord.z / gl_FragCoord.w;\n\t\tgl_FragColor = vec4(vec3(1.0), gl_FragColor.w);\n\t}\n\t"
 };
+var ROOM_RADIUS = 25;
 
 var VRTour =
 /*#__PURE__*/
@@ -9584,10 +9585,13 @@ function () {
       // controllers
 
       /*
-      const controller = new THREE.Group();
+      const controller = this.right = new THREE.Group();
       controller.position.set(0.4, 0, -0.4);
       this.addControllerCylinder(controller, 0);
       this.scene.add(controller);
+      this.onRightSelectStart();
+      this.controller = controller;
+      const pointer = this.pointer = this.addPointer(scene);
       */
 
       console.log('vr.mode', vr.mode);
@@ -9663,7 +9667,7 @@ function () {
     key: "addEnvironment",
     value: function addEnvironment(parent) {
       var group = new THREE.Group();
-      var geometry = new THREE.SphereBufferGeometry(500, 72, 72); // const geometry = new THREE.IcosahedronBufferGeometry(500, 4);
+      var geometry = new THREE.SphereBufferGeometry(ROOM_RADIUS, 72, 72); // const geometry = new THREE.IcosahedronBufferGeometry(ROOM_RADIUS, 4);
       // console.log(geometry);
       // invert the geometry on the x-axis so that all of the faces point inward
 
@@ -9747,17 +9751,22 @@ function () {
   }, {
     key: "addPointer",
     value: function addPointer(parent) {
-      var geometry = new THREE.PlaneGeometry(20, 20, 1, 1);
+      // const geometry = new THREE.PlaneBufferGeometry(10, 10, 2, 2);
+      var geometry = new THREE.SphereBufferGeometry(1, 8, 8);
       var loader = new THREE.TextureLoader();
       var texture = loader.load('img/pin.jpg');
       var material = new THREE.MeshBasicMaterial({
-        map: texture,
-        blending: THREE.AdditiveBlending,
-        depthTest: false // transparent: true
+        color: 0xffffff // map: texture,
+        // blending: THREE.AdditiveBlending,
+        // depthTest: false,
+        // transparent: true,
+        // side: THREE.DoubleSide,
 
       });
-      var mesh = new THREE.Mesh(geometry, material);
-      mesh.position.x = 100000;
+      var mesh = new THREE.Mesh(geometry, material); // mesh.position.x = 100000;
+
+      mesh.position.set(0, 0, -20);
+      mesh.lookAt(this.origin);
       parent.add(mesh);
       return mesh;
     }
@@ -9784,8 +9793,7 @@ function () {
   }, {
     key: "addControllerCylinder",
     value: function addControllerCylinder(controller, i) {
-      // pointer
-      var geometry = new THREE.CylinderGeometry(cm(2), cm(2), cm(12), 24);
+      var geometry = new THREE.CylinderBufferGeometry(cm(2), cm(2), cm(12), 24);
       var texture = new THREE.TextureLoader().load('https://cdn.glitch.com/7ae766be-18fb-4945-ad9d-8cc3be027694%2FBazC_SkinMat.jpg?1558678160164');
       var material = new THREE.MeshMatcapMaterial({
         color: i === 0 ? 0xff0000 : 0x0000ff,
@@ -9807,9 +9815,21 @@ function () {
       */
 
       var mesh = new THREE.Mesh(geometry, material);
-      mesh.geometry.rotateX(Math.PI / 2); // mesh.geometry.rotateY(Math.PI);
+      mesh.geometry.rotateX(Math.PI / 2);
+      controller.add(mesh); //
 
-      controller.add(mesh);
+      var geometryPointer = new THREE.CylinderBufferGeometry(cm(0.5), cm(0.1), 10, 12);
+      var materialPointer = new THREE.MeshBasicMaterial({
+        color: 0xffffff,
+        // matcap: texture,
+        transparent: true,
+        opacity: 0.5
+      });
+      var pointer = new THREE.Mesh(geometryPointer, materialPointer);
+      controller.pointer = pointer;
+      pointer.geometry.rotateX(Math.PI / 2);
+      pointer.position.set(0, 0, -5); // controller.add(pointer);
+      //
     }
   }, {
     key: "addHands",
@@ -10159,7 +10179,12 @@ function () {
     key: "onLeftSelectStart",
     value: function onLeftSelectStart() {
       try {
+        if (this.controller) {
+          this.controller.pointer.remove();
+        }
+
         this.controller = this.left;
+        this.controller.add(this.controller.pointer);
         this.isControllerSelecting = true;
         this.isControllerSelectionDirty = true;
       } catch (error) {
@@ -10180,7 +10205,12 @@ function () {
     key: "onRightSelectStart",
     value: function onRightSelectStart() {
       try {
+        if (this.controller) {
+          this.controller.pointer.remove();
+        }
+
         this.controller = this.right;
+        this.controller.add(this.controller.pointer);
         this.isControllerSelecting = true;
         this.isControllerSelectionDirty = true;
       } catch (error) {
@@ -10230,7 +10260,8 @@ function () {
         this.mouse = {
           x: (event.clientX - w2) / w2,
           y: -(event.clientY - h2) / h2
-        }; // console.log('onMouseMove', this.mouse);
+        }; // this.updateControllers();
+        // console.log('onMouseMove', this.mouse);
 
         /*
         var attributes = geometry.attributes;
@@ -10398,7 +10429,8 @@ function () {
 
         if (controller) {
           var raycaster = this.raycaster;
-          var rotation = new THREE.Vector3(controller.rotation.x, controller.rotation.y, controller.rotation.z).normalize();
+          var rotation = controller.getWorldDirection(new THREE.Vector3()); // new THREE.Vector3(controller.rotation.x, controller.rotation.y, controller.rotation.z).normalize();
+
           raycaster.set(controller.position, rotation);
           var intersections = raycaster.intersectObjects(this.environment.children);
 
@@ -10406,8 +10438,16 @@ function () {
             var intersection = intersections.find(function (x) {
               return x !== undefined;
             });
-            this.pointer.position.set(intersection.point);
-            this.pointer.lookAt(this.origin);
+
+            if (intersection) {
+              var index = intersection.index;
+              var point = intersection.point;
+              var debugInfo = "".concat(index, " => {").concat(point.x, ", ").concat(point.y, ", ").concat(point.z, "}"); // console.log(index, point, debugInfo);
+
+              this.debugInfo.innerHTML = debugInfo; // console.log(intersection.point);
+
+              this.pointer.position.set(intersection.point); // this.pointer.lookAt(this.origin);
+            }
           }
 
           if (this.isControllerSelectionDirty && this.points) {
@@ -10421,11 +10461,13 @@ function () {
 
               if (_intersection2) {
                 this.isControllerSelectionDirty = false;
-                var index = _intersection2.index;
-                var point = _intersection2.point;
-                var debugInfo = "".concat(index, " => {").concat(point.x, ", ").concat(point.y, ", ").concat(point.z, "}"); // console.log(index, point, debugInfo);
+                var _index = _intersection2.index;
+                var _point = _intersection2.point;
 
-                this.debugInfo.innerHTML = debugInfo;
+                var _debugInfo = "".concat(_index, " => {").concat(_point.x, ", ").concat(_point.y, ", ").concat(_point.z, "}"); // console.log(index, point, debugInfo);
+
+
+                this.debugInfo.innerHTML = _debugInfo;
                 this.index = (this.index + 1) % this.views.length;
               }
             }
@@ -10454,9 +10496,9 @@ function () {
       latitude = Math.max(-85, Math.min(85, latitude));
       var phi = THREE.Math.degToRad(90 - latitude);
       var theta = THREE.Math.degToRad(longitude);
-      camera.target.x = 500 * Math.sin(phi) * Math.cos(theta);
-      camera.target.y = 500 * Math.cos(phi);
-      camera.target.z = 500 * Math.sin(phi) * Math.sin(theta);
+      camera.target.x = ROOM_RADIUS * Math.sin(phi) * Math.cos(theta);
+      camera.target.y = ROOM_RADIUS * Math.cos(phi);
+      camera.target.z = ROOM_RADIUS * Math.sin(phi) * Math.sin(theta);
       camera.lookAt(camera.target);
       this.latitude = latitude;
       this.longitude = longitude;
