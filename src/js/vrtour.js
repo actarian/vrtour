@@ -3,11 +3,16 @@
 
 import html2canvas from 'html2canvas';
 import DragListener from './shared/drag.listener';
+import VR, { VR_MODE } from './shared/vr';
 
 THREE.Euler.prototype.add = function(euler) {
 	this.set(this.x + euler.x, this.y + euler.y, this.z + euler.z, this.order);
 	return this;
 };
+
+export function cm(value) {
+	return value / 100;
+}
 
 const shaderPoint = {
 	vertexShader: `
@@ -47,6 +52,7 @@ class VRTour {
 		this.direction = 1;
 		this.speed = 1;
 		this.inertia = new THREE.Vector3(0, 0, 0);
+		this.origin = new THREE.Vector3(0, 0, 0);
 		this.init();
 	}
 
@@ -107,17 +113,29 @@ class VRTour {
 		const ceil = this.ceil = this.addCeil(scene);
 		// renderer
 		const renderer = this.renderer = this.addRenderer();
+		// this.container.appendChild(WEBVR.createButton(renderer, { referenceSpaceType: 'local' }));
+		const vr = this.vr = this.addVR(renderer, this.container);
 		// controllers
-		const left = this.left = this.addControllerLeft(renderer, scene);
-		const right = this.right = this.addControllerRight(renderer, scene);
-		// hands
-		// const hands = this.hands = this.addHands();
+
+		/*
+		const controller = new THREE.Group();
+		controller.position.set(0.4, 0, -0.4);
+		this.addControllerCylinder(controller, 0);
+		this.scene.add(controller);
+		*/
+
+		console.log('vr.mode', vr.mode);
+		if (vr.mode !== VR_MODE.NONE) {
+			const left = this.left = this.addControllerLeft(renderer, scene);
+			const right = this.right = this.addControllerRight(renderer, scene);
+			const pointer = this.pointer = this.addPointer(scene);
+			// hands
+			// const hands = this.hands = this.addHands();
+		} else {
+			const dragListener = this.dragListener = this.addDragListener();
+		}
 		// raycaster
 		const raycaster = this.raycaster = new THREE.Raycaster();
-		if (!renderer.vr.isPresenting()) {
-			const dragListener = this.dragListener = this.addDragListener();
-			this.dragListener = dragListener;
-		}
 		this.onWindowResize = this.onWindowResize.bind(this);
 		this.onMouseMove = this.onMouseMove.bind(this);
 		this.onMouseWheel = this.onMouseWheel.bind(this);
@@ -161,15 +179,20 @@ class VRTour {
 		renderer.vr.enabled = true;
 		// container.innerHTML = '';
 		this.container.appendChild(renderer.domElement);
-		this.container.appendChild(WEBVR.createButton(renderer, { referenceSpaceType: 'local' }));
-		// this.container.querySelector('[href]').setAttribute('target', '_blank');
 		return renderer;
+	}
+
+	addVR(renderer, container) {
+		const vr = new VR(renderer, { referenceSpaceType: 'local' });
+		container.appendChild(vr.element);
+		return vr;
 	}
 
 	addEnvironment(parent) {
 		const group = new THREE.Group();
-		//
-		var geometry = new THREE.SphereBufferGeometry(500, 32, 32);
+		const geometry = new THREE.SphereBufferGeometry(500, 72, 72);
+		// const geometry = new THREE.IcosahedronBufferGeometry(500, 4);
+		// console.log(geometry);
 		// invert the geometry on the x-axis so that all of the faces point inward
 		geometry.scale(-1, 1, 1);
 		const material = new THREE.MeshBasicMaterial({
@@ -245,11 +268,27 @@ class VRTour {
 		return mesh;
 	}
 
+	addPointer(parent) {
+		const geometry = new THREE.PlaneGeometry(20, 20, 1, 1);
+		const loader = new THREE.TextureLoader();
+		const texture = loader.load('img/pin.jpg');
+		const material = new THREE.MeshBasicMaterial({
+			map: texture,
+			blending: THREE.AdditiveBlending,
+			depthTest: false,
+			// transparent: true
+		});
+		const mesh = new THREE.Mesh(geometry, material);
+		mesh.position.x = 100000;
+		parent.add(mesh);
+		return mesh;
+	}
+
 	addControllerLeft(renderer, scene) {
 		const controller = renderer.vr.getController(0);
 		const cylinder = controller.cylinder = this.addControllerCylinder(controller, 0);
-		controller.addEventListener('selectstart', this.onSelectStart.bind(controller));
-		controller.addEventListener('selectend', this.onSelectEnd.bind(controller));
+		controller.addEventListener('selectstart', this.onLeftSelectStart.bind(this));
+		controller.addEventListener('selectend', this.onLeftSelectEnd.bind(this));
 		scene.add(controller);
 		return controller;
 	}
@@ -257,26 +296,36 @@ class VRTour {
 	addControllerRight(renderer, scene) {
 		const controller = renderer.vr.getController(1);
 		const cylinder = controller.cylinder = this.addControllerCylinder(controller, 1);
-		/*
-		controller.addEventListener('selectstart', this.onSelectStart.bind(controller));
-		controller.addEventListener('selectend', this.onSelectEnd.bind(controller));
-		*/
+		controller.addEventListener('selectstart', this.onRightSelectStart.bind(this));
+		controller.addEventListener('selectend', this.onRightSelectEnd.bind(this));
 		scene.add(controller);
 		return controller;
 	}
 
 	addControllerCylinder(controller, i) {
 		// pointer
+		const geometry = new THREE.CylinderGeometry(cm(3), cm(3), cm(22), 24);
+		const texture = new THREE.TextureLoader().load('https://cdn.glitch.com/7ae766be-18fb-4945-ad9d-8cc3be027694%2FBazC_SkinMat.jpg?1558678160164');
+		const material = new THREE.MeshMatcapMaterial({
+			color: i === 0 ? 0x0000ff : 0xff0000,
+			matcap: texture
+		});
+		/*
+		const material = new THREE.MeshBasicMaterial({
+			color: i === 0 ? 0x0000ff : 0xff0000,
+			// roughness: 0.2,
+			// metalness: 0.1,
+		});
+		*/
+		/*
 		const modifier = new THREE.SubdivisionModifier(2);
-		const geometry = new THREE.CylinderGeometry(4, 4, 30, 12);
 		const smoothGeometry = modifier.modify(geometry);
 		const smoothBufferGeometry = new THREE.BufferGeometry().fromGeometry(smoothGeometry);
-		const material = new THREE.MeshStandardMaterial({
-			color: i === 0 ? 0x0000ff : 0xff0000,
-			roughness: 0.2,
-			metalness: 0.1,
-		});
 		const mesh = new THREE.Mesh(smoothBufferGeometry, material);
+		*/
+		const mesh = new THREE.Mesh(geometry, material);
+		mesh.geometry.rotateZ(-Math.PI / 2);
+		// mesh.geometry.rotateY(Math.PI);
 		controller.add(mesh);
 	}
 
@@ -484,14 +533,6 @@ class VRTour {
 		// console.log(p);
 	}
 
-	onSelectStart() {
-		this.userData.isSelecting = true;
-	}
-
-	onSelectEnd() {
-		this.userData.isSelecting = false;
-	}
-
 	onInitView(previous, current) {
 		// console.log(previous, current);
 		this.onExitPoints(previous).then(() => {
@@ -551,6 +592,8 @@ class VRTour {
 						const material = this.environment.sphere.material;
 						material.opacity = 0;
 						material.color.setHex(0xffffff);
+						texture.minFilter = THREE.NearestMipMapNearestFilter;
+						texture.magFilter = THREE.LinearMipMapLinearFilter;
 						material.map = texture;
 						material.map.needsUpdate = true;
 						material.needsUpdate = true;
@@ -585,6 +628,28 @@ class VRTour {
 	}
 
 	// events
+
+	onLeftSelectStart() {
+		this.controller = this.left;
+		this.isControllerSelecting = true;
+		this.isControllerSelectionDirty = true;
+	}
+
+	onLeftSelectEnd() {
+		this.isControllerSelecting = false;
+		this.isControllerSelectionDirty = false;
+	}
+
+	onRightSelectStart() {
+		this.controller = this.right;
+		this.isControllerSelecting = true;
+		this.isControllerSelectionDirty = true;
+	}
+
+	onRightSelectEnd() {
+		this.isControllerSelecting = false;
+		this.isControllerSelectionDirty = false;
+	}
 
 	onWindowResize() {
 		const container = this.container,
@@ -638,7 +703,6 @@ class VRTour {
 	}
 
 	onClick(event) {
-		// this.tourCubesWaveAnimation(this.tour.cubes);
 		const raycaster = this.raycaster;
 		// update the picking ray with the camera and mouse position
 		raycaster.setFromCamera(this.mouse, this.camera);
@@ -726,12 +790,44 @@ class VRTour {
 	}
 
 	render(delta) {
-		const renderer = this.renderer;
-		if (!renderer.vr.isPresenting()) {
+		if (this.vr.mode !== VR_MODE.NONE) {
+			this.updateControllers();
+		} else {
 			this.updateCamera();
 		}
+		const renderer = this.renderer;
 		renderer.render(this.scene, this.camera);
 		// this.doParallax();
+	}
+
+	updateControllers() {
+		const controller = this.controller;
+		if (controller) {
+			const raycaster = this.raycaster;
+			raycaster.set(controller.position, controller.rotation.normalize());
+			let intersections = raycaster.intersectObjects(this.environment.children);
+			if (intersections) {
+				const intersection = intersections.find(x => x !== undefined);
+				this.pointer.position.set(intersection.point);
+				this.pointer.lookAt(this.origin);
+			}
+			if (this.isControllerSelectionDirty && this.points) {
+				raycaster.params.Points.threshold = 10.0;
+				intersections = raycaster.intersectObjects([this.points]);
+				if (intersections) {
+					const intersection = intersections.find(x => x !== undefined);
+					if (intersection) {
+						this.isControllerSelectionDirty = false;
+						const index = intersection.index;
+						const point = intersection.point;
+						const debugInfo = `${index} => {${point.x}, ${point.y}, ${point.z}}`;
+						console.log(index, point, debugInfo);
+						this.debugInfo.innerHTML = debugInfo;
+						this.index = (this.index + 1) % this.views.length;
+					}
+				}
+			}
+		}
 	}
 
 	updateCamera() {

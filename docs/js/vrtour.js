@@ -9036,9 +9036,298 @@ exports.default = DragListener;
 },{}],3:[function(require,module,exports){
 "use strict";
 
+Object.defineProperty(exports, "__esModule", {
+  value: true
+});
+exports.default = exports.VR_MODE = void 0;
+
+function _classCallCheck(instance, Constructor) { if (!(instance instanceof Constructor)) { throw new TypeError("Cannot call a class as a function"); } }
+
+function _defineProperties(target, props) { for (var i = 0; i < props.length; i++) { var descriptor = props[i]; descriptor.enumerable = descriptor.enumerable || false; descriptor.configurable = true; if ("value" in descriptor) descriptor.writable = true; Object.defineProperty(target, descriptor.key, descriptor); } }
+
+function _createClass(Constructor, protoProps, staticProps) { if (protoProps) _defineProperties(Constructor.prototype, protoProps); if (staticProps) _defineProperties(Constructor, staticProps); return Constructor; }
+
+/* jshint esversion: 6 */
+
+/* global window, document */
+var VR_MODE = {
+  NONE: 0,
+  VR: 1,
+  XR: 2
+};
+exports.VR_MODE = VR_MODE;
+
+var VR =
+/*#__PURE__*/
+function () {
+  function VR(renderer, options) {
+    _classCallCheck(this, VR);
+
+    if (options && options.frameOfReferenceType) {
+      renderer.vr.setFrameOfReferenceType(options.frameOfReferenceType);
+    }
+
+    this.renderer = renderer;
+    this.options = options;
+    this.onVRDisplayConnect = this.onVRDisplayConnect.bind(this);
+    this.onVRDisplayDisconnect = this.onVRDisplayDisconnect.bind(this);
+    this.onVRDisplayPresentChange = this.onVRDisplayPresentChange.bind(this);
+    this.onVRDisplayActivate = this.onVRDisplayActivate.bind(this);
+    this.onVRMouseEnter = this.onVRMouseEnter.bind(this);
+    this.onVRMouseLeave = this.onVRMouseLeave.bind(this);
+    this.onXRClick = this.onXRClick.bind(this);
+    this.onVRClick = this.onXRClick.bind(this);
+    this.onXRSessionStarted = this.onXRSessionStarted.bind(this);
+    this.onXRSessionEnded = this.onXRSessionEnded.bind(this);
+    this.mode = this.detectMode();
+    this.initElement();
+  }
+
+  _createClass(VR, [{
+    key: "detectMode",
+    value: function detectMode() {
+      var mode = VR_MODE.NONE;
+
+      if ('xr' in navigator) {
+        mode = VR_MODE.XR;
+      } else if ('getVRDisplays' in navigator) {
+        mode = VR_MODE.VR;
+      }
+
+      return mode;
+    }
+  }, {
+    key: "initElement",
+    value: function initElement() {
+      var element;
+
+      switch (this.mode) {
+        case VR_MODE.VR:
+          element = this.element = this.addElement('button');
+          element.style.display = 'none';
+          window.addEventListener('vrdisplayconnect', this.onVRDisplayConnect, false);
+          window.addEventListener('vrdisplaydisconnect', this.onVRDisplayDisconnect, false);
+          window.addEventListener('vrdisplaypresentchange', this.onVRDisplayPresentChange, false);
+          window.addEventListener('vrdisplayactivate', this.onVRDisplayActivate, false);
+          this.getVR();
+          break;
+
+        case VR_MODE.XR:
+          element = this.element = this.addElement('button');
+          this.getXR();
+          break;
+
+        default:
+          element = this.element = this.addElement('a');
+          element.style.display = 'block';
+          element.style.left = 'calc(50% - 90px)';
+          element.style.width = '180px';
+          element.style.textDecoration = 'none';
+          element.href = 'https://webvr.info';
+          element.target = '_blank';
+          element.innerHTML = 'WEBVR NOT SUPPORTED';
+      }
+    }
+  }, {
+    key: "addElement",
+    value: function addElement(type) {
+      var element = document.createElement(type);
+      element.style.display = 'none';
+      element.style.position = 'absolute';
+      element.style.bottom = '20px';
+      element.style.padding = '12px 6px';
+      element.style.border = '1px solid #fff';
+      element.style.borderRadius = '4px';
+      element.style.background = 'rgba(0,0,0,0.1)';
+      element.style.color = '#fff';
+      element.style.font = 'normal 13px sans-serif';
+      element.style.textAlign = 'center';
+      element.style.opacity = '0.5';
+      element.style.outline = 'none';
+      element.style.zIndex = '999';
+      return element;
+    }
+  }, {
+    key: "getVR",
+    value: function getVR() {
+      var _this = this;
+
+      navigator.getVRDisplays().then(function (displays) {
+        if (displays.length > 0) {
+          _this.setEnterVR(displays[0]);
+        } else {
+          _this.setVRNotFound();
+        }
+      }).catch(function () {
+        return _this.setVRNotFound();
+      });
+    }
+  }, {
+    key: "getXR",
+    value: function getXR() {
+      var _this2 = this;
+
+      navigator.xr.requestDevice().then(function (device) {
+        device.supportsSession({
+          immersive: true,
+          exclusive: true
+          /* DEPRECATED */
+
+        }).then(function () {
+          _this2.setEnterXR(device);
+        }).catch(function () {
+          return _this2.setVRNotFound();
+        });
+      }).catch(function () {
+        return _this2.setVRNotFound();
+      });
+    }
+  }, {
+    key: "setEnterVR",
+    value: function setEnterVR(device) {
+      this.device = device;
+      this.renderer.vr.setDevice(device);
+      this.session = null;
+      var element = this.element;
+      element.style.display = '';
+      element.style.cursor = 'pointer';
+      element.style.left = 'calc(50% - 50px)';
+      element.style.width = '100px';
+      element.textContent = 'ENTER VR';
+      element.addEventListener('mouseenter', this.onVRMouseEnter);
+      element.addEventListener('mouseleave', this.onVRMouseLeave);
+      element.addEventListener('click', this.onVRClick);
+    }
+  }, {
+    key: "setEnterXR",
+    value: function setEnterXR(device) {
+      this.device = device;
+      this.session = null;
+      var element = this.element;
+      element.style.display = '';
+      element.style.cursor = 'pointer';
+      element.style.left = 'calc(50% - 50px)';
+      element.style.width = '100px';
+      element.textContent = 'ENTER VR';
+      element.addEventListener('mouseenter', this.onVRMouseEnter);
+      element.addEventListener('mouseleave', this.onVRMouseLeave);
+      element.addEventListener('click', this.onXRClick);
+      this.renderer.vr.setDevice(device);
+    }
+  }, {
+    key: "setVRNotFound",
+    value: function setVRNotFound() {
+      renderer.vr.setDevice(null);
+      var element = this.element;
+      element.style.display = '';
+      element.style.cursor = 'auto';
+      element.style.left = 'calc(50% - 75px)';
+      element.style.width = '150px';
+      element.textContent = 'VR NOT FOUND';
+      element.removeEventListener('mouseenter', this.onVRMouseEnter);
+      element.removeEventListener('mouseleave', this.onVRMouseLeave);
+      element.removeEventListener('click', this.onVRClick);
+      element.removeEventListener('click', this.onXRClick);
+    } // events
+
+  }, {
+    key: "onVRDisplayConnect",
+    value: function onVRDisplayConnect(event) {
+      this.setEnterVR(event.display);
+    }
+  }, {
+    key: "onVRDisplayDisconnect",
+    value: function onVRDisplayDisconnect(event) {
+      this.setVRNotFound();
+    }
+  }, {
+    key: "onVRDisplayPresentChange",
+    value: function onVRDisplayPresentChange(event) {
+      this.element.textContent = event.display.isPresenting ? 'EXIT VR' : 'ENTER VR';
+      this.session = event.display.isPresenting;
+    }
+  }, {
+    key: "onVRDisplayActivate",
+    value: function onVRDisplayActivate(event) {
+      event.display.requestPresent([{
+        source: this.renderer.domElement
+      }]);
+    }
+  }, {
+    key: "onVRMouseEnter",
+    value: function onVRMouseEnter(event) {
+      this.element.style.opacity = '1.0';
+    }
+  }, {
+    key: "onVRMouseLeave",
+    value: function onVRMouseLeave(event) {
+      this.element.style.opacity = '0.5';
+    }
+  }, {
+    key: "onVRClick",
+    value: function onVRClick(event) {
+      var devide = this.device;
+
+      if (device.isPresenting) {
+        device.exitPresent();
+      } else {
+        device.requestPresent([{
+          source: this.renderer.domElement
+        }]);
+      }
+    }
+  }, {
+    key: "onXRClick",
+    value: function onXRClick(event) {
+      if (this.session === null) {
+        this.device.requestSession({
+          immersive: true,
+          exclusive: true
+          /* DEPRECATED */
+
+        }).then(this.onXRSessionStarted);
+      } else {
+        this.session.end();
+      }
+    }
+  }, {
+    key: "onXRSessionStarted",
+    value: function onXRSessionStarted(session) {
+      session.addEventListener('end', this.onXRSessionEnded);
+      this.renderer.vr.setSession(session);
+      this.element.textContent = 'EXIT VR';
+      this.session = session;
+    }
+  }, {
+    key: "onXRSessionEnded",
+    value: function onXRSessionEnded(event) {
+      this.session.removeEventListener('end', this.onXRSessionEnded);
+      this.renderer.vr.setSession(null);
+      this.element.textContent = 'ENTER VR';
+      this.session = null;
+    }
+  }]);
+
+  return VR;
+}();
+
+exports.default = VR;
+
+},{}],4:[function(require,module,exports){
+"use strict";
+
+Object.defineProperty(exports, "__esModule", {
+  value: true
+});
+exports.cm = cm;
+
 var _html2canvas = _interopRequireDefault(require("html2canvas"));
 
 var _drag = _interopRequireDefault(require("./shared/drag.listener"));
+
+var _vr = _interopRequireWildcard(require("./shared/vr"));
+
+function _interopRequireWildcard(obj) { if (obj && obj.__esModule) { return obj; } else { var newObj = {}; if (obj != null) { for (var key in obj) { if (Object.prototype.hasOwnProperty.call(obj, key)) { var desc = Object.defineProperty && Object.getOwnPropertyDescriptor ? Object.getOwnPropertyDescriptor(obj, key) : {}; if (desc.get || desc.set) { Object.defineProperty(newObj, key, desc); } else { newObj[key] = obj[key]; } } } } newObj.default = obj; return newObj; } }
 
 function _interopRequireDefault(obj) { return obj && obj.__esModule ? obj : { default: obj }; }
 
@@ -9068,6 +9357,10 @@ THREE.Euler.prototype.add = function (euler) {
   this.set(this.x + euler.x, this.y + euler.y, this.z + euler.z, this.order);
   return this;
 };
+
+function cm(value) {
+  return value / 100;
+}
 
 var shaderPoint = {
   vertexShader: "\n\tattribute float size;\n\tattribute vec4 ca;\n\tvarying vec4 vColor;\n\tvoid main() {\n\t\tvColor = ca;\n\t\tvec4 mvPosition = modelViewMatrix * vec4(position, 1.0);\n\t\tgl_PointSize = size * (400.0 / -mvPosition.z);\n\t\tgl_Position = projectionMatrix * mvPosition;\n\t}\n\t",
@@ -9099,6 +9392,7 @@ function () {
     this.direction = 1;
     this.speed = 1;
     this.inertia = new THREE.Vector3(0, 0, 0);
+    this.origin = new THREE.Vector3(0, 0, 0);
     this.init();
   }
 
@@ -9150,20 +9444,30 @@ function () {
       var floor = this.floor = this.addFloor(scene);
       var ceil = this.ceil = this.addCeil(scene); // renderer
 
-      var renderer = this.renderer = this.addRenderer(); // controllers
+      var renderer = this.renderer = this.addRenderer(); // this.container.appendChild(WEBVR.createButton(renderer, { referenceSpaceType: 'local' }));
 
-      var left = this.left = this.addControllerLeft(renderer, scene);
-      var right = this.right = this.addControllerRight(renderer, scene); // hands
-      // const hands = this.hands = this.addHands();
-      // raycaster
+      var vr = this.vr = this.addVR(renderer, this.container); // controllers
+
+      /*
+      const controller = new THREE.Group();
+      controller.position.set(0.4, 0, -0.4);
+      this.addControllerCylinder(controller, 0);
+      this.scene.add(controller);
+      */
+
+      console.log('vr.mode', vr.mode);
+
+      if (vr.mode !== _vr.VR_MODE.NONE) {
+        var left = this.left = this.addControllerLeft(renderer, scene);
+        var right = this.right = this.addControllerRight(renderer, scene);
+        var pointer = this.pointer = this.addPointer(scene); // hands
+        // const hands = this.hands = this.addHands();
+      } else {
+        var dragListener = this.dragListener = this.addDragListener();
+      } // raycaster
+
 
       var raycaster = this.raycaster = new THREE.Raycaster();
-
-      if (!renderer.vr.isPresenting()) {
-        var dragListener = this.dragListener = this.addDragListener();
-        this.dragListener = dragListener;
-      }
-
       this.onWindowResize = this.onWindowResize.bind(this);
       this.onMouseMove = this.onMouseMove.bind(this);
       this.onMouseWheel = this.onMouseWheel.bind(this);
@@ -9210,18 +9514,24 @@ function () {
       renderer.vr.enabled = true; // container.innerHTML = '';
 
       this.container.appendChild(renderer.domElement);
-      this.container.appendChild(WEBVR.createButton(renderer, {
-        referenceSpaceType: 'local'
-      })); // this.container.querySelector('[href]').setAttribute('target', '_blank');
-
       return renderer;
+    }
+  }, {
+    key: "addVR",
+    value: function addVR(renderer, container) {
+      var vr = new _vr.default(renderer, {
+        referenceSpaceType: 'local'
+      });
+      container.appendChild(vr.element);
+      return vr;
     }
   }, {
     key: "addEnvironment",
     value: function addEnvironment(parent) {
-      var group = new THREE.Group(); //
-
-      var geometry = new THREE.SphereBufferGeometry(500, 32, 32); // invert the geometry on the x-axis so that all of the faces point inward
+      var group = new THREE.Group();
+      var geometry = new THREE.SphereBufferGeometry(500, 72, 72); // const geometry = new THREE.IcosahedronBufferGeometry(500, 4);
+      // console.log(geometry);
+      // invert the geometry on the x-axis so that all of the faces point inward
 
       geometry.scale(-1, 1, 1);
       var material = new THREE.MeshBasicMaterial({
@@ -9301,12 +9611,29 @@ function () {
       return mesh;
     }
   }, {
+    key: "addPointer",
+    value: function addPointer(parent) {
+      var geometry = new THREE.PlaneGeometry(20, 20, 1, 1);
+      var loader = new THREE.TextureLoader();
+      var texture = loader.load('img/pin.jpg');
+      var material = new THREE.MeshBasicMaterial({
+        map: texture,
+        blending: THREE.AdditiveBlending,
+        depthTest: false // transparent: true
+
+      });
+      var mesh = new THREE.Mesh(geometry, material);
+      mesh.position.x = 100000;
+      parent.add(mesh);
+      return mesh;
+    }
+  }, {
     key: "addControllerLeft",
     value: function addControllerLeft(renderer, scene) {
       var controller = renderer.vr.getController(0);
       var cylinder = controller.cylinder = this.addControllerCylinder(controller, 0);
-      controller.addEventListener('selectstart', this.onSelectStart.bind(controller));
-      controller.addEventListener('selectend', this.onSelectEnd.bind(controller));
+      controller.addEventListener('selectstart', this.onLeftSelectStart.bind(this));
+      controller.addEventListener('selectend', this.onLeftSelectEnd.bind(this));
       scene.add(controller);
       return controller;
     }
@@ -9315,11 +9642,8 @@ function () {
     value: function addControllerRight(renderer, scene) {
       var controller = renderer.vr.getController(1);
       var cylinder = controller.cylinder = this.addControllerCylinder(controller, 1);
-      /*
-      controller.addEventListener('selectstart', this.onSelectStart.bind(controller));
-      controller.addEventListener('selectend', this.onSelectEnd.bind(controller));
-      */
-
+      controller.addEventListener('selectstart', this.onRightSelectStart.bind(this));
+      controller.addEventListener('selectend', this.onRightSelectEnd.bind(this));
       scene.add(controller);
       return controller;
     }
@@ -9327,16 +9651,30 @@ function () {
     key: "addControllerCylinder",
     value: function addControllerCylinder(controller, i) {
       // pointer
-      var modifier = new THREE.SubdivisionModifier(2);
-      var geometry = new THREE.CylinderGeometry(4, 4, 30, 12);
-      var smoothGeometry = modifier.modify(geometry);
-      var smoothBufferGeometry = new THREE.BufferGeometry().fromGeometry(smoothGeometry);
-      var material = new THREE.MeshStandardMaterial({
+      var geometry = new THREE.CylinderGeometry(cm(3), cm(3), cm(22), 24);
+      var texture = new THREE.TextureLoader().load('https://cdn.glitch.com/7ae766be-18fb-4945-ad9d-8cc3be027694%2FBazC_SkinMat.jpg?1558678160164');
+      var material = new THREE.MeshMatcapMaterial({
         color: i === 0 ? 0x0000ff : 0xff0000,
-        roughness: 0.2,
-        metalness: 0.1
+        matcap: texture
       });
-      var mesh = new THREE.Mesh(smoothBufferGeometry, material);
+      /*
+      const material = new THREE.MeshBasicMaterial({
+      	color: i === 0 ? 0x0000ff : 0xff0000,
+      	// roughness: 0.2,
+      	// metalness: 0.1,
+      });
+      */
+
+      /*
+      const modifier = new THREE.SubdivisionModifier(2);
+      const smoothGeometry = modifier.modify(geometry);
+      const smoothBufferGeometry = new THREE.BufferGeometry().fromGeometry(smoothGeometry);
+      const mesh = new THREE.Mesh(smoothBufferGeometry, material);
+      */
+
+      var mesh = new THREE.Mesh(geometry, material);
+      mesh.geometry.rotateZ(-Math.PI / 2); // mesh.geometry.rotateY(Math.PI);
+
       controller.add(mesh);
     }
   }, {
@@ -9567,16 +9905,6 @@ function () {
       // console.log(p);
     }
   }, {
-    key: "onSelectStart",
-    value: function onSelectStart() {
-      this.userData.isSelecting = true;
-    }
-  }, {
-    key: "onSelectEnd",
-    value: function onSelectEnd() {
-      this.userData.isSelecting = false;
-    }
-  }, {
     key: "onInitView",
     value: function onInitView(previous, current) {
       var _this4 = this;
@@ -9647,6 +9975,8 @@ function () {
               var material = _this6.environment.sphere.material;
               material.opacity = 0;
               material.color.setHex(0xffffff);
+              texture.minFilter = THREE.NearestMipMapNearestFilter;
+              texture.magFilter = THREE.LinearMipMapLinearFilter;
               material.map = texture;
               material.map.needsUpdate = true;
               material.needsUpdate = true;
@@ -9691,6 +10021,32 @@ function () {
       }
     } // events
 
+  }, {
+    key: "onLeftSelectStart",
+    value: function onLeftSelectStart() {
+      this.controller = this.left;
+      this.isControllerSelecting = true;
+      this.isControllerSelectionDirty = true;
+    }
+  }, {
+    key: "onLeftSelectEnd",
+    value: function onLeftSelectEnd() {
+      this.isControllerSelecting = false;
+      this.isControllerSelectionDirty = false;
+    }
+  }, {
+    key: "onRightSelectStart",
+    value: function onRightSelectStart() {
+      this.controller = this.right;
+      this.isControllerSelecting = true;
+      this.isControllerSelectionDirty = true;
+    }
+  }, {
+    key: "onRightSelectEnd",
+    value: function onRightSelectEnd() {
+      this.isControllerSelecting = false;
+      this.isControllerSelectionDirty = false;
+    }
   }, {
     key: "onWindowResize",
     value: function onWindowResize() {
@@ -9750,7 +10106,6 @@ function () {
   }, {
     key: "onClick",
     value: function onClick(event) {
-      // this.tourCubesWaveAnimation(this.tour.cubes);
       var raycaster = this.raycaster; // update the picking ray with the camera and mouse position
 
       raycaster.setFromCamera(this.mouse, this.camera); // calculate objects intersecting the picking ray
@@ -9856,13 +10211,54 @@ function () {
   }, {
     key: "render",
     value: function render(delta) {
-      var renderer = this.renderer;
-
-      if (!renderer.vr.isPresenting()) {
+      if (this.vr.mode !== _vr.VR_MODE.NONE) {
+        this.updateControllers();
+      } else {
         this.updateCamera();
       }
 
+      var renderer = this.renderer;
       renderer.render(this.scene, this.camera); // this.doParallax();
+    }
+  }, {
+    key: "updateControllers",
+    value: function updateControllers() {
+      var controller = this.controller;
+
+      if (controller) {
+        var raycaster = this.raycaster;
+        raycaster.set(controller.position, controller.rotation.normalize());
+        var intersections = raycaster.intersectObjects(this.environment.children);
+
+        if (intersections) {
+          var intersection = intersections.find(function (x) {
+            return x !== undefined;
+          });
+          this.pointer.position.set(intersection.point);
+          this.pointer.lookAt(this.origin);
+        }
+
+        if (this.isControllerSelectionDirty && this.points) {
+          raycaster.params.Points.threshold = 10.0;
+          intersections = raycaster.intersectObjects([this.points]);
+
+          if (intersections) {
+            var _intersection2 = intersections.find(function (x) {
+              return x !== undefined;
+            });
+
+            if (_intersection2) {
+              this.isControllerSelectionDirty = false;
+              var index = _intersection2.index;
+              var point = _intersection2.point;
+              var debugInfo = "".concat(index, " => {").concat(point.x, ", ").concat(point.y, ", ").concat(point.z, "}");
+              console.log(index, point, debugInfo);
+              this.debugInfo.innerHTML = debugInfo;
+              this.index = (this.index + 1) % this.views.length;
+            }
+          }
+        }
+      }
     }
   }, {
     key: "updateCamera",
@@ -10009,5 +10405,5 @@ if (SHOW_HELPERS) {
 }
 */
 
-},{"./shared/drag.listener":2,"html2canvas":1}]},{},[3]);
+},{"./shared/drag.listener":2,"./shared/vr":3,"html2canvas":1}]},{},[4]);
 //# sourceMappingURL=vrtour.js.map
