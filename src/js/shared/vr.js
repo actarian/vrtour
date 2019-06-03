@@ -200,7 +200,7 @@ export default class VR extends EventEmitter {
 
 	onVRClick(event) {
 		try {
-			const devide = this.device;
+			const device = this.device;
 			if (device.isPresenting) {
 				device.exitPresent();
 			} else {
@@ -215,8 +215,9 @@ export default class VR extends EventEmitter {
 
 	onXRClick(event) {
 		try {
+			const device = this.device;
 			if (this.session === null) {
-				this.device.requestSession({
+				device.requestSession({
 					immersive: true,
 					exclusive: true /* DEPRECATED */
 				}).then(this.onXRSessionStarted);

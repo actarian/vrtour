@@ -9368,7 +9368,7 @@ function (_EventEmitter) {
     key: "onVRClick",
     value: function onVRClick(event) {
       try {
-        var devide = this.device;
+        var device = this.device;
 
         if (device.isPresenting) {
           device.exitPresent();
@@ -9385,8 +9385,10 @@ function (_EventEmitter) {
     key: "onXRClick",
     value: function onXRClick(event) {
       try {
+        var device = this.device;
+
         if (this.session === null) {
-          this.device.requestSession({
+          device.requestSession({
             immersive: true,
             exclusive: true
             /* DEPRECATED */
