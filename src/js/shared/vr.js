@@ -21,8 +21,8 @@ export default class VR {
 		this.onVRDisplayActivate = this.onVRDisplayActivate.bind(this);
 		this.onVRMouseEnter = this.onVRMouseEnter.bind(this);
 		this.onVRMouseLeave = this.onVRMouseLeave.bind(this);
+		this.onVRClick = this.onVRClick.bind(this);
 		this.onXRClick = this.onXRClick.bind(this);
-		this.onVRClick = this.onXRClick.bind(this);
 		this.onXRSessionStarted = this.onXRSessionStarted.bind(this);
 		this.onXRSessionEnded = this.onXRSessionEnded.bind(this);
 		this.mode = this.detectMode();
@@ -129,7 +129,7 @@ export default class VR {
 		element.style.cursor = 'pointer';
 		element.style.left = 'calc(50% - 50px)';
 		element.style.width = '100px';
-		element.textContent = 'ENTER VR';
+		element.textContent = 'ENTER XR'; // !!!
 		element.addEventListener('mouseenter', this.onVRMouseEnter);
 		element.addEventListener('mouseleave', this.onVRMouseLeave);
 		element.addEventListener('click', this.onXRClick);
