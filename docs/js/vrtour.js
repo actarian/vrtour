@@ -9039,7 +9039,7 @@ exports.default = DragListener;
 Object.defineProperty(exports, "__esModule", {
   value: true
 });
-exports.default = exports.VR_MODE = void 0;
+exports.default = void 0;
 
 function _classCallCheck(instance, Constructor) { if (!(instance instanceof Constructor)) { throw new TypeError("Cannot call a class as a function"); } }
 
@@ -9050,6 +9050,79 @@ function _createClass(Constructor, protoProps, staticProps) { if (protoProps) _d
 /* jshint esversion: 6 */
 
 /* global window, document */
+var EventEmitter =
+/*#__PURE__*/
+function () {
+  function EventEmitter() {
+    _classCallCheck(this, EventEmitter);
+
+    this.events = {};
+  }
+
+  _createClass(EventEmitter, [{
+    key: "addListener",
+    value: function addListener(eventName, fn) {
+      var _this = this;
+
+      if (!this.events[eventName]) {
+        this.events[eventName] = [];
+      }
+
+      this.events[eventName].push(fn);
+      return function () {
+        _this.events[eventName] = _this.events[eventName].filter(function (eventFn) {
+          return fn !== eventFn;
+        });
+      };
+    }
+  }, {
+    key: "emit",
+    value: function emit(eventName, data) {
+      var event = this.events[eventName];
+
+      if (event) {
+        event.forEach(function (callback) {
+          callback.call(null, data);
+        });
+      }
+    }
+  }]);
+
+  return EventEmitter;
+}();
+
+exports.default = EventEmitter;
+
+},{}],4:[function(require,module,exports){
+"use strict";
+
+Object.defineProperty(exports, "__esModule", {
+  value: true
+});
+exports.default = exports.VR_MODE = void 0;
+
+var _eventEmitter = _interopRequireDefault(require("./event-emitter"));
+
+function _interopRequireDefault(obj) { return obj && obj.__esModule ? obj : { default: obj }; }
+
+function _typeof(obj) { if (typeof Symbol === "function" && typeof Symbol.iterator === "symbol") { _typeof = function _typeof(obj) { return typeof obj; }; } else { _typeof = function _typeof(obj) { return obj && typeof Symbol === "function" && obj.constructor === Symbol && obj !== Symbol.prototype ? "symbol" : typeof obj; }; } return _typeof(obj); }
+
+function _classCallCheck(instance, Constructor) { if (!(instance instanceof Constructor)) { throw new TypeError("Cannot call a class as a function"); } }
+
+function _defineProperties(target, props) { for (var i = 0; i < props.length; i++) { var descriptor = props[i]; descriptor.enumerable = descriptor.enumerable || false; descriptor.configurable = true; if ("value" in descriptor) descriptor.writable = true; Object.defineProperty(target, descriptor.key, descriptor); } }
+
+function _createClass(Constructor, protoProps, staticProps) { if (protoProps) _defineProperties(Constructor.prototype, protoProps); if (staticProps) _defineProperties(Constructor, staticProps); return Constructor; }
+
+function _possibleConstructorReturn(self, call) { if (call && (_typeof(call) === "object" || typeof call === "function")) { return call; } return _assertThisInitialized(self); }
+
+function _getPrototypeOf(o) { _getPrototypeOf = Object.setPrototypeOf ? Object.getPrototypeOf : function _getPrototypeOf(o) { return o.__proto__ || Object.getPrototypeOf(o); }; return _getPrototypeOf(o); }
+
+function _assertThisInitialized(self) { if (self === void 0) { throw new ReferenceError("this hasn't been initialised - super() hasn't been called"); } return self; }
+
+function _inherits(subClass, superClass) { if (typeof superClass !== "function" && superClass !== null) { throw new TypeError("Super expression must either be null or a function"); } subClass.prototype = Object.create(superClass && superClass.prototype, { constructor: { value: subClass, writable: true, configurable: true } }); if (superClass) _setPrototypeOf(subClass, superClass); }
+
+function _setPrototypeOf(o, p) { _setPrototypeOf = Object.setPrototypeOf || function _setPrototypeOf(o, p) { o.__proto__ = p; return o; }; return _setPrototypeOf(o, p); }
+
 var VR_MODE = {
   NONE: 0,
   VR: 1,
@@ -9059,28 +9132,37 @@ exports.VR_MODE = VR_MODE;
 
 var VR =
 /*#__PURE__*/
-function () {
+function (_EventEmitter) {
+  _inherits(VR, _EventEmitter);
+
   function VR(renderer, options) {
+    var _this;
+
     _classCallCheck(this, VR);
+
+    _this = _possibleConstructorReturn(this, _getPrototypeOf(VR).call(this));
 
     if (options && options.frameOfReferenceType) {
       renderer.vr.setFrameOfReferenceType(options.frameOfReferenceType);
     }
 
-    this.renderer = renderer;
-    this.options = options;
-    this.onVRDisplayConnect = this.onVRDisplayConnect.bind(this);
-    this.onVRDisplayDisconnect = this.onVRDisplayDisconnect.bind(this);
-    this.onVRDisplayPresentChange = this.onVRDisplayPresentChange.bind(this);
-    this.onVRDisplayActivate = this.onVRDisplayActivate.bind(this);
-    this.onVRMouseEnter = this.onVRMouseEnter.bind(this);
-    this.onVRMouseLeave = this.onVRMouseLeave.bind(this);
-    this.onVRClick = this.onVRClick.bind(this);
-    this.onXRClick = this.onXRClick.bind(this);
-    this.onXRSessionStarted = this.onXRSessionStarted.bind(this);
-    this.onXRSessionEnded = this.onXRSessionEnded.bind(this);
-    this.mode = this.detectMode();
-    this.initElement();
+    _this.renderer = renderer;
+    _this.options = options;
+    _this.onVRDisplayConnect = _this.onVRDisplayConnect.bind(_assertThisInitialized(_this));
+    _this.onVRDisplayDisconnect = _this.onVRDisplayDisconnect.bind(_assertThisInitialized(_this));
+    _this.onVRDisplayPresentChange = _this.onVRDisplayPresentChange.bind(_assertThisInitialized(_this));
+    _this.onVRDisplayActivate = _this.onVRDisplayActivate.bind(_assertThisInitialized(_this));
+    _this.onVRMouseEnter = _this.onVRMouseEnter.bind(_assertThisInitialized(_this));
+    _this.onVRMouseLeave = _this.onVRMouseLeave.bind(_assertThisInitialized(_this));
+    _this.onVRClick = _this.onVRClick.bind(_assertThisInitialized(_this));
+    _this.onXRClick = _this.onXRClick.bind(_assertThisInitialized(_this));
+    _this.onXRSessionStarted = _this.onXRSessionStarted.bind(_assertThisInitialized(_this));
+    _this.onXRSessionEnded = _this.onXRSessionEnded.bind(_assertThisInitialized(_this));
+    _this.mode = _this.detectMode();
+
+    _this.initElement();
+
+    return _this;
   }
 
   _createClass(VR, [{
@@ -9152,22 +9234,22 @@ function () {
   }, {
     key: "getVR",
     value: function getVR() {
-      var _this = this;
+      var _this2 = this;
 
       navigator.getVRDisplays().then(function (displays) {
         if (displays.length > 0) {
-          _this.setEnterVR(displays[0]);
+          _this2.setEnterVR(displays[0]);
         } else {
-          _this.setVRNotFound();
+          _this2.setVRNotFound();
         }
       }).catch(function () {
-        return _this.setVRNotFound();
+        return _this2.setVRNotFound();
       });
     }
   }, {
     key: "getXR",
     value: function getXR() {
-      var _this2 = this;
+      var _this3 = this;
 
       navigator.xr.requestDevice().then(function (device) {
         device.supportsSession({
@@ -9176,12 +9258,12 @@ function () {
           /* DEPRECATED */
 
         }).then(function () {
-          _this2.setEnterXR(device);
+          _this3.setEnterXR(device);
         }).catch(function () {
-          return _this2.setVRNotFound();
+          return _this3.setVRNotFound();
         });
       }).catch(function () {
-        return _this2.setVRNotFound();
+        return _this3.setVRNotFound();
       });
     }
   }, {
@@ -9195,7 +9277,7 @@ function () {
       element.style.cursor = 'pointer';
       element.style.left = 'calc(50% - 50px)';
       element.style.width = '100px';
-      element.textContent = 'ENTER VR 1';
+      element.textContent = 'ENTER VR 2';
       element.addEventListener('mouseenter', this.onVRMouseEnter);
       element.addEventListener('mouseleave', this.onVRMouseLeave);
       element.addEventListener('click', this.onVRClick);
@@ -9231,7 +9313,11 @@ function () {
       element.removeEventListener('mouseleave', this.onVRMouseLeave);
       element.removeEventListener('click', this.onVRClick);
       element.removeEventListener('click', this.onXRClick);
-    } // events
+    } // errors
+
+  }, {
+    key: "emit",
+    value: function emit(error) {} // events
 
   }, {
     key: "onVRDisplayConnect",
@@ -9336,11 +9422,11 @@ function () {
   }]);
 
   return VR;
-}();
+}(_eventEmitter.default);
 
 exports.default = VR;
 
-},{}],4:[function(require,module,exports){
+},{"./event-emitter":3}],5:[function(require,module,exports){
 "use strict";
 
 Object.defineProperty(exports, "__esModule", {
@@ -9465,6 +9551,8 @@ function () {
   }, {
     key: "initRenderer",
     value: function initRenderer() {
+      var _this2 = this;
+
       var scene = this.scene = this.addScene();
       var camera = this.camera = this.addCamera();
       var environment = this.environment = this.addEnvironment(scene);
@@ -9473,7 +9561,11 @@ function () {
 
       var renderer = this.renderer = this.addRenderer(); // this.container.appendChild(WEBVR.createButton(renderer, { referenceSpaceType: 'local' }));
 
-      var vr = this.vr = this.addVR(renderer, this.container); // controllers
+      var vr = this.vr = this.addVR(renderer, this.container);
+      var unsubscribe = vr.addListener('error', function (error) {
+        _this2.debugInfo.innerHTML = error;
+      }); // unsubscribe();
+      // controllers
 
       /*
       const controller = new THREE.Group();
@@ -9737,18 +9829,18 @@ function () {
   }, {
     key: "addDragListener",
     value: function addDragListener() {
-      var _this2 = this;
+      var _this3 = this;
 
       var longitude, latitude;
       var dragListener = new _drag.default(this.container, function (event) {
-        longitude = _this2.longitude;
-        latitude = _this2.latitude;
+        longitude = _this3.longitude;
+        latitude = _this3.latitude;
       }, function (event) {
-        _this2.longitude = -event.distance.x * 0.1 + longitude;
-        _this2.latitude = event.distance.y * 0.1 + latitude;
-        _this2.direction = event.distance.x ? event.distance.x / Math.abs(event.distance.x) * -1 : 1; // console.log('longitude', this.longitude, 'latitude', this.latitude, 'direction', this.direction);
+        _this3.longitude = -event.distance.x * 0.1 + longitude;
+        _this3.latitude = event.distance.y * 0.1 + latitude;
+        _this3.direction = event.distance.x ? event.distance.x / Math.abs(event.distance.x) * -1 : 1; // console.log('longitude', this.longitude, 'latitude', this.latitude, 'direction', this.direction);
       }, function (event) {
-        _this2.speed = Math.abs(event.strength.x) * 100; // console.log('speed', this.speed);
+        _this3.speed = Math.abs(event.strength.x) * 100; // console.log('speed', this.speed);
       });
       return dragListener;
     }
@@ -9863,10 +9955,10 @@ function () {
   }, {
     key: "removePoint",
     value: function removePoint(i) {
-      var _this3 = this;
+      var _this4 = this;
 
       return new Promise(function (resolve, reject) {
-        var points = _this3.points;
+        var points = _this4.points;
         var geometry = points.geometry;
         var vertices = points.vertices;
         var index = vertices.length / 3;
@@ -9934,15 +10026,15 @@ function () {
   }, {
     key: "onInitView",
     value: function onInitView(previous, current) {
-      var _this4 = this;
+      var _this5 = this;
 
       // console.log(previous, current);
       this.onExitPoints(previous).then(function () {
         // console.log(this.points.vertices);
-        _this4.onExitView(previous).then(function () {
+        _this5.onExitView(previous).then(function () {
           // if (!previous) {
-          _this4.onEnterView(current).then(function () {
-            _this4.onEnterPoints(current); // console.log(this.points.vertices);
+          _this5.onEnterView(current).then(function () {
+            _this5.onEnterPoints(current); // console.log(this.points.vertices);
 
           }); // }
 
@@ -9952,11 +10044,11 @@ function () {
   }, {
     key: "onExitView",
     value: function onExitView(view) {
-      var _this5 = this;
+      var _this6 = this;
 
       return new Promise(function (resolve, reject) {
         if (view) {
-          TweenMax.to(_this5.environment.sphere.material, 0.4, {
+          TweenMax.to(_this6.environment.sphere.material, 0.4, {
             opacity: 0,
             delay: 0.0,
             onCompleted: function onCompleted() {
@@ -9973,7 +10065,7 @@ function () {
   }, {
     key: "onEnterView",
     value: function onEnterView(view) {
-      var _this6 = this;
+      var _this7 = this;
 
       return new Promise(function (resolve, reject) {
         if (view) {
@@ -9995,15 +10087,15 @@ function () {
               }
               */
               if (view.camera) {
-                _this6.latitude = view.camera.latitude;
-                _this6.longitude = view.camera.longitude;
+                _this7.latitude = view.camera.latitude;
+                _this7.longitude = view.camera.longitude;
               }
 
-              var material = _this6.environment.sphere.material;
+              var material = _this7.environment.sphere.material;
               material.opacity = 0;
-              material.color.setHex(0xffffff);
-              texture.minFilter = THREE.NearestMipMapNearestFilter;
-              texture.magFilter = THREE.LinearMipMapLinearFilter;
+              material.color.setHex(0xffffff); // texture.minFilter = THREE.NearestMipMapNearestFilter;
+              // texture.magFilter = THREE.LinearMipMapLinearFilter;
+
               material.map = texture;
               material.map.needsUpdate = true;
               material.needsUpdate = true;
@@ -10024,24 +10116,24 @@ function () {
   }, {
     key: "onEnterPoints",
     value: function onEnterPoints(view) {
-      var _this7 = this;
+      var _this8 = this;
 
       if (!this.points) {
         var points = this.points = this.addPoints(this.scene);
       }
 
       view.points.forEach(function (point, i) {
-        return _this7.addPoint(_construct(THREE.Vector3, _toConsumableArray(point.position)), i);
+        return _this8.addPoint(_construct(THREE.Vector3, _toConsumableArray(point.position)), i);
       });
     }
   }, {
     key: "onExitPoints",
     value: function onExitPoints(view) {
-      var _this8 = this;
+      var _this9 = this;
 
       if (view) {
         return Promise.all(view.points.map(function (point, i) {
-          return _this8.removePoint(i);
+          return _this9.removePoint(i);
         }));
       } else {
         return Promise.resolve();
@@ -10228,11 +10320,11 @@ function () {
   }, {
     key: "animate",
     value: function animate() {
-      var _this9 = this;
+      var _this10 = this;
 
       var renderer = this.renderer;
       renderer.setAnimationLoop(function () {
-        _this9.render();
+        _this10.render();
       });
     }
   }, {
@@ -10432,5 +10524,5 @@ if (SHOW_HELPERS) {
 }
 */
 
-},{"./shared/drag.listener":2,"./shared/vr":3,"html2canvas":1}]},{},[4]);
+},{"./shared/drag.listener":2,"./shared/vr":4,"html2canvas":1}]},{},[5]);
 //# sourceMappingURL=vrtour.js.map

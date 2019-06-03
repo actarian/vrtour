@@ -1,15 +1,18 @@
 /* jshint esversion: 6 */
 /* global window, document */
 
+import EventEmitter from './event-emitter';
+
 export const VR_MODE = {
 	NONE: 0,
 	VR: 1,
 	XR: 2,
 };
 
-export default class VR {
+export default class VR extends EventEmitter {
 
 	constructor(renderer, options) {
+		super();
 		if (options && options.frameOfReferenceType) {
 			renderer.vr.setFrameOfReferenceType(options.frameOfReferenceType);
 		}
@@ -116,7 +119,7 @@ export default class VR {
 		element.style.cursor = 'pointer';
 		element.style.left = 'calc(50% - 50px)';
 		element.style.width = '100px';
-		element.textContent = 'ENTER VR 1';
+		element.textContent = 'ENTER VR 2';
 		element.addEventListener('mouseenter', this.onVRMouseEnter);
 		element.addEventListener('mouseleave', this.onVRMouseLeave);
 		element.addEventListener('click', this.onVRClick);
@@ -149,6 +152,12 @@ export default class VR {
 		element.removeEventListener('mouseleave', this.onVRMouseLeave);
 		element.removeEventListener('click', this.onVRClick);
 		element.removeEventListener('click', this.onXRClick);
+	}
+
+	// errors
+
+	emit(error) {
+
 	}
 
 	// events

@@ -115,6 +115,10 @@ class VRTour {
 		const renderer = this.renderer = this.addRenderer();
 		// this.container.appendChild(WEBVR.createButton(renderer, { referenceSpaceType: 'local' }));
 		const vr = this.vr = this.addVR(renderer, this.container);
+		const unsubscribe = vr.addListener('error', (error) => {
+			this.debugInfo.innerHTML = error;
+		});
+		// unsubscribe();
 		// controllers
 
 		/*
@@ -592,8 +596,8 @@ class VRTour {
 						const material = this.environment.sphere.material;
 						material.opacity = 0;
 						material.color.setHex(0xffffff);
-						texture.minFilter = THREE.NearestMipMapNearestFilter;
-						texture.magFilter = THREE.LinearMipMapLinearFilter;
+						// texture.minFilter = THREE.NearestMipMapNearestFilter;
+						// texture.magFilter = THREE.LinearMipMapLinearFilter;
 						material.map = texture;
 						material.map.needsUpdate = true;
 						material.needsUpdate = true;
