@@ -115,9 +115,11 @@ class VRTour {
 		const renderer = this.renderer = this.addRenderer();
 		// this.container.appendChild(WEBVR.createButton(renderer, { referenceSpaceType: 'local' }));
 		const vr = this.vr = this.addVR(renderer, this.container);
+		/*
 		const unsubscribe = vr.addListener('error', (error) => {
 			this.debugInfo.innerHTML = error;
 		});
+		*/
 		// unsubscribe();
 		// controllers
 
@@ -187,7 +189,9 @@ class VRTour {
 	}
 
 	addVR(renderer, container) {
-		const vr = new VR(renderer, { referenceSpaceType: 'local' });
+		const vr = new VR(renderer, { referenceSpaceType: 'local' }, (error) => {
+			this.debugInfo.innerHTML = error;
+		});
 		container.appendChild(vr.element);
 		return vr;
 	}
@@ -733,7 +737,7 @@ class VRTour {
 					const index = intersection.index;
 					const point = intersection.point;
 					const debugInfo = `${index} => {${point.x}, ${point.y}, ${point.z}}`;
-					console.log(index, point, debugInfo);
+					// console.log(index, point, debugInfo);
 					this.debugInfo.innerHTML = debugInfo;
 					this.index = (this.index + 1) % this.views.length;
 				}
@@ -825,7 +829,7 @@ class VRTour {
 						const index = intersection.index;
 						const point = intersection.point;
 						const debugInfo = `${index} => {${point.x}, ${point.y}, ${point.z}}`;
-						console.log(index, point, debugInfo);
+						// console.log(index, point, debugInfo);
 						this.debugInfo.innerHTML = debugInfo;
 						this.index = (this.index + 1) % this.views.length;
 					}

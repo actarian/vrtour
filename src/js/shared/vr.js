@@ -11,10 +11,14 @@ export const VR_MODE = {
 
 export default class VR extends EventEmitter {
 
-	constructor(renderer, options) {
+	constructor(renderer, options, onError) {
 		super();
 		if (options && options.frameOfReferenceType) {
 			renderer.vr.setFrameOfReferenceType(options.frameOfReferenceType);
+		}
+		if (onError) {
+			// console.log(onError);
+			this.addListener('error', onError);
 		}
 		this.renderer = renderer;
 		this.options = options;
@@ -43,32 +47,37 @@ export default class VR extends EventEmitter {
 	}
 
 	initElement() {
-		let element;
-		switch (this.mode) {
-			case VR_MODE.VR:
-				element = this.element = this.addElement('button');
-				element.style.display = 'none';
-				window.addEventListener('vrdisplayconnect', this.onVRDisplayConnect, false);
-				window.addEventListener('vrdisplaydisconnect', this.onVRDisplayDisconnect, false);
-				window.addEventListener('vrdisplaypresentchange', this.onVRDisplayPresentChange, false);
-				window.addEventListener('vrdisplayactivate', this.onVRDisplayActivate, false);
-				this.getVR();
-				break;
-			case VR_MODE.XR:
-				element = this.element = this.addElement('button');
-				this.getXR();
-				break;
-			default:
-				element = this.element = this.addElement('a');
-				element.style.display = 'block';
-				element.style.left = 'calc(50% - 90px)';
-				element.style.width = '180px';
-				element.style.textDecoration = 'none';
-				element.href = 'https://webvr.info';
-				element.target = '_blank';
-				element.innerHTML = 'WEBVR NOT SUPPORTED';
+		try {
+			let element;
+			switch (this.mode) {
+				case VR_MODE.VR:
+					element = this.element = this.addElement('button');
+					element.style.display = 'none';
+					window.addEventListener('vrdisplayconnect', this.onVRDisplayConnect, false);
+					window.addEventListener('vrdisplaydisconnect', this.onVRDisplayDisconnect, false);
+					window.addEventListener('vrdisplaypresentchange', this.onVRDisplayPresentChange, false);
+					window.addEventListener('vrdisplayactivate', this.onVRDisplayActivate, false);
+					this.getVR();
+					break;
+				case VR_MODE.XR:
+					element = this.element = this.addElement('button');
+					this.getXR();
+					break;
+				default:
+					element = this.element = this.addElement('a');
+					element.style.display = 'block';
+					element.style.left = 'calc(50% - 90px)';
+					element.style.width = '180px';
+					element.style.textDecoration = 'none';
+					element.href = 'https://webvr.info';
+					element.target = '_blank';
+					element.innerHTML = 'WEBVR NOT SUPPORTED';
+			}
+			this.element = element;
+		} catch (error) {
+			// console.log(error);
+			this.emit('error', error);
 		}
-		this.element = element;
 	}
 
 	addElement(type) {
@@ -154,12 +163,6 @@ export default class VR extends EventEmitter {
 		element.removeEventListener('click', this.onXRClick);
 	}
 
-	// errors
-
-	emit(error) {
-
-	}
-
 	// events
 
 	onVRDisplayConnect(event) {
@@ -175,7 +178,7 @@ export default class VR extends EventEmitter {
 			this.element.textContent = event.display.isPresenting ? 'EXIT VR' : 'ENTER VR';
 			this.session = event.display.isPresenting;
 		} catch (error) {
-			this.emit(error);
+			this.emit('error', error);
 		}
 	}
 
@@ -183,7 +186,7 @@ export default class VR extends EventEmitter {
 		try {
 			event.display.requestPresent([{ source: this.renderer.domElement }]);
 		} catch (error) {
-			this.emit(error);
+			this.emit('error', error);
 		}
 	}
 
@@ -206,7 +209,7 @@ export default class VR extends EventEmitter {
 				}]);
 			}
 		} catch (error) {
-			this.emit(error);
+			this.emit('error', error);
 		}
 	}
 
@@ -221,7 +224,7 @@ export default class VR extends EventEmitter {
 				this.session.end();
 			}
 		} catch (error) {
-			this.emit(error);
+			this.emit('error', error);
 		}
 	}
 
@@ -232,7 +235,7 @@ export default class VR extends EventEmitter {
 			this.element.textContent = 'EXIT VR';
 			this.session = session;
 		} catch (error) {
-			this.emit(error);
+			this.emit('error', error);
 		}
 	}
 
@@ -243,7 +246,7 @@ export default class VR extends EventEmitter {
 			this.element.textContent = 'ENTER VR';
 			this.session = null;
 		} catch (error) {
-			this.emit(error);
+			this.emit('error', error);
 		}
 	}
 

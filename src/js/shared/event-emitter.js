@@ -7,21 +7,20 @@ export default class EventEmitter {
 		this.events = {};
 	}
 
-	addListener(eventName, fn) {
-		if (!this.events[eventName]) {
-			this.events[eventName] = [];
-		}
-		this.events[eventName].push(fn);
+	addListener(type, callback) {
+		const event = this.events[type] = this.events[type] || [];
+		event.push(callback);
 		return () => {
-			this.events[eventName] = this.events[eventName].filter(eventFn => fn !== eventFn);
+			this.events[type] = event.filter(x => x !== callback);
 		}
 	}
 
-	emit(eventName, data) {
-		const event = this.events[eventName];
+	emit(type, data) {
+		const event = this.events[type];
 		if (event) {
 			event.forEach(callback => {
-				callback.call(null, data);
+				// callback.call(this, data);
+				callback(data);
 			});
 		}
 	}

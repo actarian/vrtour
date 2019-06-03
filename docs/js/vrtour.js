@@ -9061,28 +9061,26 @@ function () {
 
   _createClass(EventEmitter, [{
     key: "addListener",
-    value: function addListener(eventName, fn) {
+    value: function addListener(type, callback) {
       var _this = this;
 
-      if (!this.events[eventName]) {
-        this.events[eventName] = [];
-      }
-
-      this.events[eventName].push(fn);
+      var event = this.events[type] = this.events[type] || [];
+      event.push(callback);
       return function () {
-        _this.events[eventName] = _this.events[eventName].filter(function (eventFn) {
-          return fn !== eventFn;
+        _this.events[type] = event.filter(function (x) {
+          return x !== callback;
         });
       };
     }
   }, {
     key: "emit",
-    value: function emit(eventName, data) {
-      var event = this.events[eventName];
+    value: function emit(type, data) {
+      var event = this.events[type];
 
       if (event) {
         event.forEach(function (callback) {
-          callback.call(null, data);
+          // callback.call(this, data);
+          callback(data);
         });
       }
     }
@@ -9135,7 +9133,7 @@ var VR =
 function (_EventEmitter) {
   _inherits(VR, _EventEmitter);
 
-  function VR(renderer, options) {
+  function VR(renderer, options, onError) {
     var _this;
 
     _classCallCheck(this, VR);
@@ -9144,6 +9142,11 @@ function (_EventEmitter) {
 
     if (options && options.frameOfReferenceType) {
       renderer.vr.setFrameOfReferenceType(options.frameOfReferenceType);
+    }
+
+    if (onError) {
+      // console.log(onError);
+      _this.addListener('error', onError);
     }
 
     _this.renderer = renderer;
@@ -9181,36 +9184,41 @@ function (_EventEmitter) {
   }, {
     key: "initElement",
     value: function initElement() {
-      var element;
+      try {
+        var element;
 
-      switch (this.mode) {
-        case VR_MODE.VR:
-          element = this.element = this.addElement('button');
-          element.style.display = 'none';
-          window.addEventListener('vrdisplayconnect', this.onVRDisplayConnect, false);
-          window.addEventListener('vrdisplaydisconnect', this.onVRDisplayDisconnect, false);
-          window.addEventListener('vrdisplaypresentchange', this.onVRDisplayPresentChange, false);
-          window.addEventListener('vrdisplayactivate', this.onVRDisplayActivate, false);
-          this.getVR();
-          break;
+        switch (this.mode) {
+          case VR_MODE.VR:
+            element = this.element = this.addElement('button');
+            element.style.display = 'none';
+            window.addEventListener('vrdisplayconnect', this.onVRDisplayConnect, false);
+            window.addEventListener('vrdisplaydisconnect', this.onVRDisplayDisconnect, false);
+            window.addEventListener('vrdisplaypresentchange', this.onVRDisplayPresentChange, false);
+            window.addEventListener('vrdisplayactivate', this.onVRDisplayActivate, false);
+            this.getVR();
+            break;
 
-        case VR_MODE.XR:
-          element = this.element = this.addElement('button');
-          this.getXR();
-          break;
+          case VR_MODE.XR:
+            element = this.element = this.addElement('button');
+            this.getXR();
+            break;
 
-        default:
-          element = this.element = this.addElement('a');
-          element.style.display = 'block';
-          element.style.left = 'calc(50% - 90px)';
-          element.style.width = '180px';
-          element.style.textDecoration = 'none';
-          element.href = 'https://webvr.info';
-          element.target = '_blank';
-          element.innerHTML = 'WEBVR NOT SUPPORTED';
+          default:
+            element = this.element = this.addElement('a');
+            element.style.display = 'block';
+            element.style.left = 'calc(50% - 90px)';
+            element.style.width = '180px';
+            element.style.textDecoration = 'none';
+            element.href = 'https://webvr.info';
+            element.target = '_blank';
+            element.innerHTML = 'WEBVR NOT SUPPORTED';
+        }
+
+        this.element = element;
+      } catch (error) {
+        // console.log(error);
+        this.emit('error', error);
       }
-
-      this.element = element;
     }
   }, {
     key: "addElement",
@@ -9313,11 +9321,7 @@ function (_EventEmitter) {
       element.removeEventListener('mouseleave', this.onVRMouseLeave);
       element.removeEventListener('click', this.onVRClick);
       element.removeEventListener('click', this.onXRClick);
-    } // errors
-
-  }, {
-    key: "emit",
-    value: function emit(error) {} // events
+    } // events
 
   }, {
     key: "onVRDisplayConnect",
@@ -9336,7 +9340,7 @@ function (_EventEmitter) {
         this.element.textContent = event.display.isPresenting ? 'EXIT VR' : 'ENTER VR';
         this.session = event.display.isPresenting;
       } catch (error) {
-        this.emit(error);
+        this.emit('error', error);
       }
     }
   }, {
@@ -9347,7 +9351,7 @@ function (_EventEmitter) {
           source: this.renderer.domElement
         }]);
       } catch (error) {
-        this.emit(error);
+        this.emit('error', error);
       }
     }
   }, {
@@ -9374,7 +9378,7 @@ function (_EventEmitter) {
           }]);
         }
       } catch (error) {
-        this.emit(error);
+        this.emit('error', error);
       }
     }
   }, {
@@ -9392,7 +9396,7 @@ function (_EventEmitter) {
           this.session.end();
         }
       } catch (error) {
-        this.emit(error);
+        this.emit('error', error);
       }
     }
   }, {
@@ -9404,7 +9408,7 @@ function (_EventEmitter) {
         this.element.textContent = 'EXIT VR';
         this.session = session;
       } catch (error) {
-        this.emit(error);
+        this.emit('error', error);
       }
     }
   }, {
@@ -9416,7 +9420,7 @@ function (_EventEmitter) {
         this.element.textContent = 'ENTER VR';
         this.session = null;
       } catch (error) {
-        this.emit(error);
+        this.emit('error', error);
       }
     }
   }]);
@@ -9551,8 +9555,6 @@ function () {
   }, {
     key: "initRenderer",
     value: function initRenderer() {
-      var _this2 = this;
-
       var scene = this.scene = this.addScene();
       var camera = this.camera = this.addCamera();
       var environment = this.environment = this.addEnvironment(scene);
@@ -9562,9 +9564,12 @@ function () {
       var renderer = this.renderer = this.addRenderer(); // this.container.appendChild(WEBVR.createButton(renderer, { referenceSpaceType: 'local' }));
 
       var vr = this.vr = this.addVR(renderer, this.container);
-      var unsubscribe = vr.addListener('error', function (error) {
-        _this2.debugInfo.innerHTML = error;
-      }); // unsubscribe();
+      /*
+      const unsubscribe = vr.addListener('error', (error) => {
+      	this.debugInfo.innerHTML = error;
+      });
+      */
+      // unsubscribe();
       // controllers
 
       /*
@@ -9638,8 +9643,12 @@ function () {
   }, {
     key: "addVR",
     value: function addVR(renderer, container) {
+      var _this2 = this;
+
       var vr = new _vr.default(renderer, {
         referenceSpaceType: 'local'
+      }, function (error) {
+        _this2.debugInfo.innerHTML = error;
       });
       container.appendChild(vr.element);
       return vr;
@@ -10259,8 +10268,8 @@ function () {
           if (_intersection) {
             var index = _intersection.index;
             var point = _intersection.point;
-            var debugInfo = "".concat(index, " => {").concat(point.x, ", ").concat(point.y, ", ").concat(point.z, "}");
-            console.log(index, point, debugInfo);
+            var debugInfo = "".concat(index, " => {").concat(point.x, ", ").concat(point.y, ", ").concat(point.z, "}"); // console.log(index, point, debugInfo);
+
             this.debugInfo.innerHTML = debugInfo;
             this.index = (this.index + 1) % this.views.length;
           }
@@ -10370,8 +10379,8 @@ function () {
               this.isControllerSelectionDirty = false;
               var index = _intersection2.index;
               var point = _intersection2.point;
-              var debugInfo = "".concat(index, " => {").concat(point.x, ", ").concat(point.y, ", ").concat(point.z, "}");
-              console.log(index, point, debugInfo);
+              var debugInfo = "".concat(index, " => {").concat(point.x, ", ").concat(point.y, ", ").concat(point.z, "}"); // console.log(index, point, debugInfo);
+
               this.debugInfo.innerHTML = debugInfo;
               this.index = (this.index + 1) % this.views.length;
             }
