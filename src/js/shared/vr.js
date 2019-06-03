@@ -128,7 +128,7 @@ export default class VR extends EventEmitter {
 		element.style.cursor = 'pointer';
 		element.style.left = 'calc(50% - 50px)';
 		element.style.width = '100px';
-		element.textContent = 'ENTER VR 2';
+		element.textContent = 'ENTER VR';
 		element.addEventListener('mouseenter', this.onVRMouseEnter);
 		element.addEventListener('mouseleave', this.onVRMouseLeave);
 		element.addEventListener('click', this.onVRClick);

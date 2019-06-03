@@ -9285,7 +9285,7 @@ function (_EventEmitter) {
       element.style.cursor = 'pointer';
       element.style.left = 'calc(50% - 50px)';
       element.style.width = '100px';
-      element.textContent = 'ENTER VR 2';
+      element.textContent = 'ENTER VR';
       element.addEventListener('mouseenter', this.onVRMouseEnter);
       element.addEventListener('mouseleave', this.onVRMouseLeave);
       element.addEventListener('click', this.onVRClick);
@@ -9806,8 +9806,8 @@ function () {
       const mesh = new THREE.Mesh(smoothBufferGeometry, material);
       */
 
-      var mesh = new THREE.Mesh(geometry, material); // mesh.geometry.rotateZ(-Math.PI / 2);
-      // mesh.geometry.rotateY(Math.PI);
+      var mesh = new THREE.Mesh(geometry, material);
+      mesh.geometry.rotateX(Math.PI / 2); // mesh.geometry.rotateY(Math.PI);
 
       controller.add(mesh);
     }
@@ -10398,7 +10398,8 @@ function () {
 
         if (controller) {
           var raycaster = this.raycaster;
-          raycaster.set(controller.position, controller.rotation.normalize());
+          var rotation = new THREE.Vector3(controller.rotation.x, controller.rotation.y, controller.rotation.z).normalize();
+          raycaster.set(controller.position, rotation);
           var intersections = raycaster.intersectObjects(this.environment.children);
 
           if (intersections) {

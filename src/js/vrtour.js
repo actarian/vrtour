@@ -336,7 +336,7 @@ class VRTour {
 		const mesh = new THREE.Mesh(smoothBufferGeometry, material);
 		*/
 		const mesh = new THREE.Mesh(geometry, material);
-		// mesh.geometry.rotateZ(-Math.PI / 2);
+		mesh.geometry.rotateX(Math.PI / 2);
 		// mesh.geometry.rotateY(Math.PI);
 		controller.add(mesh);
 	}
@@ -853,7 +853,8 @@ class VRTour {
 			const controller = this.controller;
 			if (controller) {
 				const raycaster = this.raycaster;
-				raycaster.set(controller.position, controller.rotation.normalize());
+				const rotation = new THREE.Vector3(controller.rotation.x, controller.rotation.y, controller.rotation.z).normalize();
+				raycaster.set(controller.position, rotation);
 				let intersections = raycaster.intersectObjects(this.environment.children);
 				if (intersections) {
 					const intersection = intersections.find(x => x !== undefined);
