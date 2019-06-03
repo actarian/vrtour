@@ -9127,6 +9127,8 @@ function () {
           element.target = '_blank';
           element.innerHTML = 'WEBVR NOT SUPPORTED';
       }
+
+      this.element = element;
     }
   }, {
     key: "addElement",
@@ -9193,7 +9195,7 @@ function () {
       element.style.cursor = 'pointer';
       element.style.left = 'calc(50% - 50px)';
       element.style.width = '100px';
-      element.textContent = 'ENTER VR';
+      element.textContent = 'ENTER VR 1';
       element.addEventListener('mouseenter', this.onVRMouseEnter);
       element.addEventListener('mouseleave', this.onVRMouseLeave);
       element.addEventListener('click', this.onVRClick);
@@ -9244,15 +9246,23 @@ function () {
   }, {
     key: "onVRDisplayPresentChange",
     value: function onVRDisplayPresentChange(event) {
-      this.element.textContent = event.display.isPresenting ? 'EXIT VR' : 'ENTER VR';
-      this.session = event.display.isPresenting;
+      try {
+        this.element.textContent = event.display.isPresenting ? 'EXIT VR' : 'ENTER VR';
+        this.session = event.display.isPresenting;
+      } catch (error) {
+        this.emit(error);
+      }
     }
   }, {
     key: "onVRDisplayActivate",
     value: function onVRDisplayActivate(event) {
-      event.display.requestPresent([{
-        source: this.renderer.domElement
-      }]);
+      try {
+        event.display.requestPresent([{
+          source: this.renderer.domElement
+        }]);
+      } catch (error) {
+        this.emit(error);
+      }
     }
   }, {
     key: "onVRMouseEnter",
@@ -9267,45 +9277,61 @@ function () {
   }, {
     key: "onVRClick",
     value: function onVRClick(event) {
-      var devide = this.device;
+      try {
+        var devide = this.device;
 
-      if (device.isPresenting) {
-        device.exitPresent();
-      } else {
-        device.requestPresent([{
-          source: this.renderer.domElement
-        }]);
+        if (device.isPresenting) {
+          device.exitPresent();
+        } else {
+          device.requestPresent([{
+            source: this.renderer.domElement
+          }]);
+        }
+      } catch (error) {
+        this.emit(error);
       }
     }
   }, {
     key: "onXRClick",
     value: function onXRClick(event) {
-      if (this.session === null) {
-        this.device.requestSession({
-          immersive: true,
-          exclusive: true
-          /* DEPRECATED */
+      try {
+        if (this.session === null) {
+          this.device.requestSession({
+            immersive: true,
+            exclusive: true
+            /* DEPRECATED */
 
-        }).then(this.onXRSessionStarted);
-      } else {
-        this.session.end();
+          }).then(this.onXRSessionStarted);
+        } else {
+          this.session.end();
+        }
+      } catch (error) {
+        this.emit(error);
       }
     }
   }, {
     key: "onXRSessionStarted",
     value: function onXRSessionStarted(session) {
-      session.addEventListener('end', this.onXRSessionEnded);
-      this.renderer.vr.setSession(session);
-      this.element.textContent = 'EXIT VR';
-      this.session = session;
+      try {
+        session.addEventListener('end', this.onXRSessionEnded);
+        this.renderer.vr.setSession(session);
+        this.element.textContent = 'EXIT VR';
+        this.session = session;
+      } catch (error) {
+        this.emit(error);
+      }
     }
   }, {
     key: "onXRSessionEnded",
     value: function onXRSessionEnded(event) {
-      this.session.removeEventListener('end', this.onXRSessionEnded);
-      this.renderer.vr.setSession(null);
-      this.element.textContent = 'ENTER VR';
-      this.session = null;
+      try {
+        this.session.removeEventListener('end', this.onXRSessionEnded);
+        this.renderer.vr.setSession(null);
+        this.element.textContent = 'ENTER VR';
+        this.session = null;
+      } catch (error) {
+        this.emit(error);
+      }
     }
   }]);
 
