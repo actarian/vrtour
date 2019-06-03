@@ -9548,7 +9548,16 @@ function () {
       this.section = section;
       this.container = container;
       this.debugInfo = debugInfo;
-      this.debugSave = debugSave; // this.shadow = shadow;
+      this.debugSave = debugSave;
+      this.onWindowResize = this.onWindowResize.bind(this);
+      this.onMouseMove = this.onMouseMove.bind(this);
+      this.onMouseWheel = this.onMouseWheel.bind(this);
+      this.onClick = this.onClick.bind(this);
+      this.onSave = this.onSave.bind(this);
+      this.onLeftSelectStart = this.onLeftSelectStart.bind(this);
+      this.onLeftSelectEnd = this.onLeftSelectEnd.bind(this);
+      this.onRightSelectStart = this.onRightSelectStart.bind(this);
+      this.onRightSelectEnd = this.onRightSelectEnd.bind(this); // this.shadow = shadow;
       // this.title = title;
       // this.abstract = abstract;
 
@@ -9594,11 +9603,6 @@ function () {
 
 
       var raycaster = this.raycaster = new THREE.Raycaster();
-      this.onWindowResize = this.onWindowResize.bind(this);
-      this.onMouseMove = this.onMouseMove.bind(this);
-      this.onMouseWheel = this.onMouseWheel.bind(this);
-      this.onClick = this.onClick.bind(this);
-      this.onSave = this.onSave.bind(this);
       window.addEventListener('resize', this.onWindowResize, false);
       document.addEventListener('mousemove', this.onMouseMove, false);
       document.addEventListener('wheel', this.onMouseWheel, false);
@@ -9762,8 +9766,8 @@ function () {
     value: function addControllerLeft(renderer, scene) {
       var controller = renderer.vr.getController(0);
       var cylinder = controller.cylinder = this.addControllerCylinder(controller, 0);
-      controller.addEventListener('selectstart', this.onLeftSelectStart.bind(this));
-      controller.addEventListener('selectend', this.onLeftSelectEnd.bind(this));
+      controller.addEventListener('selectstart', this.onLeftSelectStart);
+      controller.addEventListener('selectend', this.onLeftSelectEnd);
       scene.add(controller);
       return controller;
     }
@@ -9772,8 +9776,8 @@ function () {
     value: function addControllerRight(renderer, scene) {
       var controller = renderer.vr.getController(1);
       var cylinder = controller.cylinder = this.addControllerCylinder(controller, 1);
-      controller.addEventListener('selectstart', this.onRightSelectStart.bind(this));
-      controller.addEventListener('selectend', this.onRightSelectEnd.bind(this));
+      controller.addEventListener('selectstart', this.onRightSelectStart);
+      controller.addEventListener('selectend', this.onRightSelectEnd);
       scene.add(controller);
       return controller;
     }
@@ -9781,10 +9785,10 @@ function () {
     key: "addControllerCylinder",
     value: function addControllerCylinder(controller, i) {
       // pointer
-      var geometry = new THREE.CylinderGeometry(cm(3), cm(3), cm(22), 24);
+      var geometry = new THREE.CylinderGeometry(cm(2), cm(2), cm(12), 24);
       var texture = new THREE.TextureLoader().load('https://cdn.glitch.com/7ae766be-18fb-4945-ad9d-8cc3be027694%2FBazC_SkinMat.jpg?1558678160164');
       var material = new THREE.MeshMatcapMaterial({
-        color: i === 0 ? 0x0000ff : 0xff0000,
+        color: i === 0 ? 0xff0000 : 0x0000ff,
         matcap: texture
       });
       /*
@@ -9802,8 +9806,8 @@ function () {
       const mesh = new THREE.Mesh(smoothBufferGeometry, material);
       */
 
-      var mesh = new THREE.Mesh(geometry, material);
-      mesh.geometry.rotateZ(-Math.PI / 2); // mesh.geometry.rotateY(Math.PI);
+      var mesh = new THREE.Mesh(geometry, material); // mesh.geometry.rotateZ(-Math.PI / 2);
+      // mesh.geometry.rotateY(Math.PI);
 
       controller.add(mesh);
     }
@@ -10154,140 +10158,176 @@ function () {
   }, {
     key: "onLeftSelectStart",
     value: function onLeftSelectStart() {
-      this.controller = this.left;
-      this.isControllerSelecting = true;
-      this.isControllerSelectionDirty = true;
+      try {
+        this.controller = this.left;
+        this.isControllerSelecting = true;
+        this.isControllerSelectionDirty = true;
+      } catch (error) {
+        this.debugInfo.innerHTML = error;
+      }
     }
   }, {
     key: "onLeftSelectEnd",
     value: function onLeftSelectEnd() {
-      this.isControllerSelecting = false;
-      this.isControllerSelectionDirty = false;
+      try {
+        this.isControllerSelecting = false;
+        this.isControllerSelectionDirty = false;
+      } catch (error) {
+        this.debugInfo.innerHTML = error;
+      }
     }
   }, {
     key: "onRightSelectStart",
     value: function onRightSelectStart() {
-      this.controller = this.right;
-      this.isControllerSelecting = true;
-      this.isControllerSelectionDirty = true;
+      try {
+        this.controller = this.right;
+        this.isControllerSelecting = true;
+        this.isControllerSelectionDirty = true;
+      } catch (error) {
+        this.debugInfo.innerHTML = error;
+      }
     }
   }, {
     key: "onRightSelectEnd",
     value: function onRightSelectEnd() {
-      this.isControllerSelecting = false;
-      this.isControllerSelectionDirty = false;
+      try {
+        this.isControllerSelecting = false;
+        this.isControllerSelectionDirty = false;
+      } catch (error) {
+        this.debugInfo.innerHTML = error;
+      }
     }
   }, {
     key: "onWindowResize",
     value: function onWindowResize() {
-      var container = this.container,
-          renderer = this.renderer,
-          camera = this.camera;
-      var size = this.size;
-      size.width = container.offsetWidth;
-      size.height = container.offsetHeight;
-      size.aspect = size.width / size.height;
+      try {
+        var container = this.container,
+            renderer = this.renderer,
+            camera = this.camera;
+        var size = this.size;
+        size.width = container.offsetWidth;
+        size.height = container.offsetHeight;
+        size.aspect = size.width / size.height;
 
-      if (renderer) {
-        renderer.setSize(size.width, size.height);
-      }
+        if (renderer) {
+          renderer.setSize(size.width, size.height);
+        }
 
-      if (camera) {
-        camera.aspect = size.width / size.height;
-        camera.updateProjectionMatrix();
+        if (camera) {
+          camera.aspect = size.width / size.height;
+          camera.updateProjectionMatrix();
+        }
+      } catch (error) {
+        this.debugInfo.innerHTML = error;
       }
     }
   }, {
     key: "onMouseMove",
     value: function onMouseMove(event) {
-      var w2 = this.container.offsetWidth / 2;
-      var h2 = this.container.offsetHeight / 2;
-      this.mouse = {
-        x: (event.clientX - w2) / w2,
-        y: -(event.clientY - h2) / h2
-      }; // console.log('onMouseMove', this.mouse);
+      try {
+        var w2 = this.container.offsetWidth / 2;
+        var h2 = this.container.offsetHeight / 2;
+        this.mouse = {
+          x: (event.clientX - w2) / w2,
+          y: -(event.clientY - h2) / h2
+        }; // console.log('onMouseMove', this.mouse);
 
-      /*
-      var attributes = geometry.attributes;
-      raycaster.setFromCamera( mouse, camera );
-      intersects = raycaster.intersectObject( points );
-      if ( intersects.length > 0 ) {
-      	if ( INTERSECTED != intersects[ 0 ].index ) {
-      		attributes.size.array[ INTERSECTED ] = PARTICLE_SIZE;
-      		INTERSECTED = intersects[ 0 ].index;
-      		attributes.size.array[ INTERSECTED ] = PARTICLE_SIZE * 1.25;
-      		attributes.size.needsUpdate = true;
-      	}
-      } else if ( INTERSECTED !== null ) {
-      	attributes.size.array[ INTERSECTED ] = PARTICLE_SIZE;
-      	attributes.size.needsUpdate = true;
-      	INTERSECTED = null;
+        /*
+        var attributes = geometry.attributes;
+        raycaster.setFromCamera( mouse, camera );
+        intersects = raycaster.intersectObject( points );
+        if ( intersects.length > 0 ) {
+        	if ( INTERSECTED != intersects[ 0 ].index ) {
+        		attributes.size.array[ INTERSECTED ] = PARTICLE_SIZE;
+        		INTERSECTED = intersects[ 0 ].index;
+        		attributes.size.array[ INTERSECTED ] = PARTICLE_SIZE * 1.25;
+        		attributes.size.needsUpdate = true;
+        	}
+        } else if ( INTERSECTED !== null ) {
+        	attributes.size.array[ INTERSECTED ] = PARTICLE_SIZE;
+        	attributes.size.needsUpdate = true;
+        	INTERSECTED = null;
+        }
+        */
+      } catch (error) {
+        this.debugInfo.innerHTML = error;
       }
-      */
     }
   }, {
     key: "onMouseWheel",
     value: function onMouseWheel(event) {
-      var camera = this.camera;
-      var fov = camera.fov + event.deltaY * 0.01;
-      camera.fov = THREE.Math.clamp(fov, 30, 75);
-      camera.updateProjectionMatrix();
+      try {
+        var camera = this.camera;
+        var fov = camera.fov + event.deltaY * 0.01;
+        camera.fov = THREE.Math.clamp(fov, 30, 75);
+        camera.updateProjectionMatrix();
+      } catch (error) {
+        this.debugInfo.innerHTML = error;
+      }
     }
   }, {
     key: "onClick",
     value: function onClick(event) {
-      var raycaster = this.raycaster; // update the picking ray with the camera and mouse position
+      try {
+        var raycaster = this.raycaster; // update the picking ray with the camera and mouse position
 
-      raycaster.setFromCamera(this.mouse, this.camera); // calculate objects intersecting the picking ray
+        raycaster.setFromCamera(this.mouse, this.camera); // calculate objects intersecting the picking ray
 
-      if (event.shiftKey) {
-        var intersections = raycaster.intersectObjects(this.environment.children);
+        if (event.shiftKey) {
+          var intersections = raycaster.intersectObjects(this.environment.children);
 
-        if (intersections) {
-          var intersection = intersections.find(function (x) {
-            return x !== undefined;
-          });
-          this.createPoint(intersection);
-        } // console.log(intersections);
+          if (intersections) {
+            var intersection = intersections.find(function (x) {
+              return x !== undefined;
+            });
+            this.createPoint(intersection);
+          } // console.log(intersections);
 
-        /*
-        for (var i = 0; i < intersects.length; i++ ) {
-        	console.log(intersections[i])
-        	intersects[i].object.material.color.set( 0xff0000 );
-        }
-        */
+          /*
+          for (var i = 0; i < intersects.length; i++ ) {
+          	console.log(intersections[i])
+          	intersects[i].object.material.color.set( 0xff0000 );
+          }
+          */
 
-      } else if (this.points) {
-        raycaster.params.Points.threshold = 10.0;
+        } else if (this.points) {
+          raycaster.params.Points.threshold = 10.0;
 
-        var _intersections = raycaster.intersectObjects([this.points]);
+          var _intersections = raycaster.intersectObjects([this.points]);
 
-        if (_intersections) {
-          var _intersection = _intersections.find(function (x) {
-            return x !== undefined;
-          });
+          if (_intersections) {
+            var _intersection = _intersections.find(function (x) {
+              return x !== undefined;
+            });
 
-          if (_intersection) {
-            var index = _intersection.index;
-            var point = _intersection.point;
-            var debugInfo = "".concat(index, " => {").concat(point.x, ", ").concat(point.y, ", ").concat(point.z, "}"); // console.log(index, point, debugInfo);
+            if (_intersection) {
+              var index = _intersection.index;
+              var point = _intersection.point;
+              var debugInfo = "".concat(index, " => {").concat(point.x, ", ").concat(point.y, ", ").concat(point.z, "}"); // console.log(index, point, debugInfo);
 
-            this.debugInfo.innerHTML = debugInfo;
-            this.index = (this.index + 1) % this.views.length;
+              this.debugInfo.innerHTML = debugInfo;
+              this.index = (this.index + 1) % this.views.length;
+            }
           }
         }
+      } catch (error) {
+        this.debugInfo.innerHTML = error;
       }
     }
   }, {
     key: "onSave",
     value: function onSave(event) {
-      this.view.camera = {
-        latitude: this.latitude,
-        longitude: this.longitude
-      };
-      this.saveData({
-        views: this.views
-      }, 'vr.json');
+      try {
+        this.view.camera = {
+          latitude: this.latitude,
+          longitude: this.longitude
+        };
+        this.saveData({
+          views: this.views
+        }, 'vr.json');
+      } catch (error) {
+        this.debugInfo.innerHTML = error;
+      }
     } // animation
 
   }, {
@@ -10353,41 +10393,45 @@ function () {
   }, {
     key: "updateControllers",
     value: function updateControllers() {
-      var controller = this.controller;
+      try {
+        var controller = this.controller;
 
-      if (controller) {
-        var raycaster = this.raycaster;
-        raycaster.set(controller.position, controller.rotation.normalize());
-        var intersections = raycaster.intersectObjects(this.environment.children);
-
-        if (intersections) {
-          var intersection = intersections.find(function (x) {
-            return x !== undefined;
-          });
-          this.pointer.position.set(intersection.point);
-          this.pointer.lookAt(this.origin);
-        }
-
-        if (this.isControllerSelectionDirty && this.points) {
-          raycaster.params.Points.threshold = 10.0;
-          intersections = raycaster.intersectObjects([this.points]);
+        if (controller) {
+          var raycaster = this.raycaster;
+          raycaster.set(controller.position, controller.rotation.normalize());
+          var intersections = raycaster.intersectObjects(this.environment.children);
 
           if (intersections) {
-            var _intersection2 = intersections.find(function (x) {
+            var intersection = intersections.find(function (x) {
               return x !== undefined;
             });
+            this.pointer.position.set(intersection.point);
+            this.pointer.lookAt(this.origin);
+          }
 
-            if (_intersection2) {
-              this.isControllerSelectionDirty = false;
-              var index = _intersection2.index;
-              var point = _intersection2.point;
-              var debugInfo = "".concat(index, " => {").concat(point.x, ", ").concat(point.y, ", ").concat(point.z, "}"); // console.log(index, point, debugInfo);
+          if (this.isControllerSelectionDirty && this.points) {
+            raycaster.params.Points.threshold = 10.0;
+            intersections = raycaster.intersectObjects([this.points]);
 
-              this.debugInfo.innerHTML = debugInfo;
-              this.index = (this.index + 1) % this.views.length;
+            if (intersections) {
+              var _intersection2 = intersections.find(function (x) {
+                return x !== undefined;
+              });
+
+              if (_intersection2) {
+                this.isControllerSelectionDirty = false;
+                var index = _intersection2.index;
+                var point = _intersection2.point;
+                var debugInfo = "".concat(index, " => {").concat(point.x, ", ").concat(point.y, ", ").concat(point.z, "}"); // console.log(index, point, debugInfo);
+
+                this.debugInfo.innerHTML = debugInfo;
+                this.index = (this.index + 1) % this.views.length;
+              }
             }
           }
         }
+      } catch (error) {
+        this.debugInfo.innerHTML = error;
       }
     }
   }, {

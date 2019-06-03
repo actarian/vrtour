@@ -99,6 +99,15 @@ class VRTour {
 		this.container = container;
 		this.debugInfo = debugInfo;
 		this.debugSave = debugSave;
+		this.onWindowResize = this.onWindowResize.bind(this);
+		this.onMouseMove = this.onMouseMove.bind(this);
+		this.onMouseWheel = this.onMouseWheel.bind(this);
+		this.onClick = this.onClick.bind(this);
+		this.onSave = this.onSave.bind(this);
+		this.onLeftSelectStart = this.onLeftSelectStart.bind(this);
+		this.onLeftSelectEnd = this.onLeftSelectEnd.bind(this);
+		this.onRightSelectStart = this.onRightSelectStart.bind(this);
+		this.onRightSelectEnd = this.onRightSelectEnd.bind(this);
 		// this.shadow = shadow;
 		// this.title = title;
 		// this.abstract = abstract;
@@ -142,11 +151,6 @@ class VRTour {
 		}
 		// raycaster
 		const raycaster = this.raycaster = new THREE.Raycaster();
-		this.onWindowResize = this.onWindowResize.bind(this);
-		this.onMouseMove = this.onMouseMove.bind(this);
-		this.onMouseWheel = this.onMouseWheel.bind(this);
-		this.onClick = this.onClick.bind(this);
-		this.onSave = this.onSave.bind(this);
 		window.addEventListener('resize', this.onWindowResize, false);
 		document.addEventListener('mousemove', this.onMouseMove, false);
 		document.addEventListener('wheel', this.onMouseWheel, false);
@@ -295,8 +299,8 @@ class VRTour {
 	addControllerLeft(renderer, scene) {
 		const controller = renderer.vr.getController(0);
 		const cylinder = controller.cylinder = this.addControllerCylinder(controller, 0);
-		controller.addEventListener('selectstart', this.onLeftSelectStart.bind(this));
-		controller.addEventListener('selectend', this.onLeftSelectEnd.bind(this));
+		controller.addEventListener('selectstart', this.onLeftSelectStart);
+		controller.addEventListener('selectend', this.onLeftSelectEnd);
 		scene.add(controller);
 		return controller;
 	}
@@ -304,18 +308,18 @@ class VRTour {
 	addControllerRight(renderer, scene) {
 		const controller = renderer.vr.getController(1);
 		const cylinder = controller.cylinder = this.addControllerCylinder(controller, 1);
-		controller.addEventListener('selectstart', this.onRightSelectStart.bind(this));
-		controller.addEventListener('selectend', this.onRightSelectEnd.bind(this));
+		controller.addEventListener('selectstart', this.onRightSelectStart);
+		controller.addEventListener('selectend', this.onRightSelectEnd);
 		scene.add(controller);
 		return controller;
 	}
 
 	addControllerCylinder(controller, i) {
 		// pointer
-		const geometry = new THREE.CylinderGeometry(cm(3), cm(3), cm(22), 24);
+		const geometry = new THREE.CylinderGeometry(cm(2), cm(2), cm(12), 24);
 		const texture = new THREE.TextureLoader().load('https://cdn.glitch.com/7ae766be-18fb-4945-ad9d-8cc3be027694%2FBazC_SkinMat.jpg?1558678160164');
 		const material = new THREE.MeshMatcapMaterial({
-			color: i === 0 ? 0x0000ff : 0xff0000,
+			color: i === 0 ? 0xff0000 : 0x0000ff,
 			matcap: texture
 		});
 		/*
@@ -332,7 +336,7 @@ class VRTour {
 		const mesh = new THREE.Mesh(smoothBufferGeometry, material);
 		*/
 		const mesh = new THREE.Mesh(geometry, material);
-		mesh.geometry.rotateZ(-Math.PI / 2);
+		// mesh.geometry.rotateZ(-Math.PI / 2);
 		// mesh.geometry.rotateY(Math.PI);
 		controller.add(mesh);
 	}
@@ -638,119 +642,155 @@ class VRTour {
 	// events
 
 	onLeftSelectStart() {
-		this.controller = this.left;
-		this.isControllerSelecting = true;
-		this.isControllerSelectionDirty = true;
+		try {
+			this.controller = this.left;
+			this.isControllerSelecting = true;
+			this.isControllerSelectionDirty = true;
+		} catch (error) {
+			this.debugInfo.innerHTML = error;
+		}
 	}
 
 	onLeftSelectEnd() {
-		this.isControllerSelecting = false;
-		this.isControllerSelectionDirty = false;
+		try {
+			this.isControllerSelecting = false;
+			this.isControllerSelectionDirty = false;
+		} catch (error) {
+			this.debugInfo.innerHTML = error;
+		}
 	}
 
 	onRightSelectStart() {
-		this.controller = this.right;
-		this.isControllerSelecting = true;
-		this.isControllerSelectionDirty = true;
+		try {
+			this.controller = this.right;
+			this.isControllerSelecting = true;
+			this.isControllerSelectionDirty = true;
+		} catch (error) {
+			this.debugInfo.innerHTML = error;
+		}
 	}
 
 	onRightSelectEnd() {
-		this.isControllerSelecting = false;
-		this.isControllerSelectionDirty = false;
+		try {
+			this.isControllerSelecting = false;
+			this.isControllerSelectionDirty = false;
+		} catch (error) {
+			this.debugInfo.innerHTML = error;
+		}
 	}
 
 	onWindowResize() {
-		const container = this.container,
-			renderer = this.renderer,
-			camera = this.camera;
-		const size = this.size;
-		size.width = container.offsetWidth;
-		size.height = container.offsetHeight;
-		size.aspect = size.width / size.height;
-		if (renderer) {
-			renderer.setSize(size.width, size.height);
-		}
-		if (camera) {
-			camera.aspect = size.width / size.height;
-			camera.updateProjectionMatrix();
+		try {
+			const container = this.container,
+				renderer = this.renderer,
+				camera = this.camera;
+			const size = this.size;
+			size.width = container.offsetWidth;
+			size.height = container.offsetHeight;
+			size.aspect = size.width / size.height;
+			if (renderer) {
+				renderer.setSize(size.width, size.height);
+			}
+			if (camera) {
+				camera.aspect = size.width / size.height;
+				camera.updateProjectionMatrix();
+			}
+		} catch (error) {
+			this.debugInfo.innerHTML = error;
 		}
 	}
 
 	onMouseMove(event) {
-		const w2 = this.container.offsetWidth / 2;
-		const h2 = this.container.offsetHeight / 2;
-		this.mouse = {
-			x: (event.clientX - w2) / w2,
-			y: -(event.clientY - h2) / h2,
-		};
-		// console.log('onMouseMove', this.mouse);
-		/*
-		var attributes = geometry.attributes;
-		raycaster.setFromCamera( mouse, camera );
-		intersects = raycaster.intersectObject( points );
-		if ( intersects.length > 0 ) {
-			if ( INTERSECTED != intersects[ 0 ].index ) {
+		try {
+			const w2 = this.container.offsetWidth / 2;
+			const h2 = this.container.offsetHeight / 2;
+			this.mouse = {
+				x: (event.clientX - w2) / w2,
+				y: -(event.clientY - h2) / h2,
+			};
+			// console.log('onMouseMove', this.mouse);
+			/*
+			var attributes = geometry.attributes;
+			raycaster.setFromCamera( mouse, camera );
+			intersects = raycaster.intersectObject( points );
+			if ( intersects.length > 0 ) {
+				if ( INTERSECTED != intersects[ 0 ].index ) {
+					attributes.size.array[ INTERSECTED ] = PARTICLE_SIZE;
+					INTERSECTED = intersects[ 0 ].index;
+					attributes.size.array[ INTERSECTED ] = PARTICLE_SIZE * 1.25;
+					attributes.size.needsUpdate = true;
+				}
+			} else if ( INTERSECTED !== null ) {
 				attributes.size.array[ INTERSECTED ] = PARTICLE_SIZE;
-				INTERSECTED = intersects[ 0 ].index;
-				attributes.size.array[ INTERSECTED ] = PARTICLE_SIZE * 1.25;
 				attributes.size.needsUpdate = true;
+				INTERSECTED = null;
 			}
-		} else if ( INTERSECTED !== null ) {
-			attributes.size.array[ INTERSECTED ] = PARTICLE_SIZE;
-			attributes.size.needsUpdate = true;
-			INTERSECTED = null;
+			*/
+		} catch (error) {
+			this.debugInfo.innerHTML = error;
 		}
-		*/
 	}
 
 	onMouseWheel(event) {
-		const camera = this.camera;
-		const fov = camera.fov + event.deltaY * 0.01;
-		camera.fov = THREE.Math.clamp(fov, 30, 75);
-		camera.updateProjectionMatrix();
+		try {
+			const camera = this.camera;
+			const fov = camera.fov + event.deltaY * 0.01;
+			camera.fov = THREE.Math.clamp(fov, 30, 75);
+			camera.updateProjectionMatrix();
+		} catch (error) {
+			this.debugInfo.innerHTML = error;
+		}
 	}
 
 	onClick(event) {
-		const raycaster = this.raycaster;
-		// update the picking ray with the camera and mouse position
-		raycaster.setFromCamera(this.mouse, this.camera);
-		// calculate objects intersecting the picking ray
-		if (event.shiftKey) {
-			const intersections = raycaster.intersectObjects(this.environment.children);
-			if (intersections) {
-				const intersection = intersections.find(x => x !== undefined);
-				this.createPoint(intersection);
-			}
-			// console.log(intersections);
-			/*
-			for (var i = 0; i < intersects.length; i++ ) {
-				console.log(intersections[i])
-				intersects[i].object.material.color.set( 0xff0000 );
-			}
-			*/
-		} else if (this.points) {
-			raycaster.params.Points.threshold = 10.0;
-			const intersections = raycaster.intersectObjects([this.points]);
-			if (intersections) {
-				const intersection = intersections.find(x => x !== undefined);
-				if (intersection) {
-					const index = intersection.index;
-					const point = intersection.point;
-					const debugInfo = `${index} => {${point.x}, ${point.y}, ${point.z}}`;
-					// console.log(index, point, debugInfo);
-					this.debugInfo.innerHTML = debugInfo;
-					this.index = (this.index + 1) % this.views.length;
+		try {
+			const raycaster = this.raycaster;
+			// update the picking ray with the camera and mouse position
+			raycaster.setFromCamera(this.mouse, this.camera);
+			// calculate objects intersecting the picking ray
+			if (event.shiftKey) {
+				const intersections = raycaster.intersectObjects(this.environment.children);
+				if (intersections) {
+					const intersection = intersections.find(x => x !== undefined);
+					this.createPoint(intersection);
+				}
+				// console.log(intersections);
+				/*
+				for (var i = 0; i < intersects.length; i++ ) {
+					console.log(intersections[i])
+					intersects[i].object.material.color.set( 0xff0000 );
+				}
+				*/
+			} else if (this.points) {
+				raycaster.params.Points.threshold = 10.0;
+				const intersections = raycaster.intersectObjects([this.points]);
+				if (intersections) {
+					const intersection = intersections.find(x => x !== undefined);
+					if (intersection) {
+						const index = intersection.index;
+						const point = intersection.point;
+						const debugInfo = `${index} => {${point.x}, ${point.y}, ${point.z}}`;
+						// console.log(index, point, debugInfo);
+						this.debugInfo.innerHTML = debugInfo;
+						this.index = (this.index + 1) % this.views.length;
+					}
 				}
 			}
+		} catch (error) {
+			this.debugInfo.innerHTML = error;
 		}
 	}
 
 	onSave(event) {
-		this.view.camera = {
-			latitude: this.latitude,
-			longitude: this.longitude,
-		};
-		this.saveData({ views: this.views }, 'vr.json');
+		try {
+			this.view.camera = {
+				latitude: this.latitude,
+				longitude: this.longitude,
+			};
+			this.saveData({ views: this.views }, 'vr.json');
+		} catch (error) {
+			this.debugInfo.innerHTML = error;
+		}
 	}
 
 	// animation
@@ -809,32 +849,36 @@ class VRTour {
 	}
 
 	updateControllers() {
-		const controller = this.controller;
-		if (controller) {
-			const raycaster = this.raycaster;
-			raycaster.set(controller.position, controller.rotation.normalize());
-			let intersections = raycaster.intersectObjects(this.environment.children);
-			if (intersections) {
-				const intersection = intersections.find(x => x !== undefined);
-				this.pointer.position.set(intersection.point);
-				this.pointer.lookAt(this.origin);
-			}
-			if (this.isControllerSelectionDirty && this.points) {
-				raycaster.params.Points.threshold = 10.0;
-				intersections = raycaster.intersectObjects([this.points]);
+		try {
+			const controller = this.controller;
+			if (controller) {
+				const raycaster = this.raycaster;
+				raycaster.set(controller.position, controller.rotation.normalize());
+				let intersections = raycaster.intersectObjects(this.environment.children);
 				if (intersections) {
 					const intersection = intersections.find(x => x !== undefined);
-					if (intersection) {
-						this.isControllerSelectionDirty = false;
-						const index = intersection.index;
-						const point = intersection.point;
-						const debugInfo = `${index} => {${point.x}, ${point.y}, ${point.z}}`;
-						// console.log(index, point, debugInfo);
-						this.debugInfo.innerHTML = debugInfo;
-						this.index = (this.index + 1) % this.views.length;
+					this.pointer.position.set(intersection.point);
+					this.pointer.lookAt(this.origin);
+				}
+				if (this.isControllerSelectionDirty && this.points) {
+					raycaster.params.Points.threshold = 10.0;
+					intersections = raycaster.intersectObjects([this.points]);
+					if (intersections) {
+						const intersection = intersections.find(x => x !== undefined);
+						if (intersection) {
+							this.isControllerSelectionDirty = false;
+							const index = intersection.index;
+							const point = intersection.point;
+							const debugInfo = `${index} => {${point.x}, ${point.y}, ${point.z}}`;
+							// console.log(index, point, debugInfo);
+							this.debugInfo.innerHTML = debugInfo;
+							this.index = (this.index + 1) % this.views.length;
+						}
 					}
 				}
 			}
+		} catch (error) {
+			this.debugInfo.innerHTML = error;
 		}
 	}
 
