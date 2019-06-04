@@ -9485,7 +9485,8 @@ var shaderPoint = {
   vertexShader: "\n\tattribute float size;\n\tattribute vec4 ca;\n\tvarying vec4 vColor;\n\tvoid main() {\n\t\tvColor = ca;\n\t\tvec4 mvPosition = modelViewMatrix * vec4(position, 1.0);\n\t\tgl_PointSize = size * (400.0 / -mvPosition.z);\n\t\tgl_Position = projectionMatrix * mvPosition;\n\t}\n\t",
   fragmentShader: "\n\tuniform vec3 color;\n\tuniform sampler2D texture;\n\tvarying vec4 vColor;\n\tvoid main() {\n\t\tvec4 textureColor = texture2D(texture, gl_PointCoord);\n\t\t// if (textureColor.a < 0.5) discard;\n\t\tgl_FragColor = textureColor * vec4(color * vColor.xyz, 1.0);\n\t\t// float depth = gl_FragCoord.z / gl_FragCoord.w;\n\t\tgl_FragColor = vec4(vec3(1.0), gl_FragColor.w);\n\t}\n\t"
 };
-var ROOM_RADIUS = 25;
+var ROOM_RADIUS = 100;
+var TEST_ENABLED = true;
 
 var VRTour =
 /*#__PURE__*/
@@ -9535,21 +9536,13 @@ function () {
   }, {
     key: "init",
     value: function init() {
-      var body = document.querySelector('body');
-      var section = document.querySelector('.vrtour');
-      var container = section.querySelector('.vrtour__container');
-      var debugInfo = section.querySelector('.debug__info');
-      var debugSave = section.querySelector('.debug__save'); // const shadow = section.querySelector('.vrtour__shadow');
-      // const title = section.querySelector('.vrtour__headline .title');
-      // const abstract = section.querySelector('.vrtour__headline .abstract');
-      // Dom.detect(body);
+      var body = this.body = document.querySelector('body');
+      var section = this.section = document.querySelector('.vrtour');
+      var container = this.container = section.querySelector('.vrtour__container');
+      var debugInfo = this.debugInfo = section.querySelector('.debug__info');
+      var debugSave = this.debugSave = section.querySelector('.debug__save'); // Dom.detect(body);
       // body.classList.add('ready');
 
-      this.body = body;
-      this.section = section;
-      this.container = container;
-      this.debugInfo = debugInfo;
-      this.debugSave = debugSave;
       this.onWindowResize = this.onWindowResize.bind(this);
       this.onMouseMove = this.onMouseMove.bind(this);
       this.onMouseWheel = this.onMouseWheel.bind(this);
@@ -9558,10 +9551,7 @@ function () {
       this.onLeftSelectStart = this.onLeftSelectStart.bind(this);
       this.onLeftSelectEnd = this.onLeftSelectEnd.bind(this);
       this.onRightSelectStart = this.onRightSelectStart.bind(this);
-      this.onRightSelectEnd = this.onRightSelectEnd.bind(this); // this.shadow = shadow;
-      // this.title = title;
-      // this.abstract = abstract;
-
+      this.onRightSelectEnd = this.onRightSelectEnd.bind(this);
       this.initRenderer();
     }
   }, {
@@ -9584,16 +9574,7 @@ function () {
       // unsubscribe();
       // controllers
 
-      /*
-      const controller = this.right = new THREE.Group();
-      controller.position.set(0.4, 0, -0.4);
-      this.addControllerCylinder(controller, 0);
-      this.scene.add(controller);
-      this.onRightSelectStart();
-      this.controller = controller;
-      const pointer = this.pointer = this.addPointer(scene);
-      */
-
+      this.addTestController(scene);
       console.log('vr.mode', vr.mode);
 
       if (vr.mode !== _vr.VR_MODE.NONE) {
@@ -9614,6 +9595,38 @@ function () {
       this.debugSave.addEventListener('click', this.onSave, false);
       this.section.classList.add('init');
       this.onWindowResize();
+    }
+  }, {
+    key: "addTestController",
+    value: function addTestController(scene) {
+      var _this2 = this;
+
+      if (TEST_ENABLED) {
+        var controller = this.right = new THREE.Group();
+        controller.position.set(0.4, 0, -0.4);
+        this.addControllerCylinder(controller, 0);
+        this.scene.add(controller);
+        this.controller = controller;
+        var pointer = this.pointer = this.addPointer(scene);
+        this.container.addEventListener('mousedown', function () {
+          _this2.onRightSelectStart();
+        });
+        this.container.addEventListener('mouseup', function () {
+          _this2.onRightSelectEnd();
+        });
+      }
+    }
+  }, {
+    key: "testController",
+    value: function testController() {
+      if (TEST_ENABLED) {
+        if (this.controller) {
+          this.controller.position.x = this.mouse.x * 5;
+          this.controller.position.y = this.mouse.y * 5;
+        }
+
+        this.updateControllers();
+      }
     }
   }, {
     key: "addScene",
@@ -9637,7 +9650,7 @@ function () {
     key: "addRenderer",
     value: function addRenderer() {
       var renderer = new THREE.WebGLRenderer({
-        alpha: false,
+        // alpha: false,
         antialias: true
       });
       this.renderer = renderer; // renderer.shadowMap.enabled = true;
@@ -9653,12 +9666,12 @@ function () {
   }, {
     key: "addVR",
     value: function addVR(renderer, container) {
-      var _this2 = this;
+      var _this3 = this;
 
       var vr = new _vr.default(renderer, {
         referenceSpaceType: 'local'
       }, function (error) {
-        _this2.debugInfo.innerHTML = error;
+        _this3.debugInfo.innerHTML = error;
       });
       container.appendChild(vr.element);
       return vr;
@@ -9709,7 +9722,7 @@ function () {
   }, {
     key: "addFloor",
     value: function addFloor(parent) {
-      var geometry = new THREE.PlaneGeometry(300, 300, 3, 3);
+      var geometry = new THREE.PlaneGeometry(ROOM_RADIUS / 5 * 3, ROOM_RADIUS / 5 * 3, 3, 3);
       var loader = new THREE.TextureLoader();
       var texture = loader.load('img/floor.jpg');
       var textureAlpha = loader.load('img/floor-alpha.jpg');
@@ -9721,8 +9734,9 @@ function () {
         // depthTest: true,
         transparent: true
       });
+      material.blending = THREE.AdditiveBlending;
       var mesh = new THREE.Mesh(geometry, material);
-      mesh.position.y = -300;
+      mesh.position.y = -ROOM_RADIUS / 5 * 3;
       mesh.rotation.x = -Math.PI / 2;
       parent.add(mesh);
       return mesh;
@@ -9730,7 +9744,7 @@ function () {
   }, {
     key: "addCeil",
     value: function addCeil(parent) {
-      var geometry = new THREE.PlaneGeometry(200, 200, 3, 3);
+      var geometry = new THREE.PlaneGeometry(ROOM_RADIUS / 5 * 2, ROOM_RADIUS / 5 * 2, 3, 3);
       var loader = new THREE.TextureLoader();
       var texture = loader.load('img/ceil.jpg');
       var textureAlpha = loader.load('img/ceil-alpha.jpg');
@@ -9743,7 +9757,7 @@ function () {
         transparent: true
       });
       var mesh = new THREE.Mesh(geometry, material);
-      mesh.position.y = 400;
+      mesh.position.y = ROOM_RADIUS / 5 * 4;
       mesh.rotation.x = Math.PI / 2;
       parent.add(mesh);
       return mesh;
@@ -9751,22 +9765,48 @@ function () {
   }, {
     key: "addPointer",
     value: function addPointer(parent) {
-      // const geometry = new THREE.PlaneBufferGeometry(10, 10, 2, 2);
-      var geometry = new THREE.SphereBufferGeometry(1, 8, 8);
+      // size 2 about 20 cm radius
+      var geometry = new THREE.PlaneBufferGeometry(2, 2, 2, 2); // const geometry = new THREE.SphereBufferGeometry(1, 8, 8);
+
       var loader = new THREE.TextureLoader();
-      var texture = loader.load('img/pin.jpg');
+      var texture = loader.load('img/pin.jpg'); // texture.anisotropy = 0;
+      // texture.magFilter = THREE.LinearMipMapLinearFilter;
+      // texture.minFilter = THREE.NearestFilter;
+
       var material = new THREE.MeshBasicMaterial({
-        color: 0xffffff // map: texture,
+        // color: 0xff0000,
+        // map: texture,
+        alphaMap: texture,
+        // alphaTest: 0.5,
         // blending: THREE.AdditiveBlending,
         // depthTest: false,
-        // transparent: true,
-        // side: THREE.DoubleSide,
+        transparent: true,
+        opacity: 0.5 // side: THREE.DoubleSide,
 
       });
+      /*
+      THREE.NoBlending
+      THREE.NormalBlending
+      THREE.AdditiveBlending
+      THREE.SubtractiveBlending
+      THREE.MultiplyBlending
+      THREE.CustomBlending
+      */
+      // material.blending = THREE.AdditiveBlending;
+
+      /*
+            material.blending = THREE.CustomBlending;
+      material.blendEquation = THREE.MaxEquation; //default
+      material.blendSrc = THREE.OneFactor; // THREE.SrcAlphaFactor; //default
+            material.blendDst = THREE.OneFactor; // THREE.OneMinusSrcAlphaFactor; //default
+            */
+
       var mesh = new THREE.Mesh(geometry, material); // mesh.position.x = 100000;
 
-      mesh.position.set(0, 0, -20);
-      mesh.lookAt(this.origin);
+      mesh.position.set(100000, 100000, 100000); // mesh.geometry.rotateX(Math.PI);
+      // mesh.lookAt(this.origin);
+      // mesh.lookAt(this.camera.position);
+
       parent.add(mesh);
       return mesh;
     }
@@ -9864,18 +9904,18 @@ function () {
   }, {
     key: "addDragListener",
     value: function addDragListener() {
-      var _this3 = this;
+      var _this4 = this;
 
       var longitude, latitude;
       var dragListener = new _drag.default(this.container, function (event) {
-        longitude = _this3.longitude;
-        latitude = _this3.latitude;
+        longitude = _this4.longitude;
+        latitude = _this4.latitude;
       }, function (event) {
-        _this3.longitude = -event.distance.x * 0.1 + longitude;
-        _this3.latitude = event.distance.y * 0.1 + latitude;
-        _this3.direction = event.distance.x ? event.distance.x / Math.abs(event.distance.x) * -1 : 1; // console.log('longitude', this.longitude, 'latitude', this.latitude, 'direction', this.direction);
+        _this4.longitude = -event.distance.x * 0.1 + longitude;
+        _this4.latitude = event.distance.y * 0.1 + latitude;
+        _this4.direction = event.distance.x ? event.distance.x / Math.abs(event.distance.x) * -1 : 1; // console.log('longitude', this.longitude, 'latitude', this.latitude, 'direction', this.direction);
       }, function (event) {
-        _this3.speed = Math.abs(event.strength.x) * 100; // console.log('speed', this.speed);
+        _this4.speed = Math.abs(event.strength.x) * 100; // console.log('speed', this.speed);
       });
       return dragListener;
     }
@@ -9990,10 +10030,10 @@ function () {
   }, {
     key: "removePoint",
     value: function removePoint(i) {
-      var _this4 = this;
+      var _this5 = this;
 
       return new Promise(function (resolve, reject) {
-        var points = _this4.points;
+        var points = _this5.points;
         var geometry = points.geometry;
         var vertices = points.vertices;
         var index = vertices.length / 3;
@@ -10061,15 +10101,15 @@ function () {
   }, {
     key: "onInitView",
     value: function onInitView(previous, current) {
-      var _this5 = this;
+      var _this6 = this;
 
       // console.log(previous, current);
       this.onExitPoints(previous).then(function () {
         // console.log(this.points.vertices);
-        _this5.onExitView(previous).then(function () {
+        _this6.onExitView(previous).then(function () {
           // if (!previous) {
-          _this5.onEnterView(current).then(function () {
-            _this5.onEnterPoints(current); // console.log(this.points.vertices);
+          _this6.onEnterView(current).then(function () {
+            _this6.onEnterPoints(current); // console.log(this.points.vertices);
 
           }); // }
 
@@ -10079,11 +10119,11 @@ function () {
   }, {
     key: "onExitView",
     value: function onExitView(view) {
-      var _this6 = this;
+      var _this7 = this;
 
       return new Promise(function (resolve, reject) {
         if (view) {
-          TweenMax.to(_this6.environment.sphere.material, 0.4, {
+          TweenMax.to(_this7.environment.sphere.material, 0.4, {
             opacity: 0,
             delay: 0.0,
             onCompleted: function onCompleted() {
@@ -10100,7 +10140,7 @@ function () {
   }, {
     key: "onEnterView",
     value: function onEnterView(view) {
-      var _this7 = this;
+      var _this8 = this;
 
       return new Promise(function (resolve, reject) {
         if (view) {
@@ -10122,11 +10162,11 @@ function () {
               }
               */
               if (view.camera) {
-                _this7.latitude = view.camera.latitude;
-                _this7.longitude = view.camera.longitude;
+                _this8.latitude = view.camera.latitude;
+                _this8.longitude = view.camera.longitude;
               }
 
-              var material = _this7.environment.sphere.material;
+              var material = _this8.environment.sphere.material;
               material.opacity = 0;
               material.color.setHex(0xffffff); // texture.minFilter = THREE.NearestMipMapNearestFilter;
               // texture.magFilter = THREE.LinearMipMapLinearFilter;
@@ -10151,24 +10191,24 @@ function () {
   }, {
     key: "onEnterPoints",
     value: function onEnterPoints(view) {
-      var _this8 = this;
+      var _this9 = this;
 
       if (!this.points) {
         var points = this.points = this.addPoints(this.scene);
       }
 
       view.points.forEach(function (point, i) {
-        return _this8.addPoint(_construct(THREE.Vector3, _toConsumableArray(point.position)), i);
+        return _this9.addPoint(_construct(THREE.Vector3, _toConsumableArray(point.position)), i);
       });
     }
   }, {
     key: "onExitPoints",
     value: function onExitPoints(view) {
-      var _this9 = this;
+      var _this10 = this;
 
       if (view) {
         return Promise.all(view.points.map(function (point, i) {
-          return _this9.removePoint(i);
+          return _this10.removePoint(i);
         }));
       } else {
         return Promise.resolve();
@@ -10180,7 +10220,7 @@ function () {
     value: function onLeftSelectStart() {
       try {
         if (this.controller) {
-          this.controller.pointer.remove();
+          this.controller.remove(this.controller.pointer);
         }
 
         this.controller = this.left;
@@ -10206,7 +10246,7 @@ function () {
     value: function onRightSelectStart() {
       try {
         if (this.controller) {
-          this.controller.pointer.remove();
+          this.controller.remove(this.controller.pointer);
         }
 
         this.controller = this.right;
@@ -10260,8 +10300,7 @@ function () {
         this.mouse = {
           x: (event.clientX - w2) / w2,
           y: -(event.clientY - h2) / h2
-        }; // this.updateControllers();
-        // console.log('onMouseMove', this.mouse);
+        }; // console.log('onMouseMove', this.mouse);
 
         /*
         var attributes = geometry.attributes;
@@ -10402,11 +10441,11 @@ function () {
   }, {
     key: "animate",
     value: function animate() {
-      var _this10 = this;
+      var _this11 = this;
 
       var renderer = this.renderer;
       renderer.setAnimationLoop(function () {
-        _this10.render();
+        _this11.render();
       });
     }
   }, {
@@ -10415,6 +10454,7 @@ function () {
       if (this.vr.mode !== _vr.VR_MODE.NONE) {
         this.updateControllers();
       } else {
+        this.testController();
         this.updateCamera();
       }
 
@@ -10429,7 +10469,7 @@ function () {
 
         if (controller) {
           var raycaster = this.raycaster;
-          var rotation = controller.getWorldDirection(new THREE.Vector3()); // new THREE.Vector3(controller.rotation.x, controller.rotation.y, controller.rotation.z).normalize();
+          var rotation = controller.getWorldDirection(new THREE.Vector3()).multiplyScalar(-1); // new THREE.Vector3(controller.rotation.x, controller.rotation.y, controller.rotation.z).normalize();
 
           raycaster.set(controller.position, rotation);
           var intersections = raycaster.intersectObjects(this.environment.children);
@@ -10446,9 +10486,13 @@ function () {
 
               this.debugInfo.innerHTML = debugInfo; // console.log(intersection.point);
 
-              this.pointer.position.set(intersection.point); // this.pointer.lookAt(this.origin);
+              this.pointer.position.set(intersection.point.x * 0.9, intersection.point.y * 0.9, intersection.point.z * 0.9);
+              this.pointer.lookAt(this.camera.position);
             }
           }
+
+          this.pointer.material.color.setHex(this.isControllerSelecting ? 0x0000ff : 0xffffff);
+          this.pointer.material.opacity = this.isControllerSelecting ? 1.0 : 0.5;
 
           if (this.isControllerSelectionDirty && this.points) {
             raycaster.params.Points.threshold = 10.0;

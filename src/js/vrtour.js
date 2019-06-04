@@ -40,7 +40,8 @@ const shaderPoint = {
 	`,
 };
 
-const ROOM_RADIUS = 25;
+const ROOM_RADIUS = 100;
+const TEST_ENABLED = true;
 
 class VRTour {
 
@@ -86,21 +87,13 @@ class VRTour {
 	}
 
 	init() {
-		const body = document.querySelector('body');
-		const section = document.querySelector('.vrtour');
-		const container = section.querySelector('.vrtour__container');
-		const debugInfo = section.querySelector('.debug__info');
-		const debugSave = section.querySelector('.debug__save');
-		// const shadow = section.querySelector('.vrtour__shadow');
-		// const title = section.querySelector('.vrtour__headline .title');
-		// const abstract = section.querySelector('.vrtour__headline .abstract');
+		const body = this.body = document.querySelector('body');
+		const section = this.section = document.querySelector('.vrtour');
+		const container = this.container = section.querySelector('.vrtour__container');
+		const debugInfo = this.debugInfo = section.querySelector('.debug__info');
+		const debugSave = this.debugSave = section.querySelector('.debug__save');
 		// Dom.detect(body);
 		// body.classList.add('ready');
-		this.body = body;
-		this.section = section;
-		this.container = container;
-		this.debugInfo = debugInfo;
-		this.debugSave = debugSave;
 		this.onWindowResize = this.onWindowResize.bind(this);
 		this.onMouseMove = this.onMouseMove.bind(this);
 		this.onMouseWheel = this.onMouseWheel.bind(this);
@@ -110,9 +103,6 @@ class VRTour {
 		this.onLeftSelectEnd = this.onLeftSelectEnd.bind(this);
 		this.onRightSelectStart = this.onRightSelectStart.bind(this);
 		this.onRightSelectEnd = this.onRightSelectEnd.bind(this);
-		// this.shadow = shadow;
-		// this.title = title;
-		// this.abstract = abstract;
 		this.initRenderer();
 	}
 
@@ -134,15 +124,7 @@ class VRTour {
 		// unsubscribe();
 		// controllers
 
-		/*
-		const controller = this.right = new THREE.Group();
-		controller.position.set(0.4, 0, -0.4);
-		this.addControllerCylinder(controller, 0);
-		this.scene.add(controller);
-		this.onRightSelectStart();
-		this.controller = controller;
-		const pointer = this.pointer = this.addPointer(scene);
-		*/
+		this.addTestController(scene);
 
 		console.log('vr.mode', vr.mode);
 		if (vr.mode !== VR_MODE.NONE) {
@@ -165,6 +147,33 @@ class VRTour {
 		this.onWindowResize();
 	}
 
+	addTestController(scene) {
+		if (TEST_ENABLED) {
+			const controller = this.right = new THREE.Group();
+			controller.position.set(0.4, 0, -0.4);
+			this.addControllerCylinder(controller, 0);
+			this.scene.add(controller);
+			this.controller = controller;
+			const pointer = this.pointer = this.addPointer(scene);
+			this.container.addEventListener('mousedown', () => {
+				this.onRightSelectStart();
+			});
+			this.container.addEventListener('mouseup', () => {
+				this.onRightSelectEnd();
+			});
+		}
+	}
+
+	testController() {
+		if (TEST_ENABLED) {
+			if (this.controller) {
+				this.controller.position.x = this.mouse.x * 5;
+				this.controller.position.y = this.mouse.y * 5;
+			}
+			this.updateControllers();
+		}
+	}
+
 	addScene() {
 		const scene = new THREE.Scene();
 		// scene.background = new THREE.Color(0x000000);
@@ -183,7 +192,7 @@ class VRTour {
 
 	addRenderer() {
 		const renderer = new THREE.WebGLRenderer({
-			alpha: false,
+			// alpha: false,
 			antialias: true,
 		});
 		this.renderer = renderer;
@@ -246,7 +255,7 @@ class VRTour {
 	}
 
 	addFloor(parent) {
-		const geometry = new THREE.PlaneGeometry(300, 300, 3, 3);
+		const geometry = new THREE.PlaneGeometry(ROOM_RADIUS / 5 * 3, ROOM_RADIUS / 5 * 3, 3, 3);
 		const loader = new THREE.TextureLoader();
 		const texture = loader.load('img/floor.jpg');
 		const textureAlpha = loader.load('img/floor-alpha.jpg');
@@ -258,15 +267,16 @@ class VRTour {
 			// depthTest: true,
 			transparent: true
 		});
+		material.blending = THREE.AdditiveBlending;
 		const mesh = new THREE.Mesh(geometry, material);
-		mesh.position.y = -300;
+		mesh.position.y = -ROOM_RADIUS / 5 * 3;
 		mesh.rotation.x = -Math.PI / 2;
 		parent.add(mesh);
 		return mesh;
 	}
 
 	addCeil(parent) {
-		const geometry = new THREE.PlaneGeometry(200, 200, 3, 3);
+		const geometry = new THREE.PlaneGeometry(ROOM_RADIUS / 5 * 2, ROOM_RADIUS / 5 * 2, 3, 3);
 		const loader = new THREE.TextureLoader();
 		const texture = loader.load('img/ceil.jpg');
 		const textureAlpha = loader.load('img/ceil-alpha.jpg');
@@ -279,29 +289,53 @@ class VRTour {
 			transparent: true
 		});
 		const mesh = new THREE.Mesh(geometry, material);
-		mesh.position.y = 400;
+		mesh.position.y = ROOM_RADIUS / 5 * 4;
 		mesh.rotation.x = Math.PI / 2;
 		parent.add(mesh);
 		return mesh;
 	}
 
 	addPointer(parent) {
-		// const geometry = new THREE.PlaneBufferGeometry(10, 10, 2, 2);
-		const geometry = new THREE.SphereBufferGeometry(1, 8, 8);
+		// size 2 about 20 cm radius
+		const geometry = new THREE.PlaneBufferGeometry(2, 2, 2, 2);
+		// const geometry = new THREE.SphereBufferGeometry(1, 8, 8);
 		const loader = new THREE.TextureLoader();
 		const texture = loader.load('img/pin.jpg');
+		// texture.anisotropy = 0;
+		// texture.magFilter = THREE.LinearMipMapLinearFilter;
+		// texture.minFilter = THREE.NearestFilter;
 		const material = new THREE.MeshBasicMaterial({
-			color: 0xffffff,
+			// color: 0xff0000,
 			// map: texture,
+			alphaMap: texture,
+			// alphaTest: 0.5,
 			// blending: THREE.AdditiveBlending,
 			// depthTest: false,
-			// transparent: true,
+			transparent: true,
+			opacity: 0.5,
 			// side: THREE.DoubleSide,
 		});
+		/*
+		THREE.NoBlending
+		THREE.NormalBlending
+		THREE.AdditiveBlending
+		THREE.SubtractiveBlending
+		THREE.MultiplyBlending
+		THREE.CustomBlending
+		*/
+		// material.blending = THREE.AdditiveBlending;
+		/*
+        material.blending = THREE.CustomBlending;
+		material.blendEquation = THREE.MaxEquation; //default
+		material.blendSrc = THREE.OneFactor; // THREE.SrcAlphaFactor; //default
+        material.blendDst = THREE.OneFactor; // THREE.OneMinusSrcAlphaFactor; //default
+        */
 		const mesh = new THREE.Mesh(geometry, material);
 		// mesh.position.x = 100000;
-		mesh.position.set(0, 0, -20);
-		mesh.lookAt(this.origin);
+		mesh.position.set(100000, 100000, 100000);
+		// mesh.geometry.rotateX(Math.PI);
+		// mesh.lookAt(this.origin);
+		// mesh.lookAt(this.camera.position);
 		parent.add(mesh);
 		return mesh;
 	}
@@ -666,7 +700,7 @@ class VRTour {
 	onLeftSelectStart() {
 		try {
 			if (this.controller) {
-				this.controller.pointer.remove();
+				this.controller.remove(this.controller.pointer);
 			}
 			this.controller = this.left;
 			this.controller.add(this.controller.pointer);
@@ -689,7 +723,7 @@ class VRTour {
 	onRightSelectStart() {
 		try {
 			if (this.controller) {
-				this.controller.pointer.remove();
+				this.controller.remove(this.controller.pointer);
 			}
 			this.controller = this.right;
 			this.controller.add(this.controller.pointer);
@@ -738,7 +772,6 @@ class VRTour {
 				x: (event.clientX - w2) / w2,
 				y: -(event.clientY - h2) / h2,
 			};
-			// this.updateControllers();
 			// console.log('onMouseMove', this.mouse);
 			/*
 			var attributes = geometry.attributes;
@@ -872,6 +905,7 @@ class VRTour {
 		if (this.vr.mode !== VR_MODE.NONE) {
 			this.updateControllers();
 		} else {
+			this.testController();
 			this.updateCamera();
 		}
 		const renderer = this.renderer;
@@ -884,7 +918,7 @@ class VRTour {
 			const controller = this.controller;
 			if (controller) {
 				const raycaster = this.raycaster;
-				const rotation = controller.getWorldDirection(new THREE.Vector3());
+				const rotation = controller.getWorldDirection(new THREE.Vector3()).multiplyScalar(-1);
 				// new THREE.Vector3(controller.rotation.x, controller.rotation.y, controller.rotation.z).normalize();
 				raycaster.set(controller.position, rotation);
 				let intersections = raycaster.intersectObjects(this.environment.children);
@@ -897,10 +931,12 @@ class VRTour {
 						// console.log(index, point, debugInfo);
 						this.debugInfo.innerHTML = debugInfo;
 						// console.log(intersection.point);
-						this.pointer.position.set(intersection.point);
-						// this.pointer.lookAt(this.origin);
+						this.pointer.position.set(intersection.point.x * 0.9, intersection.point.y * 0.9, intersection.point.z * 0.9);
+						this.pointer.lookAt(this.camera.position);
 					}
 				}
+				this.pointer.material.color.setHex(this.isControllerSelecting ? 0x0000ff : 0xffffff);
+				this.pointer.material.opacity = this.isControllerSelecting ? 1.0 : 0.5;
 				if (this.isControllerSelectionDirty && this.points) {
 					raycaster.params.Points.threshold = 10.0;
 					intersections = raycaster.intersectObjects([this.points]);
