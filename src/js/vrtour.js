@@ -180,18 +180,19 @@ class VRTour {
 			const left = this.left = this.addControllerLeft(renderer, scene);
 			const right = this.right = this.addControllerRight(renderer, scene);
 			const pointer = this.pointer = this.addPointer(pivot);
-			const dragListener = this.dragListener = this.addVRDragListener();
+			// const dragListener = this.dragListener = this.addVRDragListener();
 			// hands
 			// const hands = this.hands = this.addHands();
 		} else if (TEST_ENABLED) {
 			this.addTestController(scene);
+			// const arrows = this.arrows = this.addArrows(scene);
 			camera.target.z = ROOM_RADIUS;
 			camera.lookAt(camera.target);
-			const dragListener = this.dragListener = this.addVRDragListener();
+			const dragListener = this.dragListener = this.addDragListener();
 		} else {
 			camera.target.z = ROOM_RADIUS;
 			camera.lookAt(camera.target);
-			const dragListener = this.dragListener = this.addVRDragListener();
+			const dragListener = this.dragListener = this.addDragListener();
 		}
 		// raycaster
 		const raycaster = this.raycaster = new THREE.Raycaster();
@@ -242,6 +243,50 @@ class VRTour {
 		const camera = new THREE.PerspectiveCamera(70, window.innerWidth / window.innerHeight, 0.01, ROOM_RADIUS * 2);
 		camera.target = new THREE.Vector3();
 		return camera;
+	}
+
+	addArrows(parent) {
+		const arrows = new THREE.Group();
+		const left = arrows.left = this.addArrow(arrows, new THREE.Vector3(-20, 0, -30), 0);
+		const right = arrows.right = this.addArrow(arrows, new THREE.Vector3(20, 0, -30), 0);
+		parent.add(arrows);
+		return arrows;
+	}
+
+	addArrow(parent, position, i) {
+		// console.log('addPoint', parent, position, i);
+		// size 2 about 20 cm radius
+		const geometry = new THREE.PlaneBufferGeometry(2, 2, 2, 2);
+		// const geometry = new THREE.BoxGeometry(1, 1, 1);
+		const loader = new THREE.TextureLoader();
+		const texture = loader.load('img/pin.jpg');
+		const material = new THREE.MeshBasicMaterial({
+			alphaMap: texture,
+			transparent: true,
+			opacity: 1,
+		});
+		const arrow = new THREE.Mesh(geometry, material);
+		// position = position.normalize().multiplyScalar(POINT_RADIUS);
+		arrow.position.set(position.x, position.y, position.z);
+		arrow.lookAt(this.origin);
+		parent.add(arrow);
+		/*
+		const from = { opacity: 0 };
+		TweenMax.to(from, 0.5, {
+			opacity: 1,
+			delay: 0.1 * i,
+			onUpdate: () => {
+				// console.log(index, from.opacity);
+				arrow.material.opacity = from.opacity;
+				arrow.material.needsUpdate = true;
+			},
+			onCompleted: () => {
+				// console.log(index, 'completed');
+			}
+		});
+		*/
+		return arrow;
+		// console.log(index, 'start');
 	}
 
 	addPivot(parent) {
@@ -727,7 +772,7 @@ class VRTour {
 						material.map.needsUpdate = true;
 						material.needsUpdate = true;
 						TweenMax.to(material, 0.6, {
-							opacity: TEST_ENABLED ? 0.9 : 1,
+							opacity: TEST_ENABLED ? 0.5 : 1,
 							delay: 0.1,
 							onCompleted: () => {
 								resolve(view);
@@ -802,7 +847,7 @@ class VRTour {
 			this.controller.add(this.controller.indicator);
 			this.isControllerSelecting = true;
 			this.isControllerSelectionDirty = true;
-			this.dragListener.start();
+			// this.dragListener.start();
 		} catch (error) {
 			this.debugInfo.innerHTML = error;
 		}
@@ -812,7 +857,7 @@ class VRTour {
 		try {
 			this.isControllerSelecting = false;
 			this.isControllerSelectionDirty = false;
-			this.dragListener.end();
+			// this.dragListener.end();
 		} catch (error) {
 			this.debugInfo.innerHTML = error;
 		}
@@ -827,7 +872,7 @@ class VRTour {
 			this.controller.add(this.controller.indicator);
 			this.isControllerSelecting = true;
 			this.isControllerSelectionDirty = true;
-			this.dragListener.start();
+			// this.dragListener.start();
 		} catch (error) {
 			this.debugInfo.innerHTML = error;
 		}
@@ -837,7 +882,7 @@ class VRTour {
 		try {
 			this.isControllerSelecting = false;
 			this.isControllerSelectionDirty = false;
-			this.dragListener.end();
+			// this.dragListener.end();
 		} catch (error) {
 			this.debugInfo.innerHTML = error;
 		}
@@ -866,7 +911,7 @@ class VRTour {
 
 	onMouseDown(event) {
 		if (TEST_ENABLED) {
-			this.dragListener.start();
+			// this.dragListener.start();
 			return;
 		}
 		try {
@@ -969,7 +1014,7 @@ class VRTour {
 
 	onMouseUp(event) {
 		if (TEST_ENABLED) {
-			this.dragListener.end();
+			// this.dragListener.end();
 			return;
 		}
 	}
@@ -1046,7 +1091,8 @@ class VRTour {
 			this.dragListener.move();
 			this.updateController();
 		} else if (TEST_ENABLED) {
-			this.dragListener.move();
+			// this.dragListener.move();
+			this.updatePivot();
 			this.updateController();
 		} else {
 			this.updatePivot();
@@ -1083,13 +1129,13 @@ class VRTour {
 	updateHoverPoint(raycaster) {
 		let point;
 		// raycaster.params.Points.threshold = 10.0;
-		// console.log(this.points.children);
 		const intersections = raycaster.intersectObjects(this.points.children);
 		if (intersections.length) {
 			const intersection = intersections[0];
 			point = intersection.object;
 			point = this.points.children.find(x => x === point);
 		}
+		// console.log(intersections);
 		this.hoverPoint = point;
 	}
 

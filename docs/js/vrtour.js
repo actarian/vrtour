@@ -9586,20 +9586,20 @@ function () {
       if (vr.mode !== _vr.VR_MODE.NONE) {
         var left = this.left = this.addControllerLeft(renderer, scene);
         var right = this.right = this.addControllerRight(renderer, scene);
-        var pointer = this.pointer = this.addPointer(pivot);
-        var dragListener = this.dragListener = this.addVRDragListener(); // hands
+        var pointer = this.pointer = this.addPointer(pivot); // const dragListener = this.dragListener = this.addVRDragListener();
+        // hands
         // const hands = this.hands = this.addHands();
       } else if (TEST_ENABLED) {
-        this.addTestController(scene);
+        this.addTestController(scene); // const arrows = this.arrows = this.addArrows(scene);
+
         camera.target.z = ROOM_RADIUS;
         camera.lookAt(camera.target);
-
-        var _dragListener = this.dragListener = this.addVRDragListener();
+        var dragListener = this.dragListener = this.addDragListener();
       } else {
         camera.target.z = ROOM_RADIUS;
         camera.lookAt(camera.target);
 
-        var _dragListener2 = this.dragListener = this.addVRDragListener();
+        var _dragListener = this.dragListener = this.addDragListener();
       } // raycaster
 
 
@@ -9658,6 +9658,52 @@ function () {
       var camera = new THREE.PerspectiveCamera(70, window.innerWidth / window.innerHeight, 0.01, ROOM_RADIUS * 2);
       camera.target = new THREE.Vector3();
       return camera;
+    }
+  }, {
+    key: "addArrows",
+    value: function addArrows(parent) {
+      var arrows = new THREE.Group();
+      var left = arrows.left = this.addArrow(arrows, new THREE.Vector3(-20, 0, -30), 0);
+      var right = arrows.right = this.addArrow(arrows, new THREE.Vector3(20, 0, -30), 0);
+      parent.add(arrows);
+      return arrows;
+    }
+  }, {
+    key: "addArrow",
+    value: function addArrow(parent, position, i) {
+      // console.log('addPoint', parent, position, i);
+      // size 2 about 20 cm radius
+      var geometry = new THREE.PlaneBufferGeometry(2, 2, 2, 2); // const geometry = new THREE.BoxGeometry(1, 1, 1);
+
+      var loader = new THREE.TextureLoader();
+      var texture = loader.load('img/pin.jpg');
+      var material = new THREE.MeshBasicMaterial({
+        alphaMap: texture,
+        transparent: true,
+        opacity: 1
+      });
+      var arrow = new THREE.Mesh(geometry, material); // position = position.normalize().multiplyScalar(POINT_RADIUS);
+
+      arrow.position.set(position.x, position.y, position.z);
+      arrow.lookAt(this.origin);
+      parent.add(arrow);
+      /*
+      const from = { opacity: 0 };
+      TweenMax.to(from, 0.5, {
+      	opacity: 1,
+      	delay: 0.1 * i,
+      	onUpdate: () => {
+      		// console.log(index, from.opacity);
+      		arrow.material.opacity = from.opacity;
+      		arrow.material.needsUpdate = true;
+      	},
+      	onCompleted: () => {
+      		// console.log(index, 'completed');
+      	}
+      });
+      */
+
+      return arrow; // console.log(index, 'start');
     }
   }, {
     key: "addPivot",
@@ -10199,7 +10245,7 @@ function () {
               material.map.needsUpdate = true;
               material.needsUpdate = true;
               TweenMax.to(material, 0.6, {
-                opacity: TEST_ENABLED ? 0.9 : 1,
+                opacity: TEST_ENABLED ? 0.5 : 1,
                 delay: 0.1,
                 onCompleted: function onCompleted() {
                   resolve(view);
@@ -10292,8 +10338,7 @@ function () {
         this.controller = this.left;
         this.controller.add(this.controller.indicator);
         this.isControllerSelecting = true;
-        this.isControllerSelectionDirty = true;
-        this.dragListener.start();
+        this.isControllerSelectionDirty = true; // this.dragListener.start();
       } catch (error) {
         this.debugInfo.innerHTML = error;
       }
@@ -10303,8 +10348,7 @@ function () {
     value: function onLeftSelectEnd() {
       try {
         this.isControllerSelecting = false;
-        this.isControllerSelectionDirty = false;
-        this.dragListener.end();
+        this.isControllerSelectionDirty = false; // this.dragListener.end();
       } catch (error) {
         this.debugInfo.innerHTML = error;
       }
@@ -10320,8 +10364,7 @@ function () {
         this.controller = this.right;
         this.controller.add(this.controller.indicator);
         this.isControllerSelecting = true;
-        this.isControllerSelectionDirty = true;
-        this.dragListener.start();
+        this.isControllerSelectionDirty = true; // this.dragListener.start();
       } catch (error) {
         this.debugInfo.innerHTML = error;
       }
@@ -10331,8 +10374,7 @@ function () {
     value: function onRightSelectEnd() {
       try {
         this.isControllerSelecting = false;
-        this.isControllerSelectionDirty = false;
-        this.dragListener.end();
+        this.isControllerSelectionDirty = false; // this.dragListener.end();
       } catch (error) {
         this.debugInfo.innerHTML = error;
       }
@@ -10365,7 +10407,7 @@ function () {
     key: "onMouseDown",
     value: function onMouseDown(event) {
       if (TEST_ENABLED) {
-        this.dragListener.start();
+        // this.dragListener.start();
         return;
       }
 
@@ -10483,7 +10525,7 @@ function () {
     key: "onMouseUp",
     value: function onMouseUp(event) {
       if (TEST_ENABLED) {
-        this.dragListener.end();
+        // this.dragListener.end();
         return;
       }
     }
@@ -10570,7 +10612,8 @@ function () {
         this.dragListener.move();
         this.updateController();
       } else if (TEST_ENABLED) {
-        this.dragListener.move();
+        // this.dragListener.move();
+        this.updatePivot();
         this.updateController();
       } else {
         this.updatePivot(); // this.testController();
@@ -10608,7 +10651,6 @@ function () {
     key: "updateHoverPoint",
     value: function updateHoverPoint(raycaster) {
       var point; // raycaster.params.Points.threshold = 10.0;
-      // console.log(this.points.children);
 
       var intersections = raycaster.intersectObjects(this.points.children);
 
@@ -10618,7 +10660,8 @@ function () {
         point = this.points.children.find(function (x) {
           return x === point;
         });
-      }
+      } // console.log(intersections);
+
 
       this.hoverPoint = point;
     }
