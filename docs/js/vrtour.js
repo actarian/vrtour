@@ -9485,7 +9485,8 @@ var shaderPoint = {
   vertexShader: "\n\tattribute float size;\n\tattribute vec4 ca;\n\tvarying vec4 vColor;\n\tvoid main() {\n\t\tvColor = ca;\n\t\tvec4 mvPosition = modelViewMatrix * vec4(position, 1.0);\n\t\tgl_PointSize = size * (400.0 / -mvPosition.z);\n\t\tgl_Position = projectionMatrix * mvPosition;\n\t}\n\t",
   fragmentShader: "\n\tuniform vec3 color;\n\tuniform sampler2D texture;\n\tvarying vec4 vColor;\n\tvoid main() {\n\t\tvec4 textureColor = texture2D(texture, gl_PointCoord);\n\t\t// if (textureColor.a < 0.5) discard;\n\t\tgl_FragColor = textureColor * vec4(color * vColor.xyz, 1.0);\n\t\t// float depth = gl_FragCoord.z / gl_FragCoord.w;\n\t\tgl_FragColor = vec4(vec3(1.0), gl_FragColor.w);\n\t}\n\t"
 };
-var ROOM_RADIUS = 100;
+var ROOM_RADIUS = 200;
+var PANEL_RADIUS = 100;
 var POINT_RADIUS = 99;
 var POINTER_RADIUS = 98;
 var TEST_ENABLED = false;
@@ -9561,11 +9562,12 @@ function () {
     value: function initRenderer() {
       var scene = this.scene = this.addScene();
       var camera = this.camera = this.addCamera();
-      var environment = this.environment = this.addEnvironment(scene);
-      var floor = this.floor = this.addFloor(scene);
-      var ceil = this.ceil = this.addCeil(scene);
-      var points = this.points = this.addPoints(scene);
-      var panel = this.panel = this.addPanel(scene); // renderer
+      var pivot = this.pivot = this.addPivot(scene);
+      var room = this.room = this.addRoom(pivot);
+      var floor = this.floor = this.addFloor(pivot);
+      var ceil = this.ceil = this.addCeil(pivot);
+      var points = this.points = this.addPoints(pivot);
+      var panel = this.panel = this.addPanel(pivot); // renderer
 
       var renderer = this.renderer = this.addRenderer(); // this.container.appendChild(WEBVR.createButton(renderer, { referenceSpaceType: 'local' }));
 
@@ -9584,9 +9586,11 @@ function () {
       if (vr.mode !== _vr.VR_MODE.NONE) {
         var left = this.left = this.addControllerLeft(renderer, scene);
         var right = this.right = this.addControllerRight(renderer, scene);
-        var pointer = this.pointer = this.addPointer(scene); // hands
+        var pointer = this.pointer = this.addPointer(pivot); // hands
         // const hands = this.hands = this.addHands();
       } else {
+        camera.target.z = ROOM_RADIUS;
+        camera.lookAt(camera.target);
         var dragListener = this.dragListener = this.addDragListener();
       } // raycaster
 
@@ -9607,11 +9611,11 @@ function () {
 
       if (TEST_ENABLED) {
         var controller = this.right = new THREE.Group();
-        controller.position.set(0.4, 0, -0.4);
+        controller.position.set(0, 0, 0);
         this.addControllerCylinder(controller, 0);
         this.scene.add(controller);
         this.controller = controller;
-        var pointer = this.pointer = this.addPointer(scene);
+        var pointer = this.pointer = this.addPointer(this.pivot);
         this.container.addEventListener('mousedown', function () {
           _this2.onRightSelectStart();
         });
@@ -9629,13 +9633,13 @@ function () {
           this.controller.position.y = this.mouse.y * 50;
         }
 
-        this.updateControllers();
+        this.updateController();
       }
     }
   }, {
     key: "addScene",
     value: function addScene() {
-      var scene = new THREE.Scene(); // scene.background = new THREE.Color(0x000000);
+      var scene = new THREE.Scene(); // scene.background = new THREE.Color(0x00000000);
       // scene.background = new THREE.Color(0x404040);
       // scene.fog = new THREE.Fog(scene.background, 10, 700);
 
@@ -9644,18 +9648,24 @@ function () {
   }, {
     key: "addCamera",
     value: function addCamera() {
-      var camera = new THREE.PerspectiveCamera(70, window.innerWidth / window.innerHeight, 0.01, 1100); // camera.layers.enable(1);
-      // camera.position.set(0, 0, 0);
-
-      camera.target = new THREE.Vector3(0, 0, 0);
+      var camera = new THREE.PerspectiveCamera(70, window.innerWidth / window.innerHeight, 0.01, ROOM_RADIUS * 2);
+      camera.target = new THREE.Vector3();
       return camera;
+    }
+  }, {
+    key: "addPivot",
+    value: function addPivot(parent) {
+      var group = new THREE.Group();
+      parent.add(group);
+      return group;
     }
   }, {
     key: "addRenderer",
     value: function addRenderer() {
       var renderer = new THREE.WebGLRenderer({
         antialias: true // logarithmicDepthBuffer: true,
-        // alpha: false,
+        // premultipliedAlpha: true,
+        // alpha: true,
 
       });
       this.renderer = renderer; // renderer.shadowMap.enabled = true;
@@ -9682,8 +9692,8 @@ function () {
       return vr;
     }
   }, {
-    key: "addEnvironment",
-    value: function addEnvironment(parent) {
+    key: "addRoom",
+    value: function addRoom(parent) {
       var group = new THREE.Group();
       var geometry = new THREE.SphereBufferGeometry(ROOM_RADIUS, 72, 72); // const geometry = new THREE.IcosahedronBufferGeometry(ROOM_RADIUS, 4);
       // console.log(geometry);
@@ -9692,7 +9702,7 @@ function () {
       geometry.scale(-1, 1, 1);
       var material = new THREE.MeshBasicMaterial({
         color: 0x000000,
-        // depthTest: false,
+        depthTest: false,
         transparent: true,
         opacity: 0.0 // wireframe: true
 
@@ -9713,6 +9723,7 @@ function () {
       var sphere = new THREE.Mesh(geometry, material); // sphere.castShadow = false;
       // sphere.receiveShadow = true;
 
+      group.renderOrder = -1;
       group.add(sphere);
       group.sphere = sphere; //
 
@@ -9734,12 +9745,15 @@ function () {
       var material = new THREE.MeshBasicMaterial({
         map: texture,
         alphaMap: textureAlpha,
-        alphaTest: 0.5,
+        // alphaTest: 0.5,
         // blending: THREE.AdditiveBlending,
         // depthTest: true,
         transparent: true
       });
+      /*
       material.blending = THREE.AdditiveBlending;
+      */
+
       var mesh = new THREE.Mesh(geometry, material);
       mesh.position.y = -ROOM_RADIUS / 5 * 3;
       mesh.rotation.x = -Math.PI / 2;
@@ -9756,7 +9770,7 @@ function () {
       var material = new THREE.MeshBasicMaterial({
         map: texture,
         alphaMap: textureAlpha,
-        alphaTest: 0.5,
+        // alphaTest: 0.5,
         // blending: THREE.AdditiveBlending,
         // depthTest: true,
         transparent: true
@@ -9821,7 +9835,7 @@ function () {
   }, {
     key: "addPanel",
     value: function addPanel(parent) {
-      var geometry = new THREE.PlaneBufferGeometry(100, 100, 3, 3);
+      var geometry = new THREE.PlaneBufferGeometry(PANEL_RADIUS / 2.5, PANEL_RADIUS / 2.5, 3, 3);
       var material = new THREE.MeshBasicMaterial({
         transparent: true,
         opacity: 1 // side: THREE.DoubleSide,
@@ -9841,175 +9855,6 @@ function () {
       	delete this.points;
       }
       */
-    }
-  }, {
-    key: "addPoints_",
-    value: function addPoints_(parent) {
-      var loader = new THREE.TextureLoader();
-      var geometry = new THREE.BufferGeometry(); // hack fix
-
-      var vertices = [];
-      vertices.push(0, -10000, 0);
-      vertices.push(0, 10000, 0);
-      geometry.addAttribute('position', new THREE.Float32BufferAttribute(vertices, 3)); // hack fix
-
-      var colors = new Array(100 * 3).fill(0);
-      var colorsAttribute = new THREE.Float32BufferAttribute(colors, 3);
-      var sizes = new Array(100).fill(10);
-      geometry.addAttribute('color', colorsAttribute);
-      geometry.addAttribute('customColor', new THREE.Float32BufferAttribute(colors, 3));
-      geometry.addAttribute('size', new THREE.Float32BufferAttribute(sizes, 1));
-      /*
-      const material = new THREE.PointsMaterial({
-      	size: 15,
-      	map: loader.load('img/pin.png'),
-      	vertexColors: THREE.VertexColors,
-      	blending: THREE.AdditiveBlending,
-      	depthTest: true,
-      	transparent: true
-      });
-      */
-
-      /*
-      const material = new THREE.ShaderMaterial({
-      	uniforms: {
-      		color: { value: new THREE.Color(0xffffff) },
-      		texture: { value: loader.load('img/pin.png') }
-      	},
-      	vertexColors: THREE.VertexColors,
-      	blending: THREE.AdditiveBlending,
-      	depthTest: true,
-      	transparent: true,
-      	vertexShader: shaderPoint.vertexShader,
-      	fragmentShader: shaderPoint.fragmentShader,
-      	alphaTest: 0.9
-      });
-      */
-
-      var material = new THREE.ShaderMaterial({
-        uniforms: {
-          amplitude: {
-            value: 1.0
-          },
-          color: {
-            value: new THREE.Color(0xffffff)
-          },
-          texture: {
-            value: loader.load('img/pin.png')
-          }
-        },
-        vertexShader: shaderPoint.vertexShader,
-        fragmentShader: shaderPoint.fragmentShader,
-        transparent: true
-      }); // materials[i].color.setHSL(1, 0, 0);
-
-      var points = new THREE.Points(geometry, material);
-      points.vertices = vertices;
-      points.colors = colors;
-      points.colorsAttribute = colorsAttribute;
-      points.scale.set(0.95, 0.95, 0.95);
-      parent.add(points);
-      return points;
-    }
-  }, {
-    key: "addPoint_",
-    value: function addPoint_(position, i) {
-      var points = this.points;
-      var geometry = points.geometry;
-      var vertices = points.vertices;
-      var index = vertices.length / 3;
-      vertices.push(position.x, position.y, position.z);
-      geometry.addAttribute('position', new THREE.Float32BufferAttribute(vertices, 3));
-      var colorsAttribute = points.colorsAttribute;
-      colorsAttribute.setXYZ(index, 0, 0, 0);
-      points.material.needsUpdate = true; // console.log(index, 'start');
-
-      var from = {
-        opacity: 0
-      };
-      TweenMax.to(from, 0.5, {
-        opacity: 1,
-        delay: 0.1 * i,
-        onUpdate: function onUpdate() {
-          // console.log(index, from.opacity);
-          colorsAttribute.setXYZ(index, from.opacity, from.opacity, from.opacity);
-          colorsAttribute.needsUpdate = true;
-          points.material.needsUpdate = true;
-        },
-        onCompleted: function onCompleted() {// console.log(index, 'completed');
-        }
-      });
-    }
-  }, {
-    key: "removePoint_",
-    value: function removePoint_(i) {
-      var _this4 = this;
-
-      return new Promise(function (resolve, reject) {
-        var points = _this4.points;
-        var geometry = points.geometry;
-        var vertices = points.vertices;
-        var index = vertices.length / 3;
-        var colorsAttribute = points.colorsAttribute;
-        colorsAttribute.setXYZ(index, 1, 1, 1);
-        points.material.needsUpdate = true; // console.log(index, 'start');
-
-        var from = {
-          opacity: 1
-        };
-        TweenMax.to(from, 0.5, {
-          opacity: 0,
-          delay: 0.0 * i,
-          onUpdate: function onUpdate() {
-            // console.log(index, from.opacity);
-            colorsAttribute.setXYZ(index, from.opacity, from.opacity, from.opacity);
-            colorsAttribute.needsUpdate = true;
-            points.material.needsUpdate = true;
-          },
-          onCompleted: function onCompleted() {
-            // console.log(index, 'completed');
-            vertices.splice(vertices.length - 3, 3);
-            geometry.addAttribute('position', new THREE.Float32BufferAttribute(vertices, 3));
-            resolve();
-          }
-        });
-      });
-    }
-  }, {
-    key: "createPoint_",
-    value: function createPoint_(intersection) {
-      // console.log(intersection);
-      var position = intersection.point.clone();
-      this.addPoint(this.points, position, 0);
-      this.view.points.push({
-        id: 2,
-        position: position.toArray(),
-        type: 1,
-        name: 'Point 2',
-        key: 'POINT2'
-      }); // p.multiplyScalar(1);
-
-      /*
-      const positions = new Float32Array([...geometry.attributes.position.array, p.x, p.y, p.z]);
-      const attribute = new THREE.BufferAttribute(positions, 3);
-      attribute.dynamic = true;
-      geometry.addAttribute('position', attribute);
-      positions.needsUpdate = true;
-      geometry.setDrawRange(0, positions.length);
-      geometry.verticesNeedUpdate = true;
-      geometry.elementsNeedUpdate = true;
-      // geometry.computeVertexNormals();
-      console.log(geometry);
-      */
-
-      /*
-      geometry.vertices.push(p);
-      // geometry.colors.push(new THREE.Color(Math.random(), Math.random(), Math.random()));
-      geometry.verticesNeedUpdate = true;
-      geometry.elementsNeedUpdate = true;
-      geometry.computeVertexNormals();
-      */
-      // console.log(p);
     }
   }, {
     key: "addPoints",
@@ -10034,7 +9879,7 @@ function () {
       var point = new THREE.Mesh(geometry, material);
       position = position.normalize().multiplyScalar(POINT_RADIUS);
       point.position.set(position.x, position.y, position.z);
-      point.lookAt(this.camera.position);
+      point.lookAt(this.origin);
       parent.add(point);
       var from = {
         opacity: 0
@@ -10055,10 +9900,10 @@ function () {
   }, {
     key: "removePoint",
     value: function removePoint(i) {
-      var _this5 = this;
+      var _this4 = this;
 
       return new Promise(function (resolve, reject) {
-        var point = _this5.points.children[i];
+        var point = _this4.points.children[i];
         var from = {
           opacity: 1
         };
@@ -10071,7 +9916,7 @@ function () {
             point.material.needsUpdate = true;
           },
           onCompleted: function onCompleted() {
-            _this5.points.remove(point);
+            _this4.points.remove(point);
 
             resolve();
           }
@@ -10093,22 +9938,22 @@ function () {
     }
   }, {
     key: "addControllerLeft",
-    value: function addControllerLeft(renderer, scene) {
+    value: function addControllerLeft(renderer, parent) {
       var controller = renderer.vr.getController(0);
       var cylinder = controller.cylinder = this.addControllerCylinder(controller, 0);
       controller.addEventListener('selectstart', this.onLeftSelectStart);
       controller.addEventListener('selectend', this.onLeftSelectEnd);
-      scene.add(controller);
+      parent.add(controller);
       return controller;
     }
   }, {
     key: "addControllerRight",
-    value: function addControllerRight(renderer, scene) {
+    value: function addControllerRight(renderer, parent) {
       var controller = renderer.vr.getController(1);
       var cylinder = controller.cylinder = this.addControllerCylinder(controller, 1);
       controller.addEventListener('selectstart', this.onRightSelectStart);
       controller.addEventListener('selectend', this.onRightSelectEnd);
-      scene.add(controller);
+      parent.add(controller);
       return controller;
     }
   }, {
@@ -10139,17 +9984,17 @@ function () {
       mesh.geometry.rotateX(Math.PI / 2);
       controller.add(mesh); //
 
-      var geometryPointer = new THREE.CylinderBufferGeometry(cm(0.5), cm(0.1), 10, 12);
-      var materialPointer = new THREE.MeshBasicMaterial({
+      var geometryIndicator = new THREE.CylinderBufferGeometry(cm(0.5), cm(0.1), 10, 12);
+      var materialIndicator = new THREE.MeshBasicMaterial({
         color: 0xffffff,
         // matcap: texture,
         transparent: true,
         opacity: 0.5
       });
-      var pointer = new THREE.Mesh(geometryPointer, materialPointer);
-      controller.pointer = pointer;
-      pointer.geometry.rotateX(Math.PI / 2);
-      pointer.position.set(0, 0, -5); // controller.add(pointer);
+      var indicator = new THREE.Mesh(geometryIndicator, materialIndicator);
+      controller.indicator = indicator;
+      indicator.geometry.rotateX(Math.PI / 2);
+      indicator.position.set(0, 0, -5); // controller.add(indicator);
       //
     }
   }, {
@@ -10185,33 +10030,33 @@ function () {
   }, {
     key: "addDragListener",
     value: function addDragListener() {
-      var _this6 = this;
+      var _this5 = this;
 
       var longitude, latitude;
       var dragListener = new _drag.default(this.container, function (event) {
-        longitude = _this6.longitude;
-        latitude = _this6.latitude;
+        longitude = _this5.longitude;
+        latitude = _this5.latitude;
       }, function (event) {
-        _this6.longitude = -event.distance.x * 0.1 + longitude;
-        _this6.latitude = event.distance.y * 0.1 + latitude;
-        _this6.direction = event.distance.x ? event.distance.x / Math.abs(event.distance.x) * -1 : 1; // console.log('longitude', this.longitude, 'latitude', this.latitude, 'direction', this.direction);
+        _this5.longitude = -event.distance.x * 0.1 + longitude;
+        _this5.latitude = event.distance.y * 0.1 + latitude;
+        _this5.direction = event.distance.x ? event.distance.x / Math.abs(event.distance.x) * -1 : 1; // console.log('longitude', this.longitude, 'latitude', this.latitude, 'direction', this.direction);
       }, function (event) {
-        _this6.speed = Math.abs(event.strength.x) * 100; // console.log('speed', this.speed);
+        _this5.speed = Math.abs(event.strength.x) * 100; // console.log('speed', this.speed);
       });
       return dragListener;
     }
   }, {
     key: "onInitView",
     value: function onInitView(previous, current) {
-      var _this7 = this;
+      var _this6 = this;
 
       // console.log(previous, current);
       this.onExitPoints(previous).then(function () {
         // console.log(this.points.vertices);
-        _this7.onExitView(previous).then(function () {
+        _this6.onExitView(previous).then(function () {
           // if (!previous) {
-          _this7.onEnterView(current).then(function () {
-            _this7.onEnterPoints(current); // console.log(this.points.vertices);
+          _this6.onEnterView(current).then(function () {
+            _this6.onEnterPoints(current); // console.log(this.points.vertices);
 
           }); // }
 
@@ -10221,11 +10066,11 @@ function () {
   }, {
     key: "onExitView",
     value: function onExitView(view) {
-      var _this8 = this;
+      var _this7 = this;
 
       return new Promise(function (resolve, reject) {
         if (view) {
-          TweenMax.to(_this8.environment.sphere.material, 0.4, {
+          TweenMax.to(_this7.room.sphere.material, 0.4, {
             opacity: 0,
             delay: 0.0,
             onCompleted: function onCompleted() {
@@ -10242,7 +10087,7 @@ function () {
   }, {
     key: "onEnterView",
     value: function onEnterView(view) {
-      var _this9 = this;
+      var _this8 = this;
 
       return new Promise(function (resolve, reject) {
         if (view) {
@@ -10259,16 +10104,16 @@ function () {
               */
 
               /*
-              if (this.environment.sphere.material.map) {
-              	this.environment.sphere.material.map.dispose();
+              if (this.room.sphere.material.map) {
+              	this.room.sphere.material.map.dispose();
               }
               */
-              if (view.camera) {
-                _this9.latitude = view.camera.latitude;
-                _this9.longitude = view.camera.longitude;
+              if (view.orientation) {
+                _this8.latitude = view.orientation.latitude;
+                _this8.longitude = view.orientation.longitude;
               }
 
-              var material = _this9.environment.sphere.material;
+              var material = _this8.room.sphere.material;
               material.opacity = 0;
               material.color.setHex(0xffffff); // texture.minFilter = THREE.NearestMipMapNearestFilter;
               // texture.magFilter = THREE.LinearMipMapLinearFilter;
@@ -10277,7 +10122,7 @@ function () {
               material.map.needsUpdate = true;
               material.needsUpdate = true;
               TweenMax.to(material, 0.6, {
-                opacity: 1,
+                opacity: TEST_ENABLED ? 0.9 : 1,
                 delay: 0.1,
                 onCompleted: function onCompleted() {
                   resolve(view);
@@ -10293,20 +10138,20 @@ function () {
   }, {
     key: "onEnterPoints",
     value: function onEnterPoints(view) {
-      var _this10 = this;
+      var _this9 = this;
 
       view.points.forEach(function (point, i) {
-        return _this10.addPoint(_this10.points, _construct(THREE.Vector3, _toConsumableArray(point.position)), i);
+        return _this9.addPoint(_this9.points, _construct(THREE.Vector3, _toConsumableArray(point.position)), i);
       });
     }
   }, {
     key: "onExitPoints",
     value: function onExitPoints(view) {
-      var _this11 = this;
+      var _this10 = this;
 
       if (view) {
         return Promise.all(view.points.map(function (point, i) {
-          return _this11.removePoint(i);
+          return _this10.removePoint(i);
         }));
       } else {
         return Promise.resolve();
@@ -10315,22 +10160,37 @@ function () {
   }, {
     key: "onEnterPanel",
     value: function onEnterPanel(point) {
-      var _this12 = this;
+      var _this11 = this;
 
       this.getPanelInfoById('#panel').then(function (info) {
         if (info) {
-          var panel = _this12.panel;
-          panel.material.map = info.map; // panel.material.alphaMap = info.alphaMap;
+          var panel = _this11.panel;
+          panel.material.map = info.map;
+          panel.material.opacity = 0; // panel.material.alphaMap = info.alphaMap;
 
           panel.material.needsUpdate = true; // const scale = info.width / 256;
           // panel.geometry.scale(scale, scale, scale);
           // panel.geometry.verticesNeedUpdate = true;
 
-          panel.position.set(point.x, point.y, point.z);
-          panel.lookAt(_this12.camera.position);
+          var position = point.normalize().multiplyScalar(PANEL_RADIUS);
+          panel.position.set(position.x, position.y + 30 + 30, position.z);
+          panel.lookAt(_this11.origin);
 
-          _this12.scene.add(panel); // console.log('getPanelInfoById', panel.position);
+          _this11.pivot.add(panel);
 
+          var from = {
+            value: 1
+          };
+          TweenMax.to(from, 0.2, {
+            value: 0,
+            delay: 0.2,
+            onUpdate: function onUpdate() {
+              panel.position.set(position.x, position.y + 30 + 30 * from.value, position.z);
+              panel.lookAt(_this11.origin);
+              panel.material.opacity = 1 - from.value;
+              panel.material.needsUpdate = true;
+            }
+          }); // console.log('getPanelInfoById', panel.position);
         }
       });
     }
@@ -10349,11 +10209,11 @@ function () {
     value: function onLeftSelectStart() {
       try {
         if (this.controller) {
-          this.controller.remove(this.controller.pointer);
+          this.controller.remove(this.controller.indicator);
         }
 
         this.controller = this.left;
-        this.controller.add(this.controller.pointer);
+        this.controller.add(this.controller.indicator);
         this.isControllerSelecting = true;
         this.isControllerSelectionDirty = true;
       } catch (error) {
@@ -10375,11 +10235,11 @@ function () {
     value: function onRightSelectStart() {
       try {
         if (this.controller) {
-          this.controller.remove(this.controller.pointer);
+          this.controller.remove(this.controller.indicator);
         }
 
         this.controller = this.right;
-        this.controller.add(this.controller.pointer);
+        this.controller.add(this.controller.indicator);
         this.isControllerSelecting = true;
         this.isControllerSelectionDirty = true;
       } catch (error) {
@@ -10429,7 +10289,32 @@ function () {
         this.mouse = {
           x: (event.clientX - w2) / w2,
           y: -(event.clientY - h2) / h2
-        }; // console.log('onMouseMove', this.mouse);
+        };
+        var raycaster = this.raycaster;
+        raycaster.setFromCamera(this.mouse, this.camera);
+        this.updateHoverPoint(raycaster);
+        /*
+        if (TEST_ENABLED) {
+        	const controller = this.controller;
+        	const raycaster = this.raycaster;
+        	const rotation = controller.getWorldDirection(new THREE.Vector3()).multiplyScalar(-1);
+        	raycaster.set(controller.position, rotation);
+        	let intersections = raycaster.intersectObjects([this.room.sphere]);
+        	if (intersections) {
+        		const intersection = intersections.find(x => x !== undefined);
+        		if (intersection) {
+        			const position = intersection.point.normalize();
+        			console.log('s', position.x, position.y, position.z);
+        		}
+        	}
+        	if (this.points && this.points.children.length) {
+        		const point = this.points.children[0];
+        		const position = point.position.clone().normalize();
+        		console.log('p', position.x, position.y, position.z);
+        	}
+        }
+        */
+        // console.log('onMouseMove', this.mouse);
 
         /*
         var attributes = geometry.attributes;
@@ -10467,13 +10352,17 @@ function () {
   }, {
     key: "onClick",
     value: function onClick(event) {
+      if (TEST_ENABLED) {
+        return;
+      }
+
       try {
         var raycaster = this.raycaster; // update the picking ray with the camera and mouse position
 
         raycaster.setFromCamera(this.mouse, this.camera); // calculate objects intersecting the picking ray
 
         if (event.shiftKey) {
-          var intersections = raycaster.intersectObjects(this.environment.children);
+          var intersections = raycaster.intersectObjects(this.room.children);
 
           if (intersections) {
             var intersection = intersections.find(function (x) {
@@ -10517,7 +10406,7 @@ function () {
     key: "onSave",
     value: function onSave(event) {
       try {
-        this.view.camera = {
+        this.view.orientation = {
           latitude: this.latitude,
           longitude: this.longitude
         };
@@ -10570,75 +10459,119 @@ function () {
   }, {
     key: "animate",
     value: function animate() {
-      var _this13 = this;
+      var _this12 = this;
 
       var renderer = this.renderer;
       renderer.setAnimationLoop(function () {
-        _this13.render();
+        _this12.render();
       });
     }
   }, {
     key: "render",
     value: function render(delta) {
+      this.updatePivot();
+
       if (this.vr.mode !== _vr.VR_MODE.NONE) {
-        this.updateControllers();
+        this.updateController();
       } else {
-        this.testController();
-        this.updateCamera();
+        this.testController(); // this.updateCamera();
       }
 
       var renderer = this.renderer;
       renderer.render(this.scene, this.camera); // this.doParallax();
     }
   }, {
-    key: "updateControllers",
-    value: function updateControllers() {
+    key: "updatePointer",
+    value: function updatePointer(raycaster) {
+      var intersections = raycaster.intersectObjects([this.room.sphere]);
+
+      if (intersections.length) {
+        var intersection = intersections[0]; // const intersection = intersections.find(x => x !== undefined);
+
+        if (intersection) {
+          // const index = intersection.index;
+          // const point = intersection.point;
+          // const debugInfo = `${index} => {${point.x}, ${point.y}, ${point.z}}`;
+          // console.log(index, point, debugInfo);
+          // this.debugInfo.innerHTML = debugInfo;
+          // console.log(intersection.point);
+          var position = intersection.point.normalize().multiplyScalar(POINTER_RADIUS);
+          this.pointer.position.set(position.x, position.y, position.z);
+          this.pointer.lookAt(this.origin); // console.log(position.x, position.y, position.z);
+        }
+      }
+
+      this.pointer.material.color.setHex(this.isControllerSelecting ? 0x0000ff : 0xffffff);
+      this.pointer.material.opacity = this.isControllerSelecting ? 1.0 : 0.5;
+    }
+  }, {
+    key: "updateHoverPoint",
+    value: function updateHoverPoint(raycaster) {
+      var point; // raycaster.params.Points.threshold = 10.0;
+      // console.log(this.points.children);
+
+      var intersections = raycaster.intersectObjects(this.points.children);
+
+      if (intersections.length) {
+        var intersection = intersections[0];
+        point = intersection.object;
+        point = this.points.children.find(function (x) {
+          return x === point;
+        });
+      }
+
+      this.hoverPoint = point;
+    }
+  }, {
+    key: "updateController",
+    value: function updateController() {
       try {
         var controller = this.controller;
 
         if (controller) {
           var raycaster = this.raycaster;
-          var rotation = controller.getWorldDirection(new THREE.Vector3()).multiplyScalar(-1); // new THREE.Vector3(controller.rotation.x, controller.rotation.y, controller.rotation.z).normalize();
+          var position = this.pivot.worldToLocal(controller.position);
+          var rotation = this.pivot.worldToLocal(controller.getWorldDirection(new THREE.Vector3()).multiplyScalar(-1)); // new THREE.Vector3(controller.rotation.x, controller.rotation.y, controller.rotation.z).normalize();
 
-          raycaster.set(controller.position, rotation);
-          var intersections = raycaster.intersectObjects(this.environment.children);
-
-          if (intersections) {
-            var intersection = intersections.find(function (x) {
-              return x !== undefined;
-            });
-
-            if (intersection) {
-              // const index = intersection.index;
-              // const point = intersection.point;
-              // const debugInfo = `${index} => {${point.x}, ${point.y}, ${point.z}}`;
-              // console.log(index, point, debugInfo);
-              // this.debugInfo.innerHTML = debugInfo;
-              // console.log(intersection.point);
-              var position = intersection.point.normalize().multiplyScalar(POINTER_RADIUS);
-              this.pointer.position.set(position.x, position.y, position.z);
-              this.pointer.lookAt(this.camera.position); // console.log(position.x, position.y, position.z);
-            }
-          }
-
-          this.pointer.material.color.setHex(this.isControllerSelecting ? 0x0000ff : 0xffffff);
-          this.pointer.material.opacity = this.isControllerSelecting ? 1.0 : 0.5;
-          var object; // raycaster.params.Points.threshold = 10.0;
-
-          intersections = raycaster.intersectObjects(this.points.children);
-
-          if (intersections.length) {
-            var _intersection2 = intersections[0];
-            object = _intersection2.object;
-          }
-
-          this.hoverPoint = this.points.children.find(function (x) {
-            return x === object;
-          });
+          raycaster.set(position, rotation);
+          this.updatePointer(raycaster);
+          this.updateHoverPoint(raycaster);
         }
       } catch (error) {
         this.debugInfo.innerHTML = error;
       }
+    }
+  }, {
+    key: "updatePivot",
+    value: function updatePivot() {
+      var pivot = this.pivot;
+      var direction = this.direction;
+      var inertia = this.inertia;
+      var speed = this.speed;
+      var latitude = this.latitude;
+      var longitude = this.longitude;
+
+      if (this.dragListener && this.dragListener.dragging === false) {
+        // longitude += 0.01 * direction * speed;
+        speed = Math.max(1, speed * 0.98);
+        inertia.multiplyScalar(0.98);
+      }
+
+      latitude = Math.max(-85, Math.min(85, latitude));
+      var phi = THREE.Math.degToRad(90 - latitude);
+      var theta = THREE.Math.degToRad(longitude);
+      pivot.rotation.set(phi - Math.PI / 2, theta + Math.PI / 2, 0);
+      /*
+      pivot.target.x = ROOM_RADIUS * Math.sin(phi) * Math.cos(theta);
+      pivot.target.y = ROOM_RADIUS * Math.cos(phi);
+      pivot.target.z = ROOM_RADIUS * Math.sin(phi) * Math.sin(theta);
+      pivot.lookAt(pivot.target);
+      */
+
+      this.latitude = latitude;
+      this.longitude = longitude;
+      this.speed = speed;
+      this.inertia = inertia;
     }
   }, {
     key: "updateCamera",
@@ -10701,7 +10634,7 @@ function () {
   }, {
     key: "getPanelInfoById",
     value: function getPanelInfoById(id) {
-      var _this14 = this;
+      var _this13 = this;
 
       return new Promise(function (resolve, reject) {
         var node = document.querySelector(id);
@@ -10712,14 +10645,14 @@ function () {
           }).then(function (canvas) {
             // !!!
             // document.body.appendChild(canvas);
-            var alpha = _this14.getAlphaFromCanvas(canvas); // document.body.appendChild(alpha);
+            var alpha = _this13.getAlphaFromCanvas(canvas); // document.body.appendChild(alpha);
 
 
-            var map = new THREE.CanvasTexture(canvas);
-            var alphaMap = new THREE.CanvasTexture(alpha);
+            var map = new THREE.CanvasTexture(canvas); // const alphaMap = new THREE.CanvasTexture(alpha);
+
             resolve({
               map: map,
-              alphaMap: alphaMap,
+              // alphaMap: alphaMap,
               width: canvas.width,
               height: canvas.height
             });
@@ -10776,11 +10709,12 @@ function () {
       return this.hoverPoint_;
     },
     set: function set(point) {
+      // console.log('hoverPoint', point);
       if (this.hoverPoint_ !== point) {
         this.hoverPoint_ = point;
 
         if (point) {
-          this.onEnterPanel(point.position);
+          this.onEnterPanel(point.position.clone());
         } else {
           this.onExitPanel();
         }
@@ -10828,6 +10762,140 @@ var tour = new VRTour();
 tour.animate();
 tour.load('data/vr.json');
 /*
+		const material = new THREE.PointsMaterial({
+			size: 15,
+			map: loader.load('img/pin.png'),
+			vertexColors: THREE.VertexColors,
+			blending: THREE.AdditiveBlending,
+			depthTest: true,
+			transparent: true
+		});
+		*/
+
+/*
+const material = new THREE.ShaderMaterial({
+	uniforms: {
+		color: { value: new THREE.Color(0xffffff) },
+		texture: { value: loader.load('img/pin.png') }
+	},
+	vertexColors: THREE.VertexColors,
+	blending: THREE.AdditiveBlending,
+	depthTest: true,
+	transparent: true,
+	vertexShader: shaderPoint.vertexShader,
+	fragmentShader: shaderPoint.fragmentShader,
+	alphaTest: 0.9
+});
+*/
+
+/*
+	addPoints_(parent) {
+		const loader = new THREE.TextureLoader();
+		const geometry = new THREE.BufferGeometry();
+		// hack fix
+		const vertices = [];
+		vertices.push(0, -10000, 0);
+		vertices.push(0, 10000, 0);
+		geometry.addAttribute('position', new THREE.Float32BufferAttribute(vertices, 3));
+		// hack fix
+		const colors = new Array(100 * 3).fill(0);
+		const colorsAttribute = new THREE.Float32BufferAttribute(colors, 3);
+		const sizes = new Array(100).fill(10);
+		geometry.addAttribute('color', colorsAttribute);
+		geometry.addAttribute('customColor', new THREE.Float32BufferAttribute(colors, 3));
+		geometry.addAttribute('size', new THREE.Float32BufferAttribute(sizes, 1));
+		const material = new THREE.ShaderMaterial({
+			uniforms: {
+				amplitude: { value: 1.0 },
+				color: { value: new THREE.Color(0xffffff) },
+				texture: { value: loader.load('img/pin.png') }
+			},
+			vertexShader: shaderPoint.vertexShader,
+			fragmentShader: shaderPoint.fragmentShader,
+			transparent: true
+		});
+		// materials[i].color.setHSL(1, 0, 0);
+		const points = new THREE.Points(geometry, material);
+		points.vertices = vertices;
+		points.colors = colors;
+		points.colorsAttribute = colorsAttribute;
+		points.scale.set(0.95, 0.95, 0.95);
+		parent.add(points);
+		return points;
+	}
+
+	addPoint_(position, i) {
+		const points = this.points;
+		const geometry = points.geometry;
+		const vertices = points.vertices;
+		const index = vertices.length / 3;
+		vertices.push(position.x, position.y, position.z);
+		geometry.addAttribute('position', new THREE.Float32BufferAttribute(vertices, 3));
+		const colorsAttribute = points.colorsAttribute;
+		colorsAttribute.setXYZ(index, 0, 0, 0);
+		points.material.needsUpdate = true;
+		// console.log(index, 'start');
+		const from = { opacity: 0 };
+		TweenMax.to(from, 0.5, {
+			opacity: 1,
+			delay: 0.1 * i,
+			onUpdate: () => {
+				// console.log(index, from.opacity);
+				colorsAttribute.setXYZ(index, from.opacity, from.opacity, from.opacity);
+				colorsAttribute.needsUpdate = true;
+				points.material.needsUpdate = true;
+			},
+			onCompleted: () => {
+				// console.log(index, 'completed');
+			}
+		});
+	}
+
+	removePoint_(i) {
+		return new Promise((resolve, reject) => {
+			const points = this.points;
+			const geometry = points.geometry;
+			const vertices = points.vertices;
+			const index = vertices.length / 3;
+			const colorsAttribute = points.colorsAttribute;
+			colorsAttribute.setXYZ(index, 1, 1, 1);
+			points.material.needsUpdate = true;
+			// console.log(index, 'start');
+			const from = { opacity: 1 };
+			TweenMax.to(from, 0.5, {
+				opacity: 0,
+				delay: 0.0 * i,
+				onUpdate: () => {
+					// console.log(index, from.opacity);
+					colorsAttribute.setXYZ(index, from.opacity, from.opacity, from.opacity);
+					colorsAttribute.needsUpdate = true;
+					points.material.needsUpdate = true;
+				},
+				onCompleted: () => {
+					// console.log(index, 'completed');
+					vertices.splice(vertices.length - 3, 3);
+					geometry.addAttribute('position', new THREE.Float32BufferAttribute(vertices, 3));
+					resolve();
+				}
+			});
+		});
+	}
+
+	createPoint_(intersection) {
+		// console.log(intersection);
+		const position = intersection.point.clone();
+		this.addPoint(this.points, position, 0);
+		this.view.points.push({
+			id: 2,
+			position: position.toArray(),
+			type: 1,
+			name: 'Point 2',
+			key: 'POINT2',
+		});
+		// p.multiplyScalar(1);
+	}
+
+
 let camera;
 if (USE_ORTHO) {
 	const width = 10;

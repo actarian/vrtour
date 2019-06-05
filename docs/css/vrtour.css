@@ -80,7 +80,7 @@ body {
   padding: 40px;
   border-radius: 30px;
   text-align: center;
-  background: grey;
+  background: rgba(0, 0, 0, 0.8);
   color: white; }
   .panel .title {
     font-size: 25px;

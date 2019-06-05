@@ -17,7 +17,7 @@
 					"key": "POINT1"
                 }
             ],
-			"camera": {
+			"orientation": {
 				"latitude": -4.1,
 				"longitude": 268
 			}
@@ -39,7 +39,7 @@
 					"key": "POINT2"
                 }
             ],
-			"camera": {
+			"orientation": {
 				"latitude": -7.9,
 				"longitude": -90.50000000000003
 			}
@@ -61,7 +61,7 @@
 					"key": "POINT2"
                 }
             ],
-			"camera": {
+			"orientation": {
 				"latitude": -13.100000000000001,
 				"longitude": 266.20000000000005
 			}
@@ -83,7 +83,7 @@
 					"key": "POINT2"
                 }
             ],
-			"camera": {
+			"orientation": {
 				"latitude": 2.8000000000000025,
 				"longitude": 537.8
 			}
@@ -105,7 +105,7 @@
 					"key": "POINT2"
                 }
             ],
-			"camera": {
+			"orientation": {
 				"latitude": -4.700000000000003,
 				"longitude": 178.50000000000003
 			}
@@ -127,7 +127,7 @@
 					"key": "POINT2"
                 }
             ],
-			"camera": {
+			"orientation": {
 				"latitude": -6.899999999999993,
 				"longitude": -180.70000000000005
 			}
