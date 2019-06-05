@@ -41,6 +41,8 @@ const shaderPoint = {
 };
 
 const ROOM_RADIUS = 100;
+const POINT_RADIUS = 99;
+const POINTER_RADIUS = 98;
 const TEST_ENABLED = true;
 
 class VRTour {
@@ -73,6 +75,45 @@ class VRTour {
 	set view(view) {
 		this.onInitView(this.view_, view);
 		this.view_ = view;
+	}
+
+	get hoverPoint() {
+		return this.hoverPoint_;
+	}
+	set hoverPoint(point) {
+		if (this.hoverPoint_ !== point) {
+			this.hoverPoint_ = point;
+			if (this.isControllerSelectionDirty) {
+				this.isControllerSelectionDirty = false;
+				this.selectedPoint = point;
+			}
+			const tweens = this.points.children.map((x, index) => {
+				const from = { scale: x.scale.x };
+				return TweenMax.to(from, 0.25, {
+					scale: x === point ? 3 : 1,
+					delay: 0,
+					onUpdate: () => {
+						x.scale.set(from.scale, from.scale, from.scale);
+					},
+					onCompleted: () => {
+						// console.log(index, 'completed');
+					}
+				});
+			});
+		}
+	}
+
+	get selectedPoint() {
+		return this.selectedPoint_;
+	}
+	set selectedPoint(point) {
+		if (this.selectedPoint_ !== point) {
+			this.selectedPoint_ = point;
+			const debugInfo = `selectedPoint => {${point.x}, ${point.y}, ${point.z}}`;
+			this.debugInfo.innerHTML = debugInfo;
+			this.index = (this.index + 1) % this.views.length;
+			// console.log(index, point, debugInfo);
+		}
 	}
 
 	load(jsonUrl) {
@@ -112,6 +153,7 @@ class VRTour {
 		const environment = this.environment = this.addEnvironment(scene);
 		const floor = this.floor = this.addFloor(scene);
 		const ceil = this.ceil = this.addCeil(scene);
+		const points = this.points = this.addPoints(scene);
 		// renderer
 		const renderer = this.renderer = this.addRenderer();
 		// this.container.appendChild(WEBVR.createButton(renderer, { referenceSpaceType: 'local' }));
@@ -167,8 +209,8 @@ class VRTour {
 	testController() {
 		if (TEST_ENABLED) {
 			if (this.controller) {
-				this.controller.position.x = this.mouse.x * 5;
-				this.controller.position.y = this.mouse.y * 5;
+				this.controller.position.x = this.mouse.x * 50;
+				this.controller.position.y = this.mouse.y * 50;
 			}
 			this.updateControllers();
 		}
@@ -192,8 +234,9 @@ class VRTour {
 
 	addRenderer() {
 		const renderer = new THREE.WebGLRenderer({
-			// alpha: false,
 			antialias: true,
+			// logarithmicDepthBuffer: true,
+			// alpha: false,
 		});
 		this.renderer = renderer;
 		// renderer.shadowMap.enabled = true;
@@ -301,6 +344,9 @@ class VRTour {
 		// const geometry = new THREE.SphereBufferGeometry(1, 8, 8);
 		const loader = new THREE.TextureLoader();
 		const texture = loader.load('img/pin.jpg');
+		texture.magFilter = THREE.NearestFilter;
+		texture.wrapT = THREE.RepeatWrapping;
+		texture.repeat.y = 1;
 		// texture.anisotropy = 0;
 		// texture.magFilter = THREE.LinearMipMapLinearFilter;
 		// texture.minFilter = THREE.NearestFilter;
@@ -315,6 +361,7 @@ class VRTour {
 			opacity: 0.5,
 			// side: THREE.DoubleSide,
 		});
+
 		/*
 		THREE.NoBlending
 		THREE.NormalBlending
@@ -338,6 +385,237 @@ class VRTour {
 		// mesh.lookAt(this.camera.position);
 		parent.add(mesh);
 		return mesh;
+	}
+
+	removePoints() {
+		/*
+		if (this.points) {
+			this.points.remove();
+			delete this.points;
+		}
+		*/
+	}
+
+	addPoints_(parent) {
+		const loader = new THREE.TextureLoader();
+		const geometry = new THREE.BufferGeometry();
+		// hack fix
+		const vertices = [];
+		vertices.push(0, -10000, 0);
+		vertices.push(0, 10000, 0);
+		geometry.addAttribute('position', new THREE.Float32BufferAttribute(vertices, 3));
+		// hack fix
+		const colors = new Array(100 * 3).fill(0);
+		const colorsAttribute = new THREE.Float32BufferAttribute(colors, 3);
+		const sizes = new Array(100).fill(10);
+		geometry.addAttribute('color', colorsAttribute);
+		geometry.addAttribute('customColor', new THREE.Float32BufferAttribute(colors, 3));
+		geometry.addAttribute('size', new THREE.Float32BufferAttribute(sizes, 1));
+		/*
+		const material = new THREE.PointsMaterial({
+			size: 15,
+			map: loader.load('img/pin.png'),
+			vertexColors: THREE.VertexColors,
+			blending: THREE.AdditiveBlending,
+			depthTest: true,
+			transparent: true
+		});
+		*/
+		/*
+		const material = new THREE.ShaderMaterial({
+			uniforms: {
+				color: { value: new THREE.Color(0xffffff) },
+				texture: { value: loader.load('img/pin.png') }
+			},
+			vertexColors: THREE.VertexColors,
+			blending: THREE.AdditiveBlending,
+			depthTest: true,
+			transparent: true,
+			vertexShader: shaderPoint.vertexShader,
+			fragmentShader: shaderPoint.fragmentShader,
+			alphaTest: 0.9
+		});
+		*/
+		const material = new THREE.ShaderMaterial({
+			uniforms: {
+				amplitude: { value: 1.0 },
+				color: { value: new THREE.Color(0xffffff) },
+				texture: { value: loader.load('img/pin.png') }
+			},
+			vertexShader: shaderPoint.vertexShader,
+			fragmentShader: shaderPoint.fragmentShader,
+			transparent: true
+		});
+		// materials[i].color.setHSL(1, 0, 0);
+		const points = new THREE.Points(geometry, material);
+		points.vertices = vertices;
+		points.colors = colors;
+		points.colorsAttribute = colorsAttribute;
+		points.scale.set(0.95, 0.95, 0.95);
+		parent.add(points);
+		return points;
+	}
+
+	addPoint_(position, i) {
+		const points = this.points;
+		const geometry = points.geometry;
+		const vertices = points.vertices;
+		const index = vertices.length / 3;
+		vertices.push(position.x, position.y, position.z);
+		geometry.addAttribute('position', new THREE.Float32BufferAttribute(vertices, 3));
+		const colorsAttribute = points.colorsAttribute;
+		colorsAttribute.setXYZ(index, 0, 0, 0);
+		points.material.needsUpdate = true;
+		// console.log(index, 'start');
+		const from = { opacity: 0 };
+		TweenMax.to(from, 0.5, {
+			opacity: 1,
+			delay: 0.1 * i,
+			onUpdate: () => {
+				// console.log(index, from.opacity);
+				colorsAttribute.setXYZ(index, from.opacity, from.opacity, from.opacity);
+				colorsAttribute.needsUpdate = true;
+				points.material.needsUpdate = true;
+			},
+			onCompleted: () => {
+				// console.log(index, 'completed');
+			}
+		});
+	}
+
+	removePoint_(i) {
+		return new Promise((resolve, reject) => {
+			const points = this.points;
+			const geometry = points.geometry;
+			const vertices = points.vertices;
+			const index = vertices.length / 3;
+			const colorsAttribute = points.colorsAttribute;
+			colorsAttribute.setXYZ(index, 1, 1, 1);
+			points.material.needsUpdate = true;
+			// console.log(index, 'start');
+			const from = { opacity: 1 };
+			TweenMax.to(from, 0.5, {
+				opacity: 0,
+				delay: 0.0 * i,
+				onUpdate: () => {
+					// console.log(index, from.opacity);
+					colorsAttribute.setXYZ(index, from.opacity, from.opacity, from.opacity);
+					colorsAttribute.needsUpdate = true;
+					points.material.needsUpdate = true;
+				},
+				onCompleted: () => {
+					// console.log(index, 'completed');
+					vertices.splice(vertices.length - 3, 3);
+					geometry.addAttribute('position', new THREE.Float32BufferAttribute(vertices, 3));
+					resolve();
+				}
+			});
+		});
+	}
+
+	createPoint_(intersection) {
+		// console.log(intersection);
+		const position = intersection.point.clone();
+		this.addPoint(this.points, position, 0);
+		this.view.points.push({
+			id: 2,
+			position: position.toArray(),
+			type: 1,
+			name: 'Point 2',
+			key: 'POINT2',
+		});
+		// p.multiplyScalar(1);
+		/*
+		const positions = new Float32Array([...geometry.attributes.position.array, p.x, p.y, p.z]);
+		const attribute = new THREE.BufferAttribute(positions, 3);
+		attribute.dynamic = true;
+		geometry.addAttribute('position', attribute);
+		positions.needsUpdate = true;
+		geometry.setDrawRange(0, positions.length);
+		geometry.verticesNeedUpdate = true;
+		geometry.elementsNeedUpdate = true;
+		// geometry.computeVertexNormals();
+		console.log(geometry);
+		*/
+		/*
+		geometry.vertices.push(p);
+		// geometry.colors.push(new THREE.Color(Math.random(), Math.random(), Math.random()));
+		geometry.verticesNeedUpdate = true;
+		geometry.elementsNeedUpdate = true;
+		geometry.computeVertexNormals();
+		*/
+		// console.log(p);
+	}
+
+	addPoints(parent) {
+		const points = new THREE.Group();
+		parent.add(points);
+		return points;
+	}
+
+	addPoint(parent, position, i) {
+		// console.log('addPoint', parent, position, i);
+		// size 2 about 20 cm radius
+		const geometry = new THREE.PlaneBufferGeometry(2, 2, 2, 2);
+		const loader = new THREE.TextureLoader();
+		const texture = loader.load('img/pin.jpg');
+		const material = new THREE.MeshBasicMaterial({
+			alphaMap: texture,
+			transparent: true,
+			opacity: 0,
+		});
+		const point = new THREE.Mesh(geometry, material);
+		position = position.normalize().multiplyScalar(POINT_RADIUS);
+		point.position.set(position.x, position.y, position.z);
+		point.lookAt(this.camera.position);
+		parent.add(point);
+		const from = { opacity: 0 };
+		TweenMax.to(from, 0.5, {
+			opacity: 1,
+			delay: 0.1 * i,
+			onUpdate: () => {
+				// console.log(index, from.opacity);
+				point.material.opacity = from.opacity;
+				point.material.needsUpdate = true;
+			},
+			onCompleted: () => {
+				// console.log(index, 'completed');
+			}
+		});
+		return point;
+		// console.log(index, 'start');
+	}
+
+	removePoint(i) {
+		return new Promise((resolve, reject) => {
+			const point = this.points.children[i];
+			const from = { opacity: 1 };
+			TweenMax.to(from, 0.5, {
+				opacity: 0,
+				delay: 0.0 * i,
+				onUpdate: () => {
+					// console.log(index, from.opacity);
+					point.material.opacity = from.opacity;
+					point.material.needsUpdate = true;
+				},
+				onCompleted: () => {
+					this.points.remove(point);
+					resolve();
+				}
+			});
+		});
+	}
+
+	createPoint(intersection) {
+		const position = intersection.point.clone();
+		this.addPoint(this.points, position, 0);
+		this.view.points.push({
+			id: 2,
+			position: position.toArray(),
+			type: 1,
+			name: 'Point 2',
+			key: 'POINT2',
+		});
 	}
 
 	addControllerLeft(renderer, scene) {
@@ -441,166 +719,6 @@ class VRTour {
 		return dragListener;
 	}
 
-	removePoints() {
-		/*
-		if (this.points) {
-			this.points.remove();
-			delete this.points;
-		}
-		*/
-	}
-
-	addPoints(parent) {
-		const loader = new THREE.TextureLoader();
-		const geometry = new THREE.BufferGeometry();
-		// hack fix
-		const vertices = [];
-		vertices.push(0, -10000, 0);
-		vertices.push(0, 10000, 0);
-		geometry.addAttribute('position', new THREE.Float32BufferAttribute(vertices, 3));
-		// hack fix
-		const colors = new Array(100 * 3).fill(0);
-		const colorsAttribute = new THREE.Float32BufferAttribute(colors, 3);
-		const sizes = new Array(100).fill(10);
-		geometry.addAttribute('color', colorsAttribute);
-		geometry.addAttribute('customColor', new THREE.Float32BufferAttribute(colors, 3));
-		geometry.addAttribute('size', new THREE.Float32BufferAttribute(sizes, 1));
-		/*
-		const material = new THREE.PointsMaterial({
-			size: 15,
-			map: loader.load('img/pin.png'),
-			vertexColors: THREE.VertexColors,
-			blending: THREE.AdditiveBlending,
-			depthTest: true,
-			transparent: true
-		});
-		*/
-		/*
-		const material = new THREE.ShaderMaterial({
-			uniforms: {
-				color: { value: new THREE.Color(0xffffff) },
-				texture: { value: loader.load('img/pin.png') }
-			},
-			vertexColors: THREE.VertexColors,
-			blending: THREE.AdditiveBlending,
-			depthTest: true,
-			transparent: true,
-			vertexShader: shaderPoint.vertexShader,
-			fragmentShader: shaderPoint.fragmentShader,
-			alphaTest: 0.9
-		});
-		*/
-		const material = new THREE.ShaderMaterial({
-			uniforms: {
-				amplitude: { value: 1.0 },
-				color: { value: new THREE.Color(0xffffff) },
-				texture: { value: loader.load('img/pin.png') }
-			},
-			vertexShader: shaderPoint.vertexShader,
-			fragmentShader: shaderPoint.fragmentShader,
-			transparent: true
-		});
-		// materials[i].color.setHSL(1, 0, 0);
-		const points = new THREE.Points(geometry, material);
-		points.vertices = vertices;
-		points.colors = colors;
-		points.colorsAttribute = colorsAttribute;
-		points.scale.set(0.95, 0.95, 0.95);
-		parent.add(points);
-		return points;
-	}
-
-	addPoint(position, i) {
-		const points = this.points;
-		const geometry = points.geometry;
-		const vertices = points.vertices;
-		const index = vertices.length / 3;
-		vertices.push(position.x, position.y, position.z);
-		geometry.addAttribute('position', new THREE.Float32BufferAttribute(vertices, 3));
-		const colorsAttribute = points.colorsAttribute;
-		colorsAttribute.setXYZ(index, 0, 0, 0);
-		points.material.needsUpdate = true;
-		// console.log(index, 'start');
-		const from = { opacity: 0 };
-		TweenMax.to(from, 0.5, {
-			opacity: 1,
-			delay: 0.1 * i,
-			onUpdate: () => {
-				// console.log(index, from.opacity);
-				colorsAttribute.setXYZ(index, from.opacity, from.opacity, from.opacity);
-				colorsAttribute.needsUpdate = true;
-				points.material.needsUpdate = true;
-			},
-			onCompleted: () => {
-				// console.log(index, 'completed');
-			}
-		});
-	}
-
-	removePoint(i) {
-		return new Promise((resolve, reject) => {
-			const points = this.points;
-			const geometry = points.geometry;
-			const vertices = points.vertices;
-			const index = vertices.length / 3;
-			const colorsAttribute = points.colorsAttribute;
-			colorsAttribute.setXYZ(index, 1, 1, 1);
-			points.material.needsUpdate = true;
-			// console.log(index, 'start');
-			const from = { opacity: 1 };
-			TweenMax.to(from, 0.5, {
-				opacity: 0,
-				delay: 0.0 * i,
-				onUpdate: () => {
-					// console.log(index, from.opacity);
-					colorsAttribute.setXYZ(index, from.opacity, from.opacity, from.opacity);
-					colorsAttribute.needsUpdate = true;
-					points.material.needsUpdate = true;
-				},
-				onCompleted: () => {
-					// console.log(index, 'completed');
-					vertices.splice(vertices.length - 3, 3);
-					geometry.addAttribute('position', new THREE.Float32BufferAttribute(vertices, 3));
-					resolve();
-				}
-			});
-		});
-	}
-
-	createPoint(intersection) {
-		// console.log(intersection);
-		const position = intersection.point.clone();
-		this.addPoint(position, 0);
-		this.view.points.push({
-			id: 2,
-			position: position.toArray(),
-			type: 1,
-			name: 'Point 2',
-			key: 'POINT2',
-		});
-		// p.multiplyScalar(1);
-		/*
-		const positions = new Float32Array([...geometry.attributes.position.array, p.x, p.y, p.z]);
-		const attribute = new THREE.BufferAttribute(positions, 3);
-		attribute.dynamic = true;
-		geometry.addAttribute('position', attribute);
-		positions.needsUpdate = true;
-		geometry.setDrawRange(0, positions.length);
-		geometry.verticesNeedUpdate = true;
-		geometry.elementsNeedUpdate = true;
-		// geometry.computeVertexNormals();
-		console.log(geometry);
-		*/
-		/*
-		geometry.vertices.push(p);
-		// geometry.colors.push(new THREE.Color(Math.random(), Math.random(), Math.random()));
-		geometry.verticesNeedUpdate = true;
-		geometry.elementsNeedUpdate = true;
-		geometry.computeVertexNormals();
-		*/
-		// console.log(p);
-	}
-
 	onInitView(previous, current) {
 		// console.log(previous, current);
 		this.onExitPoints(previous).then(() => {
@@ -681,10 +799,7 @@ class VRTour {
 	}
 
 	onEnterPoints(view) {
-		if (!this.points) {
-			const points = this.points = this.addPoints(this.scene);
-		}
-		view.points.forEach((point, i) => this.addPoint(new THREE.Vector3(...point.position), i));
+		view.points.forEach((point, i) => this.addPoint(this.points, new THREE.Vector3(...point.position), i));
 	}
 
 	onExitPoints(view) {
@@ -827,7 +942,7 @@ class VRTour {
 				*/
 			} else if (this.points) {
 				raycaster.params.Points.threshold = 10.0;
-				const intersections = raycaster.intersectObjects([this.points]);
+				const intersections = raycaster.intersectObjects(this.points.children);
 				if (intersections) {
 					const intersection = intersections.find(x => x !== undefined);
 					if (intersection) {
@@ -925,34 +1040,28 @@ class VRTour {
 				if (intersections) {
 					const intersection = intersections.find(x => x !== undefined);
 					if (intersection) {
-						const index = intersection.index;
-						const point = intersection.point;
-						const debugInfo = `${index} => {${point.x}, ${point.y}, ${point.z}}`;
+						// const index = intersection.index;
+						// const point = intersection.point;
+						// const debugInfo = `${index} => {${point.x}, ${point.y}, ${point.z}}`;
 						// console.log(index, point, debugInfo);
-						this.debugInfo.innerHTML = debugInfo;
+						// this.debugInfo.innerHTML = debugInfo;
 						// console.log(intersection.point);
-						this.pointer.position.set(intersection.point.x * 0.9, intersection.point.y * 0.9, intersection.point.z * 0.9);
+						const position = intersection.point.normalize().multiplyScalar(POINTER_RADIUS);
+						this.pointer.position.set(position.x, position.y, position.z);
 						this.pointer.lookAt(this.camera.position);
+						// console.log(position.x, position.y, position.z);
 					}
 				}
 				this.pointer.material.color.setHex(this.isControllerSelecting ? 0x0000ff : 0xffffff);
 				this.pointer.material.opacity = this.isControllerSelecting ? 1.0 : 0.5;
-				if (this.isControllerSelectionDirty && this.points) {
-					raycaster.params.Points.threshold = 10.0;
-					intersections = raycaster.intersectObjects([this.points]);
-					if (intersections) {
-						const intersection = intersections.find(x => x !== undefined);
-						if (intersection) {
-							this.isControllerSelectionDirty = false;
-							const index = intersection.index;
-							const point = intersection.point;
-							const debugInfo = `${index} => {${point.x}, ${point.y}, ${point.z}}`;
-							// console.log(index, point, debugInfo);
-							this.debugInfo.innerHTML = debugInfo;
-							this.index = (this.index + 1) % this.views.length;
-						}
-					}
+				let object;
+				// raycaster.params.Points.threshold = 10.0;
+				intersections = raycaster.intersectObjects(this.points.children);
+				if (intersections.length) {
+					const intersection = intersections[0];
+					object = intersection.object;
 				}
+				this.hoverPoint = this.points.children.find(x => x === object);
 			}
 		} catch (error) {
 			this.debugInfo.innerHTML = error;

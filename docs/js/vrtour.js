@@ -9486,6 +9486,8 @@ var shaderPoint = {
   fragmentShader: "\n\tuniform vec3 color;\n\tuniform sampler2D texture;\n\tvarying vec4 vColor;\n\tvoid main() {\n\t\tvec4 textureColor = texture2D(texture, gl_PointCoord);\n\t\t// if (textureColor.a < 0.5) discard;\n\t\tgl_FragColor = textureColor * vec4(color * vColor.xyz, 1.0);\n\t\t// float depth = gl_FragCoord.z / gl_FragCoord.w;\n\t\tgl_FragColor = vec4(vec3(1.0), gl_FragColor.w);\n\t}\n\t"
 };
 var ROOM_RADIUS = 100;
+var POINT_RADIUS = 99;
+var POINTER_RADIUS = 98;
 var TEST_ENABLED = true;
 
 var VRTour =
@@ -9561,7 +9563,8 @@ function () {
       var camera = this.camera = this.addCamera();
       var environment = this.environment = this.addEnvironment(scene);
       var floor = this.floor = this.addFloor(scene);
-      var ceil = this.ceil = this.addCeil(scene); // renderer
+      var ceil = this.ceil = this.addCeil(scene);
+      var points = this.points = this.addPoints(scene); // renderer
 
       var renderer = this.renderer = this.addRenderer(); // this.container.appendChild(WEBVR.createButton(renderer, { referenceSpaceType: 'local' }));
 
@@ -9621,8 +9624,8 @@ function () {
     value: function testController() {
       if (TEST_ENABLED) {
         if (this.controller) {
-          this.controller.position.x = this.mouse.x * 5;
-          this.controller.position.y = this.mouse.y * 5;
+          this.controller.position.x = this.mouse.x * 50;
+          this.controller.position.y = this.mouse.y * 50;
         }
 
         this.updateControllers();
@@ -9650,8 +9653,9 @@ function () {
     key: "addRenderer",
     value: function addRenderer() {
       var renderer = new THREE.WebGLRenderer({
+        antialias: true // logarithmicDepthBuffer: true,
         // alpha: false,
-        antialias: true
+
       });
       this.renderer = renderer; // renderer.shadowMap.enabled = true;
 
@@ -9769,7 +9773,10 @@ function () {
       var geometry = new THREE.PlaneBufferGeometry(2, 2, 2, 2); // const geometry = new THREE.SphereBufferGeometry(1, 8, 8);
 
       var loader = new THREE.TextureLoader();
-      var texture = loader.load('img/pin.jpg'); // texture.anisotropy = 0;
+      var texture = loader.load('img/pin.jpg');
+      texture.magFilter = THREE.NearestFilter;
+      texture.wrapT = THREE.RepeatWrapping;
+      texture.repeat.y = 1; // texture.anisotropy = 0;
       // texture.magFilter = THREE.LinearMipMapLinearFilter;
       // texture.minFilter = THREE.NearestFilter;
 
@@ -9809,6 +9816,265 @@ function () {
 
       parent.add(mesh);
       return mesh;
+    }
+  }, {
+    key: "removePoints",
+    value: function removePoints() {
+      /*
+      if (this.points) {
+      	this.points.remove();
+      	delete this.points;
+      }
+      */
+    }
+  }, {
+    key: "addPoints_",
+    value: function addPoints_(parent) {
+      var loader = new THREE.TextureLoader();
+      var geometry = new THREE.BufferGeometry(); // hack fix
+
+      var vertices = [];
+      vertices.push(0, -10000, 0);
+      vertices.push(0, 10000, 0);
+      geometry.addAttribute('position', new THREE.Float32BufferAttribute(vertices, 3)); // hack fix
+
+      var colors = new Array(100 * 3).fill(0);
+      var colorsAttribute = new THREE.Float32BufferAttribute(colors, 3);
+      var sizes = new Array(100).fill(10);
+      geometry.addAttribute('color', colorsAttribute);
+      geometry.addAttribute('customColor', new THREE.Float32BufferAttribute(colors, 3));
+      geometry.addAttribute('size', new THREE.Float32BufferAttribute(sizes, 1));
+      /*
+      const material = new THREE.PointsMaterial({
+      	size: 15,
+      	map: loader.load('img/pin.png'),
+      	vertexColors: THREE.VertexColors,
+      	blending: THREE.AdditiveBlending,
+      	depthTest: true,
+      	transparent: true
+      });
+      */
+
+      /*
+      const material = new THREE.ShaderMaterial({
+      	uniforms: {
+      		color: { value: new THREE.Color(0xffffff) },
+      		texture: { value: loader.load('img/pin.png') }
+      	},
+      	vertexColors: THREE.VertexColors,
+      	blending: THREE.AdditiveBlending,
+      	depthTest: true,
+      	transparent: true,
+      	vertexShader: shaderPoint.vertexShader,
+      	fragmentShader: shaderPoint.fragmentShader,
+      	alphaTest: 0.9
+      });
+      */
+
+      var material = new THREE.ShaderMaterial({
+        uniforms: {
+          amplitude: {
+            value: 1.0
+          },
+          color: {
+            value: new THREE.Color(0xffffff)
+          },
+          texture: {
+            value: loader.load('img/pin.png')
+          }
+        },
+        vertexShader: shaderPoint.vertexShader,
+        fragmentShader: shaderPoint.fragmentShader,
+        transparent: true
+      }); // materials[i].color.setHSL(1, 0, 0);
+
+      var points = new THREE.Points(geometry, material);
+      points.vertices = vertices;
+      points.colors = colors;
+      points.colorsAttribute = colorsAttribute;
+      points.scale.set(0.95, 0.95, 0.95);
+      parent.add(points);
+      return points;
+    }
+  }, {
+    key: "addPoint_",
+    value: function addPoint_(position, i) {
+      var points = this.points;
+      var geometry = points.geometry;
+      var vertices = points.vertices;
+      var index = vertices.length / 3;
+      vertices.push(position.x, position.y, position.z);
+      geometry.addAttribute('position', new THREE.Float32BufferAttribute(vertices, 3));
+      var colorsAttribute = points.colorsAttribute;
+      colorsAttribute.setXYZ(index, 0, 0, 0);
+      points.material.needsUpdate = true; // console.log(index, 'start');
+
+      var from = {
+        opacity: 0
+      };
+      TweenMax.to(from, 0.5, {
+        opacity: 1,
+        delay: 0.1 * i,
+        onUpdate: function onUpdate() {
+          // console.log(index, from.opacity);
+          colorsAttribute.setXYZ(index, from.opacity, from.opacity, from.opacity);
+          colorsAttribute.needsUpdate = true;
+          points.material.needsUpdate = true;
+        },
+        onCompleted: function onCompleted() {// console.log(index, 'completed');
+        }
+      });
+    }
+  }, {
+    key: "removePoint_",
+    value: function removePoint_(i) {
+      var _this4 = this;
+
+      return new Promise(function (resolve, reject) {
+        var points = _this4.points;
+        var geometry = points.geometry;
+        var vertices = points.vertices;
+        var index = vertices.length / 3;
+        var colorsAttribute = points.colorsAttribute;
+        colorsAttribute.setXYZ(index, 1, 1, 1);
+        points.material.needsUpdate = true; // console.log(index, 'start');
+
+        var from = {
+          opacity: 1
+        };
+        TweenMax.to(from, 0.5, {
+          opacity: 0,
+          delay: 0.0 * i,
+          onUpdate: function onUpdate() {
+            // console.log(index, from.opacity);
+            colorsAttribute.setXYZ(index, from.opacity, from.opacity, from.opacity);
+            colorsAttribute.needsUpdate = true;
+            points.material.needsUpdate = true;
+          },
+          onCompleted: function onCompleted() {
+            // console.log(index, 'completed');
+            vertices.splice(vertices.length - 3, 3);
+            geometry.addAttribute('position', new THREE.Float32BufferAttribute(vertices, 3));
+            resolve();
+          }
+        });
+      });
+    }
+  }, {
+    key: "createPoint_",
+    value: function createPoint_(intersection) {
+      // console.log(intersection);
+      var position = intersection.point.clone();
+      this.addPoint(this.points, position, 0);
+      this.view.points.push({
+        id: 2,
+        position: position.toArray(),
+        type: 1,
+        name: 'Point 2',
+        key: 'POINT2'
+      }); // p.multiplyScalar(1);
+
+      /*
+      const positions = new Float32Array([...geometry.attributes.position.array, p.x, p.y, p.z]);
+      const attribute = new THREE.BufferAttribute(positions, 3);
+      attribute.dynamic = true;
+      geometry.addAttribute('position', attribute);
+      positions.needsUpdate = true;
+      geometry.setDrawRange(0, positions.length);
+      geometry.verticesNeedUpdate = true;
+      geometry.elementsNeedUpdate = true;
+      // geometry.computeVertexNormals();
+      console.log(geometry);
+      */
+
+      /*
+      geometry.vertices.push(p);
+      // geometry.colors.push(new THREE.Color(Math.random(), Math.random(), Math.random()));
+      geometry.verticesNeedUpdate = true;
+      geometry.elementsNeedUpdate = true;
+      geometry.computeVertexNormals();
+      */
+      // console.log(p);
+    }
+  }, {
+    key: "addPoints",
+    value: function addPoints(parent) {
+      var points = new THREE.Group();
+      parent.add(points);
+      return points;
+    }
+  }, {
+    key: "addPoint",
+    value: function addPoint(parent, position, i) {
+      // console.log('addPoint', parent, position, i);
+      // size 2 about 20 cm radius
+      var geometry = new THREE.PlaneBufferGeometry(2, 2, 2, 2);
+      var loader = new THREE.TextureLoader();
+      var texture = loader.load('img/pin.jpg');
+      var material = new THREE.MeshBasicMaterial({
+        alphaMap: texture,
+        transparent: true,
+        opacity: 0
+      });
+      var point = new THREE.Mesh(geometry, material);
+      position = position.normalize().multiplyScalar(POINT_RADIUS);
+      point.position.set(position.x, position.y, position.z);
+      point.lookAt(this.camera.position);
+      parent.add(point);
+      var from = {
+        opacity: 0
+      };
+      TweenMax.to(from, 0.5, {
+        opacity: 1,
+        delay: 0.1 * i,
+        onUpdate: function onUpdate() {
+          // console.log(index, from.opacity);
+          point.material.opacity = from.opacity;
+          point.material.needsUpdate = true;
+        },
+        onCompleted: function onCompleted() {// console.log(index, 'completed');
+        }
+      });
+      return point; // console.log(index, 'start');
+    }
+  }, {
+    key: "removePoint",
+    value: function removePoint(i) {
+      var _this5 = this;
+
+      return new Promise(function (resolve, reject) {
+        var point = _this5.points.children[i];
+        var from = {
+          opacity: 1
+        };
+        TweenMax.to(from, 0.5, {
+          opacity: 0,
+          delay: 0.0 * i,
+          onUpdate: function onUpdate() {
+            // console.log(index, from.opacity);
+            point.material.opacity = from.opacity;
+            point.material.needsUpdate = true;
+          },
+          onCompleted: function onCompleted() {
+            _this5.points.remove(point);
+
+            resolve();
+          }
+        });
+      });
+    }
+  }, {
+    key: "createPoint",
+    value: function createPoint(intersection) {
+      var position = intersection.point.clone();
+      this.addPoint(this.points, position, 0);
+      this.view.points.push({
+        id: 2,
+        position: position.toArray(),
+        type: 1,
+        name: 'Point 2',
+        key: 'POINT2'
+      });
     }
   }, {
     key: "addControllerLeft",
@@ -9904,212 +10170,33 @@ function () {
   }, {
     key: "addDragListener",
     value: function addDragListener() {
-      var _this4 = this;
+      var _this6 = this;
 
       var longitude, latitude;
       var dragListener = new _drag.default(this.container, function (event) {
-        longitude = _this4.longitude;
-        latitude = _this4.latitude;
+        longitude = _this6.longitude;
+        latitude = _this6.latitude;
       }, function (event) {
-        _this4.longitude = -event.distance.x * 0.1 + longitude;
-        _this4.latitude = event.distance.y * 0.1 + latitude;
-        _this4.direction = event.distance.x ? event.distance.x / Math.abs(event.distance.x) * -1 : 1; // console.log('longitude', this.longitude, 'latitude', this.latitude, 'direction', this.direction);
+        _this6.longitude = -event.distance.x * 0.1 + longitude;
+        _this6.latitude = event.distance.y * 0.1 + latitude;
+        _this6.direction = event.distance.x ? event.distance.x / Math.abs(event.distance.x) * -1 : 1; // console.log('longitude', this.longitude, 'latitude', this.latitude, 'direction', this.direction);
       }, function (event) {
-        _this4.speed = Math.abs(event.strength.x) * 100; // console.log('speed', this.speed);
+        _this6.speed = Math.abs(event.strength.x) * 100; // console.log('speed', this.speed);
       });
       return dragListener;
     }
   }, {
-    key: "removePoints",
-    value: function removePoints() {
-      /*
-      if (this.points) {
-      	this.points.remove();
-      	delete this.points;
-      }
-      */
-    }
-  }, {
-    key: "addPoints",
-    value: function addPoints(parent) {
-      var loader = new THREE.TextureLoader();
-      var geometry = new THREE.BufferGeometry(); // hack fix
-
-      var vertices = [];
-      vertices.push(0, -10000, 0);
-      vertices.push(0, 10000, 0);
-      geometry.addAttribute('position', new THREE.Float32BufferAttribute(vertices, 3)); // hack fix
-
-      var colors = new Array(100 * 3).fill(0);
-      var colorsAttribute = new THREE.Float32BufferAttribute(colors, 3);
-      var sizes = new Array(100).fill(10);
-      geometry.addAttribute('color', colorsAttribute);
-      geometry.addAttribute('customColor', new THREE.Float32BufferAttribute(colors, 3));
-      geometry.addAttribute('size', new THREE.Float32BufferAttribute(sizes, 1));
-      /*
-      const material = new THREE.PointsMaterial({
-      	size: 15,
-      	map: loader.load('img/pin.png'),
-      	vertexColors: THREE.VertexColors,
-      	blending: THREE.AdditiveBlending,
-      	depthTest: true,
-      	transparent: true
-      });
-      */
-
-      /*
-      const material = new THREE.ShaderMaterial({
-      	uniforms: {
-      		color: { value: new THREE.Color(0xffffff) },
-      		texture: { value: loader.load('img/pin.png') }
-      	},
-      	vertexColors: THREE.VertexColors,
-      	blending: THREE.AdditiveBlending,
-      	depthTest: true,
-      	transparent: true,
-      	vertexShader: shaderPoint.vertexShader,
-      	fragmentShader: shaderPoint.fragmentShader,
-      	alphaTest: 0.9
-      });
-      */
-
-      var material = new THREE.ShaderMaterial({
-        uniforms: {
-          amplitude: {
-            value: 1.0
-          },
-          color: {
-            value: new THREE.Color(0xffffff)
-          },
-          texture: {
-            value: loader.load('img/pin.png')
-          }
-        },
-        vertexShader: shaderPoint.vertexShader,
-        fragmentShader: shaderPoint.fragmentShader,
-        transparent: true
-      }); // materials[i].color.setHSL(1, 0, 0);
-
-      var points = new THREE.Points(geometry, material);
-      points.vertices = vertices;
-      points.colors = colors;
-      points.colorsAttribute = colorsAttribute;
-      points.scale.set(0.95, 0.95, 0.95);
-      parent.add(points);
-      return points;
-    }
-  }, {
-    key: "addPoint",
-    value: function addPoint(position, i) {
-      var points = this.points;
-      var geometry = points.geometry;
-      var vertices = points.vertices;
-      var index = vertices.length / 3;
-      vertices.push(position.x, position.y, position.z);
-      geometry.addAttribute('position', new THREE.Float32BufferAttribute(vertices, 3));
-      var colorsAttribute = points.colorsAttribute;
-      colorsAttribute.setXYZ(index, 0, 0, 0);
-      points.material.needsUpdate = true; // console.log(index, 'start');
-
-      var from = {
-        opacity: 0
-      };
-      TweenMax.to(from, 0.5, {
-        opacity: 1,
-        delay: 0.1 * i,
-        onUpdate: function onUpdate() {
-          // console.log(index, from.opacity);
-          colorsAttribute.setXYZ(index, from.opacity, from.opacity, from.opacity);
-          colorsAttribute.needsUpdate = true;
-          points.material.needsUpdate = true;
-        },
-        onCompleted: function onCompleted() {// console.log(index, 'completed');
-        }
-      });
-    }
-  }, {
-    key: "removePoint",
-    value: function removePoint(i) {
-      var _this5 = this;
-
-      return new Promise(function (resolve, reject) {
-        var points = _this5.points;
-        var geometry = points.geometry;
-        var vertices = points.vertices;
-        var index = vertices.length / 3;
-        var colorsAttribute = points.colorsAttribute;
-        colorsAttribute.setXYZ(index, 1, 1, 1);
-        points.material.needsUpdate = true; // console.log(index, 'start');
-
-        var from = {
-          opacity: 1
-        };
-        TweenMax.to(from, 0.5, {
-          opacity: 0,
-          delay: 0.0 * i,
-          onUpdate: function onUpdate() {
-            // console.log(index, from.opacity);
-            colorsAttribute.setXYZ(index, from.opacity, from.opacity, from.opacity);
-            colorsAttribute.needsUpdate = true;
-            points.material.needsUpdate = true;
-          },
-          onCompleted: function onCompleted() {
-            // console.log(index, 'completed');
-            vertices.splice(vertices.length - 3, 3);
-            geometry.addAttribute('position', new THREE.Float32BufferAttribute(vertices, 3));
-            resolve();
-          }
-        });
-      });
-    }
-  }, {
-    key: "createPoint",
-    value: function createPoint(intersection) {
-      // console.log(intersection);
-      var position = intersection.point.clone();
-      this.addPoint(position, 0);
-      this.view.points.push({
-        id: 2,
-        position: position.toArray(),
-        type: 1,
-        name: 'Point 2',
-        key: 'POINT2'
-      }); // p.multiplyScalar(1);
-
-      /*
-      const positions = new Float32Array([...geometry.attributes.position.array, p.x, p.y, p.z]);
-      const attribute = new THREE.BufferAttribute(positions, 3);
-      attribute.dynamic = true;
-      geometry.addAttribute('position', attribute);
-      positions.needsUpdate = true;
-      geometry.setDrawRange(0, positions.length);
-      geometry.verticesNeedUpdate = true;
-      geometry.elementsNeedUpdate = true;
-      // geometry.computeVertexNormals();
-      console.log(geometry);
-      */
-
-      /*
-      geometry.vertices.push(p);
-      // geometry.colors.push(new THREE.Color(Math.random(), Math.random(), Math.random()));
-      geometry.verticesNeedUpdate = true;
-      geometry.elementsNeedUpdate = true;
-      geometry.computeVertexNormals();
-      */
-      // console.log(p);
-    }
-  }, {
     key: "onInitView",
     value: function onInitView(previous, current) {
-      var _this6 = this;
+      var _this7 = this;
 
       // console.log(previous, current);
       this.onExitPoints(previous).then(function () {
         // console.log(this.points.vertices);
-        _this6.onExitView(previous).then(function () {
+        _this7.onExitView(previous).then(function () {
           // if (!previous) {
-          _this6.onEnterView(current).then(function () {
-            _this6.onEnterPoints(current); // console.log(this.points.vertices);
+          _this7.onEnterView(current).then(function () {
+            _this7.onEnterPoints(current); // console.log(this.points.vertices);
 
           }); // }
 
@@ -10119,11 +10206,11 @@ function () {
   }, {
     key: "onExitView",
     value: function onExitView(view) {
-      var _this7 = this;
+      var _this8 = this;
 
       return new Promise(function (resolve, reject) {
         if (view) {
-          TweenMax.to(_this7.environment.sphere.material, 0.4, {
+          TweenMax.to(_this8.environment.sphere.material, 0.4, {
             opacity: 0,
             delay: 0.0,
             onCompleted: function onCompleted() {
@@ -10140,7 +10227,7 @@ function () {
   }, {
     key: "onEnterView",
     value: function onEnterView(view) {
-      var _this8 = this;
+      var _this9 = this;
 
       return new Promise(function (resolve, reject) {
         if (view) {
@@ -10162,11 +10249,11 @@ function () {
               }
               */
               if (view.camera) {
-                _this8.latitude = view.camera.latitude;
-                _this8.longitude = view.camera.longitude;
+                _this9.latitude = view.camera.latitude;
+                _this9.longitude = view.camera.longitude;
               }
 
-              var material = _this8.environment.sphere.material;
+              var material = _this9.environment.sphere.material;
               material.opacity = 0;
               material.color.setHex(0xffffff); // texture.minFilter = THREE.NearestMipMapNearestFilter;
               // texture.magFilter = THREE.LinearMipMapLinearFilter;
@@ -10191,24 +10278,20 @@ function () {
   }, {
     key: "onEnterPoints",
     value: function onEnterPoints(view) {
-      var _this9 = this;
-
-      if (!this.points) {
-        var points = this.points = this.addPoints(this.scene);
-      }
+      var _this10 = this;
 
       view.points.forEach(function (point, i) {
-        return _this9.addPoint(_construct(THREE.Vector3, _toConsumableArray(point.position)), i);
+        return _this10.addPoint(_this10.points, _construct(THREE.Vector3, _toConsumableArray(point.position)), i);
       });
     }
   }, {
     key: "onExitPoints",
     value: function onExitPoints(view) {
-      var _this10 = this;
+      var _this11 = this;
 
       if (view) {
         return Promise.all(view.points.map(function (point, i) {
-          return _this10.removePoint(i);
+          return _this11.removePoint(i);
         }));
       } else {
         return Promise.resolve();
@@ -10363,7 +10446,7 @@ function () {
         } else if (this.points) {
           raycaster.params.Points.threshold = 10.0;
 
-          var _intersections = raycaster.intersectObjects([this.points]);
+          var _intersections = raycaster.intersectObjects(this.points.children);
 
           if (_intersections) {
             var _intersection = _intersections.find(function (x) {
@@ -10441,11 +10524,11 @@ function () {
   }, {
     key: "animate",
     value: function animate() {
-      var _this11 = this;
+      var _this12 = this;
 
       var renderer = this.renderer;
       renderer.setAnimationLoop(function () {
-        _this11.render();
+        _this12.render();
       });
     }
   }, {
@@ -10480,42 +10563,32 @@ function () {
             });
 
             if (intersection) {
-              var index = intersection.index;
-              var point = intersection.point;
-              var debugInfo = "".concat(index, " => {").concat(point.x, ", ").concat(point.y, ", ").concat(point.z, "}"); // console.log(index, point, debugInfo);
-
-              this.debugInfo.innerHTML = debugInfo; // console.log(intersection.point);
-
-              this.pointer.position.set(intersection.point.x * 0.9, intersection.point.y * 0.9, intersection.point.z * 0.9);
-              this.pointer.lookAt(this.camera.position);
+              // const index = intersection.index;
+              // const point = intersection.point;
+              // const debugInfo = `${index} => {${point.x}, ${point.y}, ${point.z}}`;
+              // console.log(index, point, debugInfo);
+              // this.debugInfo.innerHTML = debugInfo;
+              // console.log(intersection.point);
+              var position = intersection.point.normalize().multiplyScalar(POINTER_RADIUS);
+              this.pointer.position.set(position.x, position.y, position.z);
+              this.pointer.lookAt(this.camera.position); // console.log(position.x, position.y, position.z);
             }
           }
 
           this.pointer.material.color.setHex(this.isControllerSelecting ? 0x0000ff : 0xffffff);
           this.pointer.material.opacity = this.isControllerSelecting ? 1.0 : 0.5;
+          var object; // raycaster.params.Points.threshold = 10.0;
 
-          if (this.isControllerSelectionDirty && this.points) {
-            raycaster.params.Points.threshold = 10.0;
-            intersections = raycaster.intersectObjects([this.points]);
+          intersections = raycaster.intersectObjects(this.points.children);
 
-            if (intersections) {
-              var _intersection2 = intersections.find(function (x) {
-                return x !== undefined;
-              });
-
-              if (_intersection2) {
-                this.isControllerSelectionDirty = false;
-                var _index = _intersection2.index;
-                var _point = _intersection2.point;
-
-                var _debugInfo = "".concat(_index, " => {").concat(_point.x, ", ").concat(_point.y, ", ").concat(_point.z, "}"); // console.log(index, point, debugInfo);
-
-
-                this.debugInfo.innerHTML = _debugInfo;
-                this.index = (this.index + 1) % this.views.length;
-              }
-            }
+          if (intersections.length) {
+            var _intersection2 = intersections[0];
+            object = _intersection2.object;
           }
+
+          this.hoverPoint = this.points.children.find(function (x) {
+            return x === object;
+          });
         }
       } catch (error) {
         this.debugInfo.innerHTML = error;
@@ -10603,6 +10676,49 @@ function () {
     set: function set(view) {
       this.onInitView(this.view_, view);
       this.view_ = view;
+    }
+  }, {
+    key: "hoverPoint",
+    get: function get() {
+      return this.hoverPoint_;
+    },
+    set: function set(point) {
+      if (this.hoverPoint_ !== point) {
+        this.hoverPoint_ = point;
+
+        if (this.isControllerSelectionDirty) {
+          this.isControllerSelectionDirty = false;
+          this.selectedPoint = point;
+        }
+
+        var tweens = this.points.children.map(function (x, index) {
+          var from = {
+            scale: x.scale.x
+          };
+          return TweenMax.to(from, 0.25, {
+            scale: x === point ? 3 : 1,
+            delay: 0,
+            onUpdate: function onUpdate() {
+              x.scale.set(from.scale, from.scale, from.scale);
+            },
+            onCompleted: function onCompleted() {// console.log(index, 'completed');
+            }
+          });
+        });
+      }
+    }
+  }, {
+    key: "selectedPoint",
+    get: function get() {
+      return this.selectedPoint_;
+    },
+    set: function set(point) {
+      if (this.selectedPoint_ !== point) {
+        this.selectedPoint_ = point;
+        var debugInfo = "selectedPoint => {".concat(point.x, ", ").concat(point.y, ", ").concat(point.z, "}");
+        this.debugInfo.innerHTML = debugInfo;
+        this.index = (this.index + 1) % this.views.length; // console.log(index, point, debugInfo);
+      }
     }
   }]);
 
