@@ -143,9 +143,10 @@ class VRTour {
 		// Dom.detect(body);
 		// body.classList.add('ready');
 		this.onWindowResize = this.onWindowResize.bind(this);
+		this.onMouseDown = this.onMouseDown.bind(this);
 		this.onMouseMove = this.onMouseMove.bind(this);
+		this.onMouseUp = this.onMouseUp.bind(this);
 		this.onMouseWheel = this.onMouseWheel.bind(this);
-		this.onClick = this.onClick.bind(this);
 		this.onSave = this.onSave.bind(this);
 		this.onLeftSelectStart = this.onLeftSelectStart.bind(this);
 		this.onLeftSelectEnd = this.onLeftSelectEnd.bind(this);
@@ -174,7 +175,6 @@ class VRTour {
 		*/
 		// unsubscribe();
 		// controllers
-		this.addTestController(scene);
 		console.log('vr.mode', vr.mode);
 		if (vr.mode !== VR_MODE.NONE) {
 			const left = this.left = this.addControllerLeft(renderer, scene);
@@ -183,37 +183,41 @@ class VRTour {
 			const dragListener = this.dragListener = this.addVRDragListener();
 			// hands
 			// const hands = this.hands = this.addHands();
+		} else if (TEST_ENABLED) {
+			this.addTestController(scene);
+			camera.target.z = ROOM_RADIUS;
+			camera.lookAt(camera.target);
+			const dragListener = this.dragListener = this.addVRDragListener();
 		} else {
 			camera.target.z = ROOM_RADIUS;
 			camera.lookAt(camera.target);
-			const dragListener = this.dragListener = this.addDragListener();
+			const dragListener = this.dragListener = this.addVRDragListener();
 		}
 		// raycaster
 		const raycaster = this.raycaster = new THREE.Raycaster();
 		window.addEventListener('resize', this.onWindowResize, false);
 		document.addEventListener('mousemove', this.onMouseMove, false);
 		document.addEventListener('wheel', this.onMouseWheel, false);
-		this.container.addEventListener('click', this.onClick, false);
+		this.container.addEventListener('mousedown', this.onMouseDown, false);
+		this.container.addEventListener('mouseup', this.onMouseUp, false);
 		this.debugSave.addEventListener('click', this.onSave, false);
 		this.section.classList.add('init');
 		this.onWindowResize();
 	}
 
 	addTestController(scene) {
-		if (TEST_ENABLED) {
-			const controller = this.right = new THREE.Group();
-			controller.position.set(0, 0, 0);
-			this.addControllerCylinder(controller, 0);
-			this.scene.add(controller);
-			this.controller = controller;
-			const pointer = this.pointer = this.addPointer(this.pivot);
-			this.container.addEventListener('mousedown', () => {
-				this.onRightSelectStart();
-			});
-			this.container.addEventListener('mouseup', () => {
-				this.onRightSelectEnd();
-			});
-		}
+		const controller = this.right = new THREE.Group();
+		controller.position.set(0, 0, 0);
+		this.addControllerCylinder(controller, 0);
+		this.scene.add(controller);
+		this.controller = controller;
+		const pointer = this.pointer = this.addPointer(this.pivot);
+		this.container.addEventListener('mousedown', () => {
+			this.onRightSelectStart();
+		});
+		this.container.addEventListener('mouseup', () => {
+			this.onRightSelectEnd();
+		});
 	}
 
 	testController() {
@@ -623,18 +627,35 @@ class VRTour {
 		// const rotation = this.pivot.worldToLocal(controller.getWorldDirection(new THREE.Vector3()).multiplyScalar(-1));
 		const dragListener = {
 			start: () => {
-				dragListener.dragging = true;
+				const dragListener = this.dragListener;
+				dragListener.qd = this.controller.quaternion.clone();
+				dragListener.qp = this.pivot.quaternion.clone();
+				/*
 				dragListener.down = this.controller.getWorldDirection(new THREE.Vector3());
-				dragListener.rotation = this.pivot.rotation.clone();
+				dragListener.rotation = this.pivot.rotation.toVector3();
+				*/
+				dragListener.dragging = true;
 			},
 			move: () => {
+				const dragListener = this.dragListener;
 				if (dragListener.dragging) {
-					dragListener.move = this.controller.getWorldDirection(new THREE.Vector3());
-					const rotation = dragListener.rotation.clone().add(dragListener.move).sub(dragListener.down);
-					this.pivot.rotation.set(rotation.x, rotation.y, rotation.z);
+					const qd = dragListener.qd.clone();
+					const qm = this.controller.quaternion.clone();
+					const diff = qm.multiply(qd.inverse());
+					const qp = dragListener.qp.clone();
+					this.pivot.setRotationFromQuaternion(qp.multiply(diff));
+					/*
+					const down = dragListener.down;
+					const move = this.controller.getWorldDirection(new THREE.Vector3());
+					const rotation = dragListener.rotation.clone();
+					rotation.add(move);
+					rotation.sub(down);
+					this.pivot.rotation.set(-rotation.y, rotation.x, rotation.z);
+					*/
 				}
 			},
 			end: () => {
+				const dragListener = this.dragListener;
 				dragListener.dragging = false;
 			},
 		};
@@ -843,6 +864,49 @@ class VRTour {
 		}
 	}
 
+	onMouseDown(event) {
+		if (TEST_ENABLED) {
+			this.dragListener.start();
+			return;
+		}
+		try {
+			const raycaster = this.raycaster;
+			// update the picking ray with the camera and mouse position
+			raycaster.setFromCamera(this.mouse, this.camera);
+			// calculate objects intersecting the picking ray
+			if (event.shiftKey) {
+				const intersections = raycaster.intersectObjects(this.room.children);
+				if (intersections) {
+					const intersection = intersections.find(x => x !== undefined);
+					this.createPoint(intersection);
+				}
+				// console.log(intersections);
+				/*
+				for (var i = 0; i < intersects.length; i++ ) {
+					console.log(intersections[i])
+					intersects[i].object.material.color.set( 0xff0000 );
+				}
+				*/
+			} else if (this.points) {
+				raycaster.params.Points.threshold = 10.0;
+				const intersections = raycaster.intersectObjects(this.points.children);
+				if (intersections) {
+					const intersection = intersections.find(x => x !== undefined);
+					if (intersection) {
+						const index = intersection.index;
+						const point = intersection.point;
+						const debugInfo = `${index} => {${point.x}, ${point.y}, ${point.z}}`;
+						// console.log(index, point, debugInfo);
+						this.debugInfo.innerHTML = debugInfo;
+						this.index = (this.index + 1) % this.views.length;
+					}
+				}
+			}
+		} catch (error) {
+			this.debugInfo.innerHTML = error;
+		}
+	}
+
 	onMouseMove(event) {
 		try {
 			const w2 = this.container.offsetWidth / 2;
@@ -851,6 +915,11 @@ class VRTour {
 				x: (event.clientX - w2) / w2,
 				y: -(event.clientY - h2) / h2,
 			};
+			if (TEST_ENABLED) {
+				this.controller.rotation.y = -this.mouse.x * Math.PI;
+				this.controller.rotation.x = this.mouse.y * Math.PI / 2;
+				return;
+			}
 			const raycaster = this.raycaster;
 			raycaster.setFromCamera(this.mouse, this.camera);
 			this.updateHoverPoint(raycaster);
@@ -898,54 +967,19 @@ class VRTour {
 		}
 	}
 
+	onMouseUp(event) {
+		if (TEST_ENABLED) {
+			this.dragListener.end();
+			return;
+		}
+	}
+
 	onMouseWheel(event) {
 		try {
 			const camera = this.camera;
 			const fov = camera.fov + event.deltaY * 0.01;
 			camera.fov = THREE.Math.clamp(fov, 30, 75);
 			camera.updateProjectionMatrix();
-		} catch (error) {
-			this.debugInfo.innerHTML = error;
-		}
-	}
-
-	onClick(event) {
-		if (TEST_ENABLED) {
-			return;
-		}
-		try {
-			const raycaster = this.raycaster;
-			// update the picking ray with the camera and mouse position
-			raycaster.setFromCamera(this.mouse, this.camera);
-			// calculate objects intersecting the picking ray
-			if (event.shiftKey) {
-				const intersections = raycaster.intersectObjects(this.room.children);
-				if (intersections) {
-					const intersection = intersections.find(x => x !== undefined);
-					this.createPoint(intersection);
-				}
-				// console.log(intersections);
-				/*
-				for (var i = 0; i < intersects.length; i++ ) {
-					console.log(intersections[i])
-					intersects[i].object.material.color.set( 0xff0000 );
-				}
-				*/
-			} else if (this.points) {
-				raycaster.params.Points.threshold = 10.0;
-				const intersections = raycaster.intersectObjects(this.points.children);
-				if (intersections) {
-					const intersection = intersections.find(x => x !== undefined);
-					if (intersection) {
-						const index = intersection.index;
-						const point = intersection.point;
-						const debugInfo = `${index} => {${point.x}, ${point.y}, ${point.z}}`;
-						// console.log(index, point, debugInfo);
-						this.debugInfo.innerHTML = debugInfo;
-						this.index = (this.index + 1) % this.views.length;
-					}
-				}
-			}
 		} catch (error) {
 			this.debugInfo.innerHTML = error;
 		}
@@ -1011,9 +1045,12 @@ class VRTour {
 		if (this.vr.mode !== VR_MODE.NONE) {
 			this.dragListener.move();
 			this.updateController();
+		} else if (TEST_ENABLED) {
+			this.dragListener.move();
+			this.updateController();
 		} else {
 			this.updatePivot();
-			this.testController();
+			// this.testController();
 			// this.updateCamera();
 		}
 		const renderer = this.renderer;

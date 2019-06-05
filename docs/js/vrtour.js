@@ -9547,9 +9547,10 @@ function () {
       // body.classList.add('ready');
 
       this.onWindowResize = this.onWindowResize.bind(this);
+      this.onMouseDown = this.onMouseDown.bind(this);
       this.onMouseMove = this.onMouseMove.bind(this);
+      this.onMouseUp = this.onMouseUp.bind(this);
       this.onMouseWheel = this.onMouseWheel.bind(this);
-      this.onClick = this.onClick.bind(this);
       this.onSave = this.onSave.bind(this);
       this.onLeftSelectStart = this.onLeftSelectStart.bind(this);
       this.onLeftSelectEnd = this.onLeftSelectEnd.bind(this);
@@ -9580,7 +9581,6 @@ function () {
       // unsubscribe();
       // controllers
 
-      this.addTestController(scene);
       console.log('vr.mode', vr.mode);
 
       if (vr.mode !== _vr.VR_MODE.NONE) {
@@ -9589,11 +9589,17 @@ function () {
         var pointer = this.pointer = this.addPointer(pivot);
         var dragListener = this.dragListener = this.addVRDragListener(); // hands
         // const hands = this.hands = this.addHands();
+      } else if (TEST_ENABLED) {
+        this.addTestController(scene);
+        camera.target.z = ROOM_RADIUS;
+        camera.lookAt(camera.target);
+
+        var _dragListener = this.dragListener = this.addVRDragListener();
       } else {
         camera.target.z = ROOM_RADIUS;
         camera.lookAt(camera.target);
 
-        var _dragListener = this.dragListener = this.addDragListener();
+        var _dragListener2 = this.dragListener = this.addVRDragListener();
       } // raycaster
 
 
@@ -9601,7 +9607,8 @@ function () {
       window.addEventListener('resize', this.onWindowResize, false);
       document.addEventListener('mousemove', this.onMouseMove, false);
       document.addEventListener('wheel', this.onMouseWheel, false);
-      this.container.addEventListener('click', this.onClick, false);
+      this.container.addEventListener('mousedown', this.onMouseDown, false);
+      this.container.addEventListener('mouseup', this.onMouseUp, false);
       this.debugSave.addEventListener('click', this.onSave, false);
       this.section.classList.add('init');
       this.onWindowResize();
@@ -9611,20 +9618,18 @@ function () {
     value: function addTestController(scene) {
       var _this2 = this;
 
-      if (TEST_ENABLED) {
-        var controller = this.right = new THREE.Group();
-        controller.position.set(0, 0, 0);
-        this.addControllerCylinder(controller, 0);
-        this.scene.add(controller);
-        this.controller = controller;
-        var pointer = this.pointer = this.addPointer(this.pivot);
-        this.container.addEventListener('mousedown', function () {
-          _this2.onRightSelectStart();
-        });
-        this.container.addEventListener('mouseup', function () {
-          _this2.onRightSelectEnd();
-        });
-      }
+      var controller = this.right = new THREE.Group();
+      controller.position.set(0, 0, 0);
+      this.addControllerCylinder(controller, 0);
+      this.scene.add(controller);
+      this.controller = controller;
+      var pointer = this.pointer = this.addPointer(this.pivot);
+      this.container.addEventListener('mousedown', function () {
+        _this2.onRightSelectStart();
+      });
+      this.container.addEventListener('mouseup', function () {
+        _this2.onRightSelectEnd();
+      });
     }
   }, {
     key: "testController",
@@ -10077,19 +10082,41 @@ function () {
 
       var dragListener = {
         start: function start() {
+          var dragListener = _this6.dragListener;
+          dragListener.qd = _this6.controller.quaternion.clone();
+          dragListener.qp = _this6.pivot.quaternion.clone();
+          /*
+          dragListener.down = this.controller.getWorldDirection(new THREE.Vector3());
+          dragListener.rotation = this.pivot.rotation.toVector3();
+          */
+
           dragListener.dragging = true;
-          dragListener.down = _this6.controller.getWorldDirection(new THREE.Vector3());
-          dragListener.rotation = _this6.pivot.rotation.clone();
         },
         move: function move() {
-          if (dragListener.dragging) {
-            dragListener.move = _this6.controller.getWorldDirection(new THREE.Vector3());
-            var rotation = dragListener.rotation.clone().add(dragListener.move).sub(dragListener.down);
+          var dragListener = _this6.dragListener;
 
-            _this6.pivot.rotation.set(rotation.x, rotation.y, rotation.z);
+          if (dragListener.dragging) {
+            var qd = dragListener.qd.clone();
+
+            var qm = _this6.controller.quaternion.clone();
+
+            var diff = qm.multiply(qd.inverse());
+            var qp = dragListener.qp.clone();
+
+            _this6.pivot.setRotationFromQuaternion(qp.multiply(diff));
+            /*
+            const down = dragListener.down;
+            const move = this.controller.getWorldDirection(new THREE.Vector3());
+            const rotation = dragListener.rotation.clone();
+            rotation.add(move);
+            rotation.sub(down);
+            this.pivot.rotation.set(-rotation.y, rotation.x, rotation.z);
+            */
+
           }
         },
         end: function end() {
+          var dragListener = _this6.dragListener;
           dragListener.dragging = false;
         }
       };
@@ -10335,6 +10362,60 @@ function () {
       }
     }
   }, {
+    key: "onMouseDown",
+    value: function onMouseDown(event) {
+      if (TEST_ENABLED) {
+        this.dragListener.start();
+        return;
+      }
+
+      try {
+        var raycaster = this.raycaster; // update the picking ray with the camera and mouse position
+
+        raycaster.setFromCamera(this.mouse, this.camera); // calculate objects intersecting the picking ray
+
+        if (event.shiftKey) {
+          var intersections = raycaster.intersectObjects(this.room.children);
+
+          if (intersections) {
+            var intersection = intersections.find(function (x) {
+              return x !== undefined;
+            });
+            this.createPoint(intersection);
+          } // console.log(intersections);
+
+          /*
+          for (var i = 0; i < intersects.length; i++ ) {
+          	console.log(intersections[i])
+          	intersects[i].object.material.color.set( 0xff0000 );
+          }
+          */
+
+        } else if (this.points) {
+          raycaster.params.Points.threshold = 10.0;
+
+          var _intersections = raycaster.intersectObjects(this.points.children);
+
+          if (_intersections) {
+            var _intersection = _intersections.find(function (x) {
+              return x !== undefined;
+            });
+
+            if (_intersection) {
+              var index = _intersection.index;
+              var point = _intersection.point;
+              var debugInfo = "".concat(index, " => {").concat(point.x, ", ").concat(point.y, ", ").concat(point.z, "}"); // console.log(index, point, debugInfo);
+
+              this.debugInfo.innerHTML = debugInfo;
+              this.index = (this.index + 1) % this.views.length;
+            }
+          }
+        }
+      } catch (error) {
+        this.debugInfo.innerHTML = error;
+      }
+    }
+  }, {
     key: "onMouseMove",
     value: function onMouseMove(event) {
       try {
@@ -10344,6 +10425,13 @@ function () {
           x: (event.clientX - w2) / w2,
           y: -(event.clientY - h2) / h2
         };
+
+        if (TEST_ENABLED) {
+          this.controller.rotation.y = -this.mouse.x * Math.PI;
+          this.controller.rotation.x = this.mouse.y * Math.PI / 2;
+          return;
+        }
+
         var raycaster = this.raycaster;
         raycaster.setFromCamera(this.mouse, this.camera);
         this.updateHoverPoint(raycaster);
@@ -10392,6 +10480,14 @@ function () {
       }
     }
   }, {
+    key: "onMouseUp",
+    value: function onMouseUp(event) {
+      if (TEST_ENABLED) {
+        this.dragListener.end();
+        return;
+      }
+    }
+  }, {
     key: "onMouseWheel",
     value: function onMouseWheel(event) {
       try {
@@ -10399,59 +10495,6 @@ function () {
         var fov = camera.fov + event.deltaY * 0.01;
         camera.fov = THREE.Math.clamp(fov, 30, 75);
         camera.updateProjectionMatrix();
-      } catch (error) {
-        this.debugInfo.innerHTML = error;
-      }
-    }
-  }, {
-    key: "onClick",
-    value: function onClick(event) {
-      if (TEST_ENABLED) {
-        return;
-      }
-
-      try {
-        var raycaster = this.raycaster; // update the picking ray with the camera and mouse position
-
-        raycaster.setFromCamera(this.mouse, this.camera); // calculate objects intersecting the picking ray
-
-        if (event.shiftKey) {
-          var intersections = raycaster.intersectObjects(this.room.children);
-
-          if (intersections) {
-            var intersection = intersections.find(function (x) {
-              return x !== undefined;
-            });
-            this.createPoint(intersection);
-          } // console.log(intersections);
-
-          /*
-          for (var i = 0; i < intersects.length; i++ ) {
-          	console.log(intersections[i])
-          	intersects[i].object.material.color.set( 0xff0000 );
-          }
-          */
-
-        } else if (this.points) {
-          raycaster.params.Points.threshold = 10.0;
-
-          var _intersections = raycaster.intersectObjects(this.points.children);
-
-          if (_intersections) {
-            var _intersection = _intersections.find(function (x) {
-              return x !== undefined;
-            });
-
-            if (_intersection) {
-              var index = _intersection.index;
-              var point = _intersection.point;
-              var debugInfo = "".concat(index, " => {").concat(point.x, ", ").concat(point.y, ", ").concat(point.z, "}"); // console.log(index, point, debugInfo);
-
-              this.debugInfo.innerHTML = debugInfo;
-              this.index = (this.index + 1) % this.views.length;
-            }
-          }
-        }
       } catch (error) {
         this.debugInfo.innerHTML = error;
       }
@@ -10526,9 +10569,12 @@ function () {
       if (this.vr.mode !== _vr.VR_MODE.NONE) {
         this.dragListener.move();
         this.updateController();
+      } else if (TEST_ENABLED) {
+        this.dragListener.move();
+        this.updateController();
       } else {
-        this.updatePivot();
-        this.testController(); // this.updateCamera();
+        this.updatePivot(); // this.testController();
+        // this.updateCamera();
       }
 
       var renderer = this.renderer;
