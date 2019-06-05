@@ -43,7 +43,7 @@ const shaderPoint = {
 const ROOM_RADIUS = 100;
 const POINT_RADIUS = 99;
 const POINTER_RADIUS = 98;
-const TEST_ENABLED = true;
+const TEST_ENABLED = false;
 
 class VRTour {
 
@@ -83,6 +83,11 @@ class VRTour {
 	set hoverPoint(point) {
 		if (this.hoverPoint_ !== point) {
 			this.hoverPoint_ = point;
+			if (point) {
+				this.onEnterPanel(point.position);
+			} else {
+				this.onExitPanel();
+			}
 			if (this.isControllerSelectionDirty) {
 				this.isControllerSelectionDirty = false;
 				this.selectedPoint = point;
@@ -154,6 +159,7 @@ class VRTour {
 		const floor = this.floor = this.addFloor(scene);
 		const ceil = this.ceil = this.addCeil(scene);
 		const points = this.points = this.addPoints(scene);
+		const panel = this.panel = this.addPanel(scene);
 		// renderer
 		const renderer = this.renderer = this.addRenderer();
 		// this.container.appendChild(WEBVR.createButton(renderer, { referenceSpaceType: 'local' }));
@@ -384,6 +390,19 @@ class VRTour {
 		// mesh.lookAt(this.origin);
 		// mesh.lookAt(this.camera.position);
 		parent.add(mesh);
+		return mesh;
+	}
+
+	addPanel(parent) {
+		const geometry = new THREE.PlaneBufferGeometry(100, 100, 3, 3);
+		const material = new THREE.MeshBasicMaterial({
+			transparent: true,
+			opacity: 1,
+			// side: THREE.DoubleSide,
+		});
+		const mesh = new THREE.Mesh(geometry, material);
+		mesh.position.set(100000, 100000, 100000);
+		// parent.add(mesh);
 		return mesh;
 	}
 
@@ -810,6 +829,31 @@ class VRTour {
 		}
 	}
 
+	onEnterPanel(point) {
+		this.getPanelInfoById('#panel').then(info => {
+			if (info) {
+				const panel = this.panel;
+				panel.material.map = info.map;
+				// panel.material.alphaMap = info.alphaMap;
+				panel.material.needsUpdate = true;
+				// const scale = info.width / 256;
+				// panel.geometry.scale(scale, scale, scale);
+				// panel.geometry.verticesNeedUpdate = true;
+				panel.position.set(point.x, point.y, point.z);
+				panel.lookAt(this.camera.position);
+				this.scene.add(panel);
+				// console.log('getPanelInfoById', panel.position);
+			}
+		});
+	}
+
+	onExitPanel() {
+		const panel = this.panel;
+		if (panel && panel.parent) {
+			panel.parent.remove(panel);
+		}
+	}
+
 	// events
 
 	onLeftSelectStart() {
@@ -1115,23 +1159,59 @@ class VRTour {
 		anchor.dataset.downloadurl = ['text/json', anchor.download, anchor.href].join(':');
 		event.initMouseEvent('click', true, false, window, 0, 0, 0, 0, 0, false, false, false, false, 0, null);
 		anchor.dispatchEvent(event);
-		// this.getSnapshot();
 	}
 
-	getSnapshot() {
-		html2canvas(document.querySelector('.page')).then(canvas => {
-			document.body.appendChild(canvas);
-		});
+	getPanelInfoById(id) {
+		return new Promise((resolve, reject) => {
+			const node = document.querySelector(id);
+			if (node) {
+				html2canvas(node, {
+					backgroundColor: '#ffffff00',
+				}).then(canvas => {
+					// !!!
+					// document.body.appendChild(canvas);
+					const alpha = this.getAlphaFromCanvas(canvas);
+					// document.body.appendChild(alpha);
+					const map = new THREE.CanvasTexture(canvas);
+					const alphaMap = new THREE.CanvasTexture(alpha);
+					resolve({
+						map: map,
+						alphaMap: alphaMap,
+						width: canvas.width,
+						height: canvas.height,
+					});
+				});
+			} else {
+				reject('node not found');
+			}
+		})
+	}
+
+	getAlphaFromCanvas(source) {
+		const sourceCtx = source.getContext('2d');
+		const imageData = sourceCtx.getImageData(0, 0, source.width, source.height);
+		const data = imageData.data;
+		for (let i = 0; i < data.length; i += 4) {
+			const alpha = data[i + 3];
+			data[i] = alpha;
+			data[i + 1] = alpha;
+			data[i + 2] = alpha;
+			data[i + 3] = 254;
+		}
+		const target = document.createElement('canvas');
+		target.width = source.width;
+		target.height = source.height;
+		const targetCtx = target.getContext('2d');
+		targetCtx.putImageData(imageData, target.width, target.height);
+		// targetCtx.drawImage(imageData, 0, 0);
+		return target;
 	}
 
 }
 
 const tour = new VRTour();
-
-// window.onload = () => {
 tour.animate();
 tour.load('data/vr.json');
-// };
 
 /*
 let camera;

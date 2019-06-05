@@ -9488,7 +9488,7 @@ var shaderPoint = {
 var ROOM_RADIUS = 100;
 var POINT_RADIUS = 99;
 var POINTER_RADIUS = 98;
-var TEST_ENABLED = true;
+var TEST_ENABLED = false;
 
 var VRTour =
 /*#__PURE__*/
@@ -9564,7 +9564,8 @@ function () {
       var environment = this.environment = this.addEnvironment(scene);
       var floor = this.floor = this.addFloor(scene);
       var ceil = this.ceil = this.addCeil(scene);
-      var points = this.points = this.addPoints(scene); // renderer
+      var points = this.points = this.addPoints(scene);
+      var panel = this.panel = this.addPanel(scene); // renderer
 
       var renderer = this.renderer = this.addRenderer(); // this.container.appendChild(WEBVR.createButton(renderer, { referenceSpaceType: 'local' }));
 
@@ -9815,6 +9816,20 @@ function () {
       // mesh.lookAt(this.camera.position);
 
       parent.add(mesh);
+      return mesh;
+    }
+  }, {
+    key: "addPanel",
+    value: function addPanel(parent) {
+      var geometry = new THREE.PlaneBufferGeometry(100, 100, 3, 3);
+      var material = new THREE.MeshBasicMaterial({
+        transparent: true,
+        opacity: 1 // side: THREE.DoubleSide,
+
+      });
+      var mesh = new THREE.Mesh(geometry, material);
+      mesh.position.set(100000, 100000, 100000); // parent.add(mesh);
+
       return mesh;
     }
   }, {
@@ -10296,6 +10311,37 @@ function () {
       } else {
         return Promise.resolve();
       }
+    }
+  }, {
+    key: "onEnterPanel",
+    value: function onEnterPanel(point) {
+      var _this12 = this;
+
+      this.getPanelInfoById('#panel').then(function (info) {
+        if (info) {
+          var panel = _this12.panel;
+          panel.material.map = info.map; // panel.material.alphaMap = info.alphaMap;
+
+          panel.material.needsUpdate = true; // const scale = info.width / 256;
+          // panel.geometry.scale(scale, scale, scale);
+          // panel.geometry.verticesNeedUpdate = true;
+
+          panel.position.set(point.x, point.y, point.z);
+          panel.lookAt(_this12.camera.position);
+
+          _this12.scene.add(panel); // console.log('getPanelInfoById', panel.position);
+
+        }
+      });
+    }
+  }, {
+    key: "onExitPanel",
+    value: function onExitPanel() {
+      var panel = this.panel;
+
+      if (panel && panel.parent) {
+        panel.parent.remove(panel);
+      }
     } // events
 
   }, {
@@ -10524,11 +10570,11 @@ function () {
   }, {
     key: "animate",
     value: function animate() {
-      var _this12 = this;
+      var _this13 = this;
 
       var renderer = this.renderer;
       renderer.setAnimationLoop(function () {
-        _this12.render();
+        _this13.render();
       });
     }
   }, {
@@ -10650,14 +10696,61 @@ function () {
       anchor.href = window.URL.createObjectURL(blob);
       anchor.dataset.downloadurl = ['text/json', anchor.download, anchor.href].join(':');
       event.initMouseEvent('click', true, false, window, 0, 0, 0, 0, 0, false, false, false, false, 0, null);
-      anchor.dispatchEvent(event); // this.getSnapshot();
+      anchor.dispatchEvent(event);
     }
   }, {
-    key: "getSnapshot",
-    value: function getSnapshot() {
-      (0, _html2canvas.default)(document.querySelector('.page')).then(function (canvas) {
-        document.body.appendChild(canvas);
+    key: "getPanelInfoById",
+    value: function getPanelInfoById(id) {
+      var _this14 = this;
+
+      return new Promise(function (resolve, reject) {
+        var node = document.querySelector(id);
+
+        if (node) {
+          (0, _html2canvas.default)(node, {
+            backgroundColor: '#ffffff00'
+          }).then(function (canvas) {
+            // !!!
+            // document.body.appendChild(canvas);
+            var alpha = _this14.getAlphaFromCanvas(canvas); // document.body.appendChild(alpha);
+
+
+            var map = new THREE.CanvasTexture(canvas);
+            var alphaMap = new THREE.CanvasTexture(alpha);
+            resolve({
+              map: map,
+              alphaMap: alphaMap,
+              width: canvas.width,
+              height: canvas.height
+            });
+          });
+        } else {
+          reject('node not found');
+        }
       });
+    }
+  }, {
+    key: "getAlphaFromCanvas",
+    value: function getAlphaFromCanvas(source) {
+      var sourceCtx = source.getContext('2d');
+      var imageData = sourceCtx.getImageData(0, 0, source.width, source.height);
+      var data = imageData.data;
+
+      for (var i = 0; i < data.length; i += 4) {
+        var alpha = data[i + 3];
+        data[i] = alpha;
+        data[i + 1] = alpha;
+        data[i + 2] = alpha;
+        data[i + 3] = 254;
+      }
+
+      var target = document.createElement('canvas');
+      target.width = source.width;
+      target.height = source.height;
+      var targetCtx = target.getContext('2d');
+      targetCtx.putImageData(imageData, target.width, target.height); // targetCtx.drawImage(imageData, 0, 0);
+
+      return target;
     }
   }, {
     key: "index",
@@ -10685,6 +10778,12 @@ function () {
     set: function set(point) {
       if (this.hoverPoint_ !== point) {
         this.hoverPoint_ = point;
+
+        if (point) {
+          this.onEnterPanel(point.position);
+        } else {
+          this.onExitPanel();
+        }
 
         if (this.isControllerSelectionDirty) {
           this.isControllerSelectionDirty = false;
@@ -10725,11 +10824,9 @@ function () {
   return VRTour;
 }();
 
-var tour = new VRTour(); // window.onload = () => {
-
+var tour = new VRTour();
 tour.animate();
-tour.load('data/vr.json'); // };
-
+tour.load('data/vr.json');
 /*
 let camera;
 if (USE_ORTHO) {

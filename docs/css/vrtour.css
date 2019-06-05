@@ -2,7 +2,7 @@ body {
   margin: 0;
   padding: 0;
   font-family: 'Roboto';
-  font-size: 16;
+  font-size: 16px;
   line-height: 1.2; }
 
 .vrtour {
@@ -52,7 +52,8 @@ body {
     opacity: 0; }
 
 .vrtour {
-  min-height: 100vh; }
+  min-height: 100vh;
+  overflow: hidden; }
 
 .vrtour__container {
   position: absolute;
@@ -60,6 +61,34 @@ body {
   left: 0;
   width: 100%;
   height: 100%; }
+
+.panel {
+  position: absolute;
+  top: 100%;
+  display: -webkit-box;
+  display: -ms-flexbox;
+  display: flex;
+  -webkit-box-orient: vertical;
+  -webkit-box-direction: normal;
+      -ms-flex-direction: column;
+          flex-direction: column;
+  -webkit-box-pack: center;
+      -ms-flex-pack: center;
+          justify-content: center;
+  width: 256px;
+  min-height: 256px;
+  padding: 40px;
+  border-radius: 30px;
+  text-align: center;
+  background: grey;
+  color: white; }
+  .panel .title {
+    font-size: 25px;
+    font-weight: 500;
+    line-height: 1.2; }
+  .panel .abstract {
+    font-size: 18px;
+    line-height: 1.2; }
 
 /*
 @media screen and (min-width:1024px) {
