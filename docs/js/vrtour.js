@@ -9586,12 +9586,14 @@ function () {
       if (vr.mode !== _vr.VR_MODE.NONE) {
         var left = this.left = this.addControllerLeft(renderer, scene);
         var right = this.right = this.addControllerRight(renderer, scene);
-        var pointer = this.pointer = this.addPointer(pivot); // hands
+        var pointer = this.pointer = this.addPointer(pivot);
+        var dragListener = this.dragListener = this.addVRDragListener(); // hands
         // const hands = this.hands = this.addHands();
       } else {
         camera.target.z = ROOM_RADIUS;
         camera.lookAt(camera.target);
-        var dragListener = this.dragListener = this.addDragListener();
+
+        var _dragListener = this.dragListener = this.addDragListener();
       } // raycaster
 
 
@@ -9960,10 +9962,12 @@ function () {
     key: "addControllerCylinder",
     value: function addControllerCylinder(controller, i) {
       var geometry = new THREE.CylinderBufferGeometry(cm(2), cm(2), cm(12), 24);
-      var texture = new THREE.TextureLoader().load('https://cdn.glitch.com/7ae766be-18fb-4945-ad9d-8cc3be027694%2FBazC_SkinMat.jpg?1558678160164');
+      var texture = new THREE.TextureLoader().load('img/matcap.jpg');
       var material = new THREE.MeshMatcapMaterial({
         color: i === 0 ? 0xff0000 : 0x0000ff,
-        matcap: texture
+        matcap: texture,
+        transparent: true,
+        opacity: 1
       });
       /*
       const material = new THREE.MeshBasicMaterial({
@@ -10043,20 +10047,66 @@ function () {
       }, function (event) {
         _this5.speed = Math.abs(event.strength.x) * 100; // console.log('speed', this.speed);
       });
+
+      dragListener.move = function () {};
+
+      return dragListener;
+    }
+  }, {
+    key: "addVRDragListener",
+    value: function addVRDragListener() {
+      var _this6 = this;
+
+      /*
+      let longitude, latitude;
+      const dragListener = new DragListener(this.container, (event) => {
+      	longitude = this.longitude;
+      	latitude = this.latitude;
+      }, (event) => {
+      	this.longitude = -event.distance.x * 0.1 + longitude;
+      	this.latitude = event.distance.y * 0.1 + latitude;
+      	this.direction = event.distance.x ? (event.distance.x / Math.abs(event.distance.x) * -1) : 1;
+      	// console.log('longitude', this.longitude, 'latitude', this.latitude, 'direction', this.direction);
+      }, (event) => {
+      	this.speed = Math.abs(event.strength.x) * 100;
+      	// console.log('speed', this.speed);
+      });
+      */
+      var raycaster = this.raycaster; // const position = this.pivot.worldToLocal(controller.position);
+      // const rotation = this.pivot.worldToLocal(controller.getWorldDirection(new THREE.Vector3()).multiplyScalar(-1));
+
+      var dragListener = {
+        start: function start() {
+          dragListener.dragging = true;
+          dragListener.down = _this6.controller.getWorldDirection(new THREE.Vector3());
+          dragListener.rotation = _this6.pivot.rotation.clone();
+        },
+        move: function move() {
+          if (dragListener.dragging) {
+            dragListener.move = _this6.controller.getWorldDirection(new THREE.Vector3());
+            var rotation = dragListener.rotation.clone().add(dragListener.move).sub(dragListener.down);
+
+            _this6.pivot.rotation.set(rotation.x, rotation.y, rotation.z);
+          }
+        },
+        end: function end() {
+          dragListener.dragging = false;
+        }
+      };
       return dragListener;
     }
   }, {
     key: "onInitView",
     value: function onInitView(previous, current) {
-      var _this6 = this;
+      var _this7 = this;
 
       // console.log(previous, current);
       this.onExitPoints(previous).then(function () {
         // console.log(this.points.vertices);
-        _this6.onExitView(previous).then(function () {
+        _this7.onExitView(previous).then(function () {
           // if (!previous) {
-          _this6.onEnterView(current).then(function () {
-            _this6.onEnterPoints(current); // console.log(this.points.vertices);
+          _this7.onEnterView(current).then(function () {
+            _this7.onEnterPoints(current); // console.log(this.points.vertices);
 
           }); // }
 
@@ -10066,11 +10116,11 @@ function () {
   }, {
     key: "onExitView",
     value: function onExitView(view) {
-      var _this7 = this;
+      var _this8 = this;
 
       return new Promise(function (resolve, reject) {
         if (view) {
-          TweenMax.to(_this7.room.sphere.material, 0.4, {
+          TweenMax.to(_this8.room.sphere.material, 0.4, {
             opacity: 0,
             delay: 0.0,
             onCompleted: function onCompleted() {
@@ -10087,7 +10137,7 @@ function () {
   }, {
     key: "onEnterView",
     value: function onEnterView(view) {
-      var _this8 = this;
+      var _this9 = this;
 
       return new Promise(function (resolve, reject) {
         if (view) {
@@ -10109,11 +10159,11 @@ function () {
               }
               */
               if (view.orientation) {
-                _this8.latitude = view.orientation.latitude;
-                _this8.longitude = view.orientation.longitude;
+                _this9.latitude = view.orientation.latitude;
+                _this9.longitude = view.orientation.longitude;
               }
 
-              var material = _this8.room.sphere.material;
+              var material = _this9.room.sphere.material;
               material.opacity = 0;
               material.color.setHex(0xffffff); // texture.minFilter = THREE.NearestMipMapNearestFilter;
               // texture.magFilter = THREE.LinearMipMapLinearFilter;
@@ -10138,20 +10188,20 @@ function () {
   }, {
     key: "onEnterPoints",
     value: function onEnterPoints(view) {
-      var _this9 = this;
+      var _this10 = this;
 
       view.points.forEach(function (point, i) {
-        return _this9.addPoint(_this9.points, _construct(THREE.Vector3, _toConsumableArray(point.position)), i);
+        return _this10.addPoint(_this10.points, _construct(THREE.Vector3, _toConsumableArray(point.position)), i);
       });
     }
   }, {
     key: "onExitPoints",
     value: function onExitPoints(view) {
-      var _this10 = this;
+      var _this11 = this;
 
       if (view) {
         return Promise.all(view.points.map(function (point, i) {
-          return _this10.removePoint(i);
+          return _this11.removePoint(i);
         }));
       } else {
         return Promise.resolve();
@@ -10160,11 +10210,11 @@ function () {
   }, {
     key: "onEnterPanel",
     value: function onEnterPanel(point) {
-      var _this11 = this;
+      var _this12 = this;
 
       this.getPanelInfoById('#panel').then(function (info) {
         if (info) {
-          var panel = _this11.panel;
+          var panel = _this12.panel;
           panel.material.map = info.map;
           panel.material.opacity = 0; // panel.material.alphaMap = info.alphaMap;
 
@@ -10174,9 +10224,9 @@ function () {
 
           var position = point.normalize().multiplyScalar(PANEL_RADIUS);
           panel.position.set(position.x, position.y + 30 + 30, position.z);
-          panel.lookAt(_this11.origin);
+          panel.lookAt(_this12.origin);
 
-          _this11.pivot.add(panel);
+          _this12.pivot.add(panel);
 
           var from = {
             value: 1
@@ -10186,7 +10236,7 @@ function () {
             delay: 0.2,
             onUpdate: function onUpdate() {
               panel.position.set(position.x, position.y + 30 + 30 * from.value, position.z);
-              panel.lookAt(_this11.origin);
+              panel.lookAt(_this12.origin);
               panel.material.opacity = 1 - from.value;
               panel.material.needsUpdate = true;
             }
@@ -10216,6 +10266,7 @@ function () {
         this.controller.add(this.controller.indicator);
         this.isControllerSelecting = true;
         this.isControllerSelectionDirty = true;
+        this.dragListener.start();
       } catch (error) {
         this.debugInfo.innerHTML = error;
       }
@@ -10226,6 +10277,7 @@ function () {
       try {
         this.isControllerSelecting = false;
         this.isControllerSelectionDirty = false;
+        this.dragListener.end();
       } catch (error) {
         this.debugInfo.innerHTML = error;
       }
@@ -10242,6 +10294,7 @@ function () {
         this.controller.add(this.controller.indicator);
         this.isControllerSelecting = true;
         this.isControllerSelectionDirty = true;
+        this.dragListener.start();
       } catch (error) {
         this.debugInfo.innerHTML = error;
       }
@@ -10252,6 +10305,7 @@ function () {
       try {
         this.isControllerSelecting = false;
         this.isControllerSelectionDirty = false;
+        this.dragListener.end();
       } catch (error) {
         this.debugInfo.innerHTML = error;
       }
@@ -10459,21 +10513,21 @@ function () {
   }, {
     key: "animate",
     value: function animate() {
-      var _this12 = this;
+      var _this13 = this;
 
       var renderer = this.renderer;
       renderer.setAnimationLoop(function () {
-        _this12.render();
+        _this13.render();
       });
     }
   }, {
     key: "render",
     value: function render(delta) {
-      this.updatePivot();
-
       if (this.vr.mode !== _vr.VR_MODE.NONE) {
+        this.dragListener.move();
         this.updateController();
       } else {
+        this.updatePivot();
         this.testController(); // this.updateCamera();
       }
 
@@ -10634,7 +10688,7 @@ function () {
   }, {
     key: "getPanelInfoById",
     value: function getPanelInfoById(id) {
-      var _this13 = this;
+      var _this14 = this;
 
       return new Promise(function (resolve, reject) {
         var node = document.querySelector(id);
@@ -10645,7 +10699,7 @@ function () {
           }).then(function (canvas) {
             // !!!
             // document.body.appendChild(canvas);
-            var alpha = _this13.getAlphaFromCanvas(canvas); // document.body.appendChild(alpha);
+            var alpha = _this14.getAlphaFromCanvas(canvas); // document.body.appendChild(alpha);
 
 
             var map = new THREE.CanvasTexture(canvas); // const alphaMap = new THREE.CanvasTexture(alpha);
@@ -10762,15 +10816,15 @@ var tour = new VRTour();
 tour.animate();
 tour.load('data/vr.json');
 /*
-		const material = new THREE.PointsMaterial({
-			size: 15,
-			map: loader.load('img/pin.png'),
-			vertexColors: THREE.VertexColors,
-			blending: THREE.AdditiveBlending,
-			depthTest: true,
-			transparent: true
-		});
-		*/
+const material = new THREE.PointsMaterial({
+	size: 15,
+	map: loader.load('img/pin.png'),
+	vertexColors: THREE.VertexColors,
+	blending: THREE.AdditiveBlending,
+	depthTest: true,
+	transparent: true
+});
+*/
 
 /*
 const material = new THREE.ShaderMaterial({

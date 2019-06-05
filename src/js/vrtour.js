@@ -180,6 +180,7 @@ class VRTour {
 			const left = this.left = this.addControllerLeft(renderer, scene);
 			const right = this.right = this.addControllerRight(renderer, scene);
 			const pointer = this.pointer = this.addPointer(pivot);
+			const dragListener = this.dragListener = this.addVRDragListener();
 			// hands
 			// const hands = this.hands = this.addHands();
 		} else {
@@ -517,10 +518,12 @@ class VRTour {
 
 	addControllerCylinder(controller, i) {
 		const geometry = new THREE.CylinderBufferGeometry(cm(2), cm(2), cm(12), 24);
-		const texture = new THREE.TextureLoader().load('https://cdn.glitch.com/7ae766be-18fb-4945-ad9d-8cc3be027694%2FBazC_SkinMat.jpg?1558678160164');
+		const texture = new THREE.TextureLoader().load('img/matcap.jpg');
 		const material = new THREE.MeshMatcapMaterial({
 			color: i === 0 ? 0xff0000 : 0x0000ff,
-			matcap: texture
+			matcap: texture,
+			transparent: true,
+			opacity: 1,
 		});
 		/*
 		const material = new THREE.MeshBasicMaterial({
@@ -595,6 +598,46 @@ class VRTour {
 			this.speed = Math.abs(event.strength.x) * 100;
 			// console.log('speed', this.speed);
 		});
+		dragListener.move = () => {};
+		return dragListener;
+	}
+
+	addVRDragListener() {
+		/*
+		let longitude, latitude;
+		const dragListener = new DragListener(this.container, (event) => {
+			longitude = this.longitude;
+			latitude = this.latitude;
+		}, (event) => {
+			this.longitude = -event.distance.x * 0.1 + longitude;
+			this.latitude = event.distance.y * 0.1 + latitude;
+			this.direction = event.distance.x ? (event.distance.x / Math.abs(event.distance.x) * -1) : 1;
+			// console.log('longitude', this.longitude, 'latitude', this.latitude, 'direction', this.direction);
+		}, (event) => {
+			this.speed = Math.abs(event.strength.x) * 100;
+			// console.log('speed', this.speed);
+		});
+		*/
+		const raycaster = this.raycaster;
+		// const position = this.pivot.worldToLocal(controller.position);
+		// const rotation = this.pivot.worldToLocal(controller.getWorldDirection(new THREE.Vector3()).multiplyScalar(-1));
+		const dragListener = {
+			start: () => {
+				dragListener.dragging = true;
+				dragListener.down = this.controller.getWorldDirection(new THREE.Vector3());
+				dragListener.rotation = this.pivot.rotation.clone();
+			},
+			move: () => {
+				if (dragListener.dragging) {
+					dragListener.move = this.controller.getWorldDirection(new THREE.Vector3());
+					const rotation = dragListener.rotation.clone().add(dragListener.move).sub(dragListener.down);
+					this.pivot.rotation.set(rotation.x, rotation.y, rotation.z);
+				}
+			},
+			end: () => {
+				dragListener.dragging = false;
+			},
+		};
 		return dragListener;
 	}
 
@@ -738,6 +781,7 @@ class VRTour {
 			this.controller.add(this.controller.indicator);
 			this.isControllerSelecting = true;
 			this.isControllerSelectionDirty = true;
+			this.dragListener.start();
 		} catch (error) {
 			this.debugInfo.innerHTML = error;
 		}
@@ -747,6 +791,7 @@ class VRTour {
 		try {
 			this.isControllerSelecting = false;
 			this.isControllerSelectionDirty = false;
+			this.dragListener.end();
 		} catch (error) {
 			this.debugInfo.innerHTML = error;
 		}
@@ -761,6 +806,7 @@ class VRTour {
 			this.controller.add(this.controller.indicator);
 			this.isControllerSelecting = true;
 			this.isControllerSelectionDirty = true;
+			this.dragListener.start();
 		} catch (error) {
 			this.debugInfo.innerHTML = error;
 		}
@@ -770,6 +816,7 @@ class VRTour {
 		try {
 			this.isControllerSelecting = false;
 			this.isControllerSelectionDirty = false;
+			this.dragListener.end();
 		} catch (error) {
 			this.debugInfo.innerHTML = error;
 		}
@@ -961,10 +1008,11 @@ class VRTour {
 	}
 
 	render(delta) {
-		this.updatePivot();
 		if (this.vr.mode !== VR_MODE.NONE) {
+			this.dragListener.move();
 			this.updateController();
 		} else {
+			this.updatePivot();
 			this.testController();
 			// this.updateCamera();
 		}
@@ -1155,15 +1203,15 @@ tour.animate();
 tour.load('data/vr.json');
 
 /*
-		const material = new THREE.PointsMaterial({
-			size: 15,
-			map: loader.load('img/pin.png'),
-			vertexColors: THREE.VertexColors,
-			blending: THREE.AdditiveBlending,
-			depthTest: true,
-			transparent: true
-		});
-		*/
+const material = new THREE.PointsMaterial({
+	size: 15,
+	map: loader.load('img/pin.png'),
+	vertexColors: THREE.VertexColors,
+	blending: THREE.AdditiveBlending,
+	depthTest: true,
+	transparent: true
+});
+*/
 /*
 const material = new THREE.ShaderMaterial({
 	uniforms: {
