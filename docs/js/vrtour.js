@@ -9489,7 +9489,7 @@ var ROOM_RADIUS = 200;
 var PANEL_RADIUS = 100;
 var POINT_RADIUS = 99;
 var POINTER_RADIUS = 98;
-var TEST_ENABLED = true;
+var TEST_ENABLED = false;
 
 var VRTour =
 /*#__PURE__*/
@@ -9515,8 +9515,10 @@ function () {
     this.latitude = 0;
     this.direction = 1;
     this.speed = 1;
-    this.inertia = new THREE.Vector3(0, 0, 0);
-    this.origin = new THREE.Vector3(0, 0, 0);
+    this.inertia = new THREE.Vector3();
+    this.origin = new THREE.Vector3();
+    this.cameraDirection = new THREE.Vector3();
+    this.controllerDirection = new THREE.Vector3();
     this.init();
   }
 
@@ -9586,13 +9588,15 @@ function () {
       if (vr.mode !== _vr.VR_MODE.NONE) {
         var left = this.left = this.addControllerLeft(renderer, scene);
         var right = this.right = this.addControllerRight(renderer, scene);
+        var menu = this.menu = this.addMenu(pivot);
         var pointer = this.pointer = this.addPointer(pivot); // const dragListener = this.dragListener = this.addVRDragListener();
         // hands
         // const hands = this.hands = this.addHands();
       } else if (TEST_ENABLED) {
         this.addTestController(scene); // const arrows = this.arrows = this.addArrows(scene);
 
-        var menu = this.menu = this.addMenu(pivot);
+        var _menu = this.menu = this.addMenu(pivot);
+
         camera.target.z = ROOM_RADIUS;
         camera.lookAt(camera.target);
         var dragListener = this.dragListener = this.addDragListener();
@@ -10353,12 +10357,15 @@ function () {
     key: "onLeftSelectStart",
     value: function onLeftSelectStart() {
       try {
-        if (this.controller) {
-          this.controller.remove(this.controller.indicator);
+        if (this.controller !== this.left) {
+          if (this.controller) {
+            this.controller.remove(this.controller.indicator);
+          }
+
+          this.controller = this.left;
+          this.controller.add(this.controller.indicator);
         }
 
-        this.controller = this.left;
-        this.controller.add(this.controller.indicator);
         this.isControllerSelecting = true;
         this.isControllerSelectionDirty = true; // this.dragListener.start();
       } catch (error) {
@@ -10379,12 +10386,15 @@ function () {
     key: "onRightSelectStart",
     value: function onRightSelectStart() {
       try {
-        if (this.controller) {
-          this.controller.remove(this.controller.indicator);
+        if (this.controller !== this.right) {
+          if (this.controller) {
+            this.controller.remove(this.controller.indicator);
+          }
+
+          this.controller = this.right;
+          this.controller.add(this.controller.indicator);
         }
 
-        this.controller = this.right;
-        this.controller.add(this.controller.indicator);
         this.isControllerSelecting = true;
         this.isControllerSelectionDirty = true; // this.dragListener.start();
       } catch (error) {
@@ -10618,6 +10628,54 @@ function () {
       */
     }
   }, {
+    key: "findGamepad",
+    value: function findGamepad(id) {
+      var gamepads = navigator.getGamepads && navigator.getGamepads();
+
+      for (var i = 0, j = 0, l = gamepads.length; i < l; i++) {
+        var gamepad = gamepads[i];
+
+        if (gamepad && (gamepad.id === 'Daydream Controller' || gamepad.id === 'Gear VR Controller' || gamepad.id === 'Oculus Go Controller' || gamepad.id === 'OpenVR Gamepad' || gamepad.id.startsWith('Oculus Touch') || gamepad.id.startsWith('Spatial Controller'))) {
+          if (j === id) {
+            return gamepad;
+          }
+
+          j++;
+        }
+      }
+    }
+  }, {
+    key: "updateTriggers",
+    value: function updateTriggers() {
+      var gamePadLeft = this.findGamepad(0);
+
+      if (gamePadLeft) {
+        var triggerLeft = gamePadLeft ? gamePadLeft.buttons.reduce(function (p, b, i) {
+          return b.pressed ? i : p;
+        }, -1) : -1;
+
+        if (triggerLeft !== -1) {
+          this.onLeftSelectStart();
+        } else {
+          this.onLeftSelectEnd();
+        }
+      }
+
+      var gamePadRight = this.findGamepad(1);
+
+      if (gamePadRight) {
+        var triggerRight = gamePadRight ? gamePadRight.buttons.reduce(function (p, b, i) {
+          return b.pressed ? i : p;
+        }, -1) : -1;
+
+        if (triggerRight !== -1) {
+          this.onRightSelectStart();
+        } else {
+          this.onRightSelectEnd();
+        }
+      }
+    }
+  }, {
     key: "animate",
     value: function animate() {
       var _this13 = this;
@@ -10632,12 +10690,14 @@ function () {
     value: function render(delta) {
       if (this.vr.mode !== _vr.VR_MODE.NONE) {
         // this.dragListener.move();
+        this.updateTriggers();
         this.updateMenu();
         this.updateController();
       } else if (TEST_ENABLED) {
         // this.dragListener.move();
         // this.updatePivot();
         this.updateCamera();
+        this.updateTriggers();
         this.updateMenu();
         this.updateController();
       } else {
@@ -10652,15 +10712,15 @@ function () {
   }, {
     key: "updateMenu",
     value: function updateMenu() {
-      if (this.menu) {
-        var vector = this.camera.getWorldDirection();
-        var endTheta = Math.atan2(vector.x, vector.z);
-        var theta = this.menu.rotation.y + (endTheta - this.menu.rotation.y) / 10;
-        var endY = this.pointer.position.y > 20 ? 0 : 30;
-        var y = this.menu.position.y + (endY - this.menu.position.y) / 10;
-        this.menu.rotation.set(0, theta, 0);
-        this.menu.position.set(0, y, 0); // this.menu.lookAt(this.pivot.worldToLocal(this.camera.position));
-      }
+      var menu = this.menu;
+      var pointer = this.pointer;
+      var vector = this.camera.getWorldDirection(this.cameraDirection);
+      var endTheta = Math.atan2(vector.x, vector.z);
+      var theta = menu.rotation.y + (endTheta - menu.rotation.y) / 10;
+      var endY = pointer.position.y > 20 ? 0 : 30;
+      var y = menu.position.y + (endY - menu.position.y) / 10;
+      menu.rotation.set(0, theta, 0);
+      menu.position.set(0, y, 0);
     }
   }, {
     key: "updatePointer",
@@ -10713,7 +10773,7 @@ function () {
         if (controller) {
           var raycaster = this.raycaster;
           var position = this.pivot.worldToLocal(controller.position);
-          var rotation = this.pivot.worldToLocal(controller.getWorldDirection(new THREE.Vector3()).multiplyScalar(-1)); // new THREE.Vector3(controller.rotation.x, controller.rotation.y, controller.rotation.z).normalize();
+          var rotation = this.pivot.worldToLocal(controller.getWorldDirection(this.controllerDirection).multiplyScalar(-1)); // new THREE.Vector3(controller.rotation.x, controller.rotation.y, controller.rotation.z).normalize();
 
           raycaster.set(position, rotation);
           this.updatePointer(raycaster);

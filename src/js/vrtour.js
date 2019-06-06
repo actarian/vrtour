@@ -57,8 +57,10 @@ class VRTour {
 		this.latitude = 0;
 		this.direction = 1;
 		this.speed = 1;
-		this.inertia = new THREE.Vector3(0, 0, 0);
-		this.origin = new THREE.Vector3(0, 0, 0);
+		this.inertia = new THREE.Vector3();
+		this.origin = new THREE.Vector3();
+		this.cameraDirection = new THREE.Vector3();
+		this.controllerDirection = new THREE.Vector3();
 		this.init();
 	}
 
@@ -179,6 +181,7 @@ class VRTour {
 		if (vr.mode !== VR_MODE.NONE) {
 			const left = this.left = this.addControllerLeft(renderer, scene);
 			const right = this.right = this.addControllerRight(renderer, scene);
+			const menu = this.menu = this.addMenu(pivot);
 			const pointer = this.pointer = this.addPointer(pivot);
 			// const dragListener = this.dragListener = this.addVRDragListener();
 			// hands
@@ -861,11 +864,13 @@ class VRTour {
 
 	onLeftSelectStart() {
 		try {
-			if (this.controller) {
-				this.controller.remove(this.controller.indicator);
+			if (this.controller !== this.left) {
+				if (this.controller) {
+					this.controller.remove(this.controller.indicator);
+				}
+				this.controller = this.left;
+				this.controller.add(this.controller.indicator);
 			}
-			this.controller = this.left;
-			this.controller.add(this.controller.indicator);
 			this.isControllerSelecting = true;
 			this.isControllerSelectionDirty = true;
 			// this.dragListener.start();
@@ -886,11 +891,13 @@ class VRTour {
 
 	onRightSelectStart() {
 		try {
-			if (this.controller) {
-				this.controller.remove(this.controller.indicator);
+			if (this.controller !== this.right) {
+				if (this.controller) {
+					this.controller.remove(this.controller.indicator);
+				}
+				this.controller = this.right;
+				this.controller.add(this.controller.indicator);
 			}
-			this.controller = this.right;
-			this.controller.add(this.controller.indicator);
 			this.isControllerSelecting = true;
 			this.isControllerSelectionDirty = true;
 			// this.dragListener.start();
@@ -1100,6 +1107,45 @@ class VRTour {
 		*/
 	}
 
+	findGamepad(id) {
+		const gamepads = navigator.getGamepads && navigator.getGamepads();
+		for (var i = 0, j = 0, l = gamepads.length; i < l; i++) {
+			const gamepad = gamepads[i];
+			if (gamepad && (
+					gamepad.id === 'Daydream Controller' ||
+					gamepad.id === 'Gear VR Controller' || gamepad.id === 'Oculus Go Controller' ||
+					gamepad.id === 'OpenVR Gamepad' || gamepad.id.startsWith('Oculus Touch') ||
+					gamepad.id.startsWith('Spatial Controller')
+				)) {
+				if (j === id) {
+					return gamepad;
+				}
+				j++;
+			}
+		}
+	}
+
+	updateTriggers() {
+		const gamePadLeft = this.findGamepad(0);
+		if (gamePadLeft) {
+			const triggerLeft = gamePadLeft ? gamePadLeft.buttons.reduce((p, b, i) => b.pressed ? i : p, -1) : -1;
+			if (triggerLeft !== -1) {
+				this.onLeftSelectStart();
+			} else {
+				this.onLeftSelectEnd();
+			}
+		}
+		const gamePadRight = this.findGamepad(1);
+		if (gamePadRight) {
+			const triggerRight = gamePadRight ? gamePadRight.buttons.reduce((p, b, i) => b.pressed ? i : p, -1) : -1;
+			if (triggerRight !== -1) {
+				this.onRightSelectStart();
+			} else {
+				this.onRightSelectEnd();
+			}
+		}
+	}
+
 	animate() {
 		const renderer = this.renderer;
 		renderer.setAnimationLoop(() => {
@@ -1110,12 +1156,14 @@ class VRTour {
 	render(delta) {
 		if (this.vr.mode !== VR_MODE.NONE) {
 			// this.dragListener.move();
+			this.updateTriggers();
 			this.updateMenu();
 			this.updateController();
 		} else if (TEST_ENABLED) {
 			// this.dragListener.move();
 			// this.updatePivot();
 			this.updateCamera();
+			this.updateTriggers();
 			this.updateMenu();
 			this.updateController();
 		} else {
@@ -1129,16 +1177,15 @@ class VRTour {
 	}
 
 	updateMenu() {
-		if (this.menu) {
-			const vector = this.camera.getWorldDirection();
-			const endTheta = Math.atan2(vector.x, vector.z);
-			const theta = this.menu.rotation.y + (endTheta - this.menu.rotation.y) / 10;
-			const endY = this.pointer.position.y > 20 ? 0 : 30;
-			const y = this.menu.position.y + (endY - this.menu.position.y) / 10;
-			this.menu.rotation.set(0, theta, 0);
-			this.menu.position.set(0, y, 0);
-			// this.menu.lookAt(this.pivot.worldToLocal(this.camera.position));
-		}
+		const menu = this.menu;
+		const pointer = this.pointer;
+		const vector = this.camera.getWorldDirection(this.cameraDirection);
+		const endTheta = Math.atan2(vector.x, vector.z);
+		const theta = menu.rotation.y + (endTheta - menu.rotation.y) / 10;
+		const endY = pointer.position.y > 20 ? 0 : 30;
+		const y = menu.position.y + (endY - menu.position.y) / 10;
+		menu.rotation.set(0, theta, 0);
+		menu.position.set(0, y, 0);
 	}
 
 	updatePointer(raycaster) {
@@ -1182,7 +1229,7 @@ class VRTour {
 			if (controller) {
 				const raycaster = this.raycaster;
 				const position = this.pivot.worldToLocal(controller.position);
-				const rotation = this.pivot.worldToLocal(controller.getWorldDirection(new THREE.Vector3()).multiplyScalar(-1));
+				const rotation = this.pivot.worldToLocal(controller.getWorldDirection(this.controllerDirection).multiplyScalar(-1));
 				// new THREE.Vector3(controller.rotation.x, controller.rotation.y, controller.rotation.z).normalize();
 				raycaster.set(position, rotation);
 				this.updatePointer(raycaster);
