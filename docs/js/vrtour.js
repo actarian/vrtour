@@ -9626,8 +9626,8 @@ function () {
       var controller = this.right = new THREE.Group();
       controller.position.set(0, 0, 0);
       this.addControllerCylinder(controller, 0);
-      this.scene.add(controller);
-      this.controller = controller;
+      this.scene.add(controller); // this.controller = controller;
+
       var pointer = this.pointer = this.addPointer(this.pivot);
       this.container.addEventListener('mousedown', function () {
         _this2.onRightSelectStart();
@@ -9667,7 +9667,8 @@ function () {
   }, {
     key: "addMenu",
     value: function addMenu(parent) {
-      var menu = new THREE.Group(); // CylinderGeometry(radiusTop : Float, radiusBottom : Float, height : Float, radialSegments : Integer, heightSegments : Integer, openEnded : Boolean, thetaStart : Float, thetaLength : Float)
+      var menu = new THREE.Group();
+      menu.position.set(0, 30, 0); // CylinderGeometry(radiusTop : Float, radiusBottom : Float, height : Float, radialSegments : Integer, heightSegments : Integer, openEnded : Boolean, thetaStart : Float, thetaLength : Float)
 
       var geometry = new THREE.CylinderGeometry(POINTER_RADIUS, POINTER_RADIUS, 8, 32, 1, true, Math.PI - 0.5, 1);
       geometry.scale(-1, 1, 1);
@@ -9675,11 +9676,11 @@ function () {
       var material = new THREE.MeshBasicMaterial({
         color: 0x161616,
         transparent: true,
-        opacity: 1
+        opacity: 0
       });
       var arc = menu.arc = new THREE.Mesh(geometry, material); // arc.renderOrder = 100;
 
-      arc.position.set(0, 40, 0); // arc.lookAt(this.origin);
+      arc.position.set(0, 20, 0); // arc.lookAt(this.origin);
 
       menu.add(arc);
       parent.add(menu);
@@ -10019,9 +10020,9 @@ function () {
     key: "addControllerLeft",
     value: function addControllerLeft(renderer, parent) {
       var controller = renderer.vr.getController(0);
-      var cylinder = controller.cylinder = this.addControllerCylinder(controller, 0);
-      controller.addEventListener('selectstart', this.onLeftSelectStart);
-      controller.addEventListener('selectend', this.onLeftSelectEnd);
+      var cylinder = controller.cylinder = this.addControllerCylinder(controller, 0); // controller.addEventListener('selectstart', this.onLeftSelectStart);
+      // controller.addEventListener('selectend', this.onLeftSelectEnd);
+
       parent.add(controller);
       return controller;
     }
@@ -10030,8 +10031,11 @@ function () {
     value: function addControllerRight(renderer, parent) {
       var controller = renderer.vr.getController(1);
       var cylinder = controller.cylinder = this.addControllerCylinder(controller, 1);
+      /*
       controller.addEventListener('selectstart', this.onRightSelectStart);
       controller.addEventListener('selectend', this.onRightSelectEnd);
+      */
+
       parent.add(controller);
       return controller;
     }
@@ -10355,7 +10359,7 @@ function () {
 
   }, {
     key: "onLeftSelectStart",
-    value: function onLeftSelectStart() {
+    value: function onLeftSelectStart(id) {
       try {
         if (this.controller !== this.left) {
           if (this.controller) {
@@ -10376,15 +10380,18 @@ function () {
     key: "onLeftSelectEnd",
     value: function onLeftSelectEnd() {
       try {
-        this.isControllerSelecting = false;
-        this.isControllerSelectionDirty = false; // this.dragListener.end();
+        if (this.controller === this.left) {
+          this.isControllerSelecting = false;
+          this.isControllerSelectionDirty = false;
+        } // this.dragListener.end();
+
       } catch (error) {
         this.debugInfo.innerHTML = error;
       }
     }
   }, {
     key: "onRightSelectStart",
-    value: function onRightSelectStart() {
+    value: function onRightSelectStart(id) {
       try {
         if (this.controller !== this.right) {
           if (this.controller) {
@@ -10405,8 +10412,11 @@ function () {
     key: "onRightSelectEnd",
     value: function onRightSelectEnd() {
       try {
-        this.isControllerSelecting = false;
-        this.isControllerSelectionDirty = false; // this.dragListener.end();
+        if (this.controller === this.right) {
+          this.isControllerSelecting = false;
+          this.isControllerSelectionDirty = false;
+        } // this.dragListener.end();
+
       } catch (error) {
         this.debugInfo.innerHTML = error;
       }
@@ -10500,7 +10510,7 @@ function () {
           y: -(event.clientY - h2) / h2
         };
 
-        if (TEST_ENABLED) {
+        if (TEST_ENABLED && this.controller) {
           this.controller.rotation.y = -this.mouse.x * Math.PI;
           this.controller.rotation.x = this.mouse.y * Math.PI / 2;
           return;
@@ -10655,7 +10665,7 @@ function () {
         }, -1) : -1;
 
         if (triggerLeft !== -1) {
-          this.onLeftSelectStart();
+          this.onLeftSelectStart(triggerLeft);
         } else {
           this.onLeftSelectEnd();
         }
@@ -10669,7 +10679,7 @@ function () {
         }, -1) : -1;
 
         if (triggerRight !== -1) {
-          this.onRightSelectStart();
+          this.onRightSelectStart(triggerRight);
         } else {
           this.onRightSelectEnd();
         }
@@ -10696,8 +10706,8 @@ function () {
       } else if (TEST_ENABLED) {
         // this.dragListener.move();
         // this.updatePivot();
-        this.updateCamera();
-        this.updateTriggers();
+        this.updateCamera(); // this.updateTriggers();
+
         this.updateMenu();
         this.updateController();
       } else {
@@ -10713,14 +10723,19 @@ function () {
     key: "updateMenu",
     value: function updateMenu() {
       var menu = this.menu;
+      var arc = menu.arc;
       var pointer = this.pointer;
       var vector = this.camera.getWorldDirection(this.cameraDirection);
-      var endTheta = Math.atan2(vector.x, vector.z);
-      var theta = menu.rotation.y + (endTheta - menu.rotation.y) / 10;
-      var endY = pointer.position.y > 20 ? 0 : 30;
+      var endTheta = Math.atan2(vector.x, vector.z); // const theta = menu.rotation.y + (endTheta - menu.rotation.y) / 10;
+
+      menu.rotation.set(0, endTheta, 0);
+      var endY = pointer.position.y > 15 ? 0 : 30;
       var y = menu.position.y + (endY - menu.position.y) / 10;
-      menu.rotation.set(0, theta, 0);
       menu.position.set(0, y, 0);
+      var endOpacity = pointer.position.y > 15 ? 1 : 0;
+      var opacity = arc.material.opacity + (endOpacity - arc.material.opacity) / 10;
+      arc.material.opacity = opacity;
+      arc.material.needsUpdate = true;
     }
   }, {
     key: "updatePointer",
@@ -10952,6 +10967,11 @@ function () {
     },
     set: function set(point) {
       // console.log('hoverPoint', point);
+      if (this.isControllerSelectionDirty) {
+        this.isControllerSelectionDirty = false;
+        this.selectedPoint = point;
+      }
+
       if (this.hoverPoint_ !== point) {
         this.hoverPoint_ = point;
 
@@ -10959,11 +10979,6 @@ function () {
           this.onEnterPanel(point.position.clone());
         } else {
           this.onExitPanel();
-        }
-
-        if (this.isControllerSelectionDirty) {
-          this.isControllerSelectionDirty = false;
-          this.selectedPoint = point;
         }
 
         var tweens = this.points.children.map(function (x, index) {
@@ -10990,7 +11005,8 @@ function () {
     set: function set(point) {
       if (this.selectedPoint_ !== point) {
         this.selectedPoint_ = point;
-        var debugInfo = "selectedPoint => {".concat(point.x, ", ").concat(point.y, ", ").concat(point.z, "}");
+        var position = point.position;
+        var debugInfo = "selectedPoint => {".concat(position.x, ", ").concat(position.y, ", ").concat(position.z, "}");
         this.debugInfo.innerHTML = debugInfo;
         this.index = (this.index + 1) % this.views.length; // console.log(index, point, debugInfo);
       }

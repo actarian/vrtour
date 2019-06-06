@@ -85,16 +85,16 @@ class VRTour {
 	}
 	set hoverPoint(point) {
 		// console.log('hoverPoint', point);
+		if (this.isControllerSelectionDirty) {
+			this.isControllerSelectionDirty = false;
+			this.selectedPoint = point;
+		}
 		if (this.hoverPoint_ !== point) {
 			this.hoverPoint_ = point;
 			if (point) {
 				this.onEnterPanel(point.position.clone());
 			} else {
 				this.onExitPanel();
-			}
-			if (this.isControllerSelectionDirty) {
-				this.isControllerSelectionDirty = false;
-				this.selectedPoint = point;
 			}
 			const tweens = this.points.children.map((x, index) => {
 				const from = { scale: x.scale.x };
@@ -118,7 +118,8 @@ class VRTour {
 	set selectedPoint(point) {
 		if (this.selectedPoint_ !== point) {
 			this.selectedPoint_ = point;
-			const debugInfo = `selectedPoint => {${point.x}, ${point.y}, ${point.z}}`;
+			const position = point.position;
+			const debugInfo = `selectedPoint => {${position.x}, ${position.y}, ${position.z}}`;
 			this.debugInfo.innerHTML = debugInfo;
 			this.index = (this.index + 1) % this.views.length;
 			// console.log(index, point, debugInfo);
@@ -215,7 +216,7 @@ class VRTour {
 		controller.position.set(0, 0, 0);
 		this.addControllerCylinder(controller, 0);
 		this.scene.add(controller);
-		this.controller = controller;
+		// this.controller = controller;
 		const pointer = this.pointer = this.addPointer(this.pivot);
 		this.container.addEventListener('mousedown', () => {
 			this.onRightSelectStart();
@@ -251,6 +252,7 @@ class VRTour {
 
 	addMenu(parent) {
 		const menu = new THREE.Group();
+		menu.position.set(0, 30, 0);
 		// CylinderGeometry(radiusTop : Float, radiusBottom : Float, height : Float, radialSegments : Integer, heightSegments : Integer, openEnded : Boolean, thetaStart : Float, thetaLength : Float)
 		const geometry = new THREE.CylinderGeometry(POINTER_RADIUS, POINTER_RADIUS, 8, 32, 1, true, Math.PI - 0.5, 1);
 		geometry.scale(-1, 1, 1);
@@ -258,11 +260,11 @@ class VRTour {
 		const material = new THREE.MeshBasicMaterial({
 			color: 0x161616,
 			transparent: true,
-			opacity: 1,
+			opacity: 0,
 		});
 		const arc = menu.arc = new THREE.Mesh(geometry, material);
 		// arc.renderOrder = 100;
-		arc.position.set(0, 40, 0);
+		arc.position.set(0, 20, 0);
 		// arc.lookAt(this.origin);
 		menu.add(arc);
 		parent.add(menu);
@@ -574,8 +576,8 @@ class VRTour {
 	addControllerLeft(renderer, parent) {
 		const controller = renderer.vr.getController(0);
 		const cylinder = controller.cylinder = this.addControllerCylinder(controller, 0);
-		controller.addEventListener('selectstart', this.onLeftSelectStart);
-		controller.addEventListener('selectend', this.onLeftSelectEnd);
+		// controller.addEventListener('selectstart', this.onLeftSelectStart);
+		// controller.addEventListener('selectend', this.onLeftSelectEnd);
 		parent.add(controller);
 		return controller;
 	}
@@ -583,8 +585,10 @@ class VRTour {
 	addControllerRight(renderer, parent) {
 		const controller = renderer.vr.getController(1);
 		const cylinder = controller.cylinder = this.addControllerCylinder(controller, 1);
+		/*
 		controller.addEventListener('selectstart', this.onRightSelectStart);
 		controller.addEventListener('selectend', this.onRightSelectEnd);
+		*/
 		parent.add(controller);
 		return controller;
 	}
@@ -862,7 +866,7 @@ class VRTour {
 
 	// events
 
-	onLeftSelectStart() {
+	onLeftSelectStart(id) {
 		try {
 			if (this.controller !== this.left) {
 				if (this.controller) {
@@ -881,15 +885,17 @@ class VRTour {
 
 	onLeftSelectEnd() {
 		try {
-			this.isControllerSelecting = false;
-			this.isControllerSelectionDirty = false;
+			if (this.controller === this.left) {
+				this.isControllerSelecting = false;
+				this.isControllerSelectionDirty = false;
+			}
 			// this.dragListener.end();
 		} catch (error) {
 			this.debugInfo.innerHTML = error;
 		}
 	}
 
-	onRightSelectStart() {
+	onRightSelectStart(id) {
 		try {
 			if (this.controller !== this.right) {
 				if (this.controller) {
@@ -908,8 +914,10 @@ class VRTour {
 
 	onRightSelectEnd() {
 		try {
-			this.isControllerSelecting = false;
-			this.isControllerSelectionDirty = false;
+			if (this.controller === this.right) {
+				this.isControllerSelecting = false;
+				this.isControllerSelectionDirty = false;
+			}
 			// this.dragListener.end();
 		} catch (error) {
 			this.debugInfo.innerHTML = error;
@@ -988,7 +996,7 @@ class VRTour {
 				x: (event.clientX - w2) / w2,
 				y: -(event.clientY - h2) / h2,
 			};
-			if (TEST_ENABLED) {
+			if (TEST_ENABLED && this.controller) {
 				this.controller.rotation.y = -this.mouse.x * Math.PI;
 				this.controller.rotation.x = this.mouse.y * Math.PI / 2;
 				return;
@@ -1130,7 +1138,7 @@ class VRTour {
 		if (gamePadLeft) {
 			const triggerLeft = gamePadLeft ? gamePadLeft.buttons.reduce((p, b, i) => b.pressed ? i : p, -1) : -1;
 			if (triggerLeft !== -1) {
-				this.onLeftSelectStart();
+				this.onLeftSelectStart(triggerLeft);
 			} else {
 				this.onLeftSelectEnd();
 			}
@@ -1139,7 +1147,7 @@ class VRTour {
 		if (gamePadRight) {
 			const triggerRight = gamePadRight ? gamePadRight.buttons.reduce((p, b, i) => b.pressed ? i : p, -1) : -1;
 			if (triggerRight !== -1) {
-				this.onRightSelectStart();
+				this.onRightSelectStart(triggerRight);
 			} else {
 				this.onRightSelectEnd();
 			}
@@ -1163,7 +1171,7 @@ class VRTour {
 			// this.dragListener.move();
 			// this.updatePivot();
 			this.updateCamera();
-			this.updateTriggers();
+			// this.updateTriggers();
 			this.updateMenu();
 			this.updateController();
 		} else {
@@ -1178,14 +1186,19 @@ class VRTour {
 
 	updateMenu() {
 		const menu = this.menu;
+		const arc = menu.arc;
 		const pointer = this.pointer;
 		const vector = this.camera.getWorldDirection(this.cameraDirection);
 		const endTheta = Math.atan2(vector.x, vector.z);
-		const theta = menu.rotation.y + (endTheta - menu.rotation.y) / 10;
-		const endY = pointer.position.y > 20 ? 0 : 30;
+		// const theta = menu.rotation.y + (endTheta - menu.rotation.y) / 10;
+		menu.rotation.set(0, endTheta, 0);
+		const endY = pointer.position.y > 15 ? 0 : 30;
 		const y = menu.position.y + (endY - menu.position.y) / 10;
-		menu.rotation.set(0, theta, 0);
 		menu.position.set(0, y, 0);
+		const endOpacity = pointer.position.y > 15 ? 1 : 0;
+		const opacity = arc.material.opacity + (endOpacity - arc.material.opacity) / 10;
+		arc.material.opacity = opacity;
+		arc.material.needsUpdate = true;
 	}
 
 	updatePointer(raycaster) {
