@@ -9665,16 +9665,18 @@ function () {
     value: function addMenu(parent) {
       var menu = new THREE.Group(); // CylinderGeometry(radiusTop : Float, radiusBottom : Float, height : Float, radialSegments : Integer, heightSegments : Integer, openEnded : Boolean, thetaStart : Float, thetaLength : Float)
 
-      var geometry = new THREE.CylinderGeometry(20, 20, 1, 16, 1, true, 1, Math.PI - 1);
+      var geometry = new THREE.CylinderGeometry(POINTER_RADIUS, POINTER_RADIUS, 8, 32, 1, true, Math.PI - 0.5, 1);
       geometry.scale(-1, 1, 1);
+      geometry.rotateY(Math.PI);
       var material = new THREE.MeshBasicMaterial({
         color: 0x161616,
         transparent: true,
         opacity: 1
       });
-      var arc = menu.arc = new THREE.Mesh(geometry, material);
-      arc.position.set(0, -30, 0);
-      arc.lookAt(this.origin);
+      var arc = menu.arc = new THREE.Mesh(geometry, material); // arc.renderOrder = 100;
+
+      arc.position.set(0, 40, 0); // arc.lookAt(this.origin);
+
       menu.add(arc);
       parent.add(menu);
       return menu;
@@ -10629,23 +10631,36 @@ function () {
     key: "render",
     value: function render(delta) {
       if (this.vr.mode !== _vr.VR_MODE.NONE) {
-        this.dragListener.move();
+        // this.dragListener.move();
+        this.updateMenu();
         this.updateController();
       } else if (TEST_ENABLED) {
         // this.dragListener.move();
-        this.updatePivot();
+        // this.updatePivot();
+        this.updateCamera();
+        this.updateMenu();
         this.updateController();
       } else {
-        this.updatePivot(); // this.testController();
-        // this.updateCamera();
-      }
-
-      if (this.menu) {
-        this.menu.lookAt(this.pivot.worldToLocal(this.camera.position));
+        // this.updatePivot();
+        // this.testController();
+        this.updateCamera();
       }
 
       var renderer = this.renderer;
       renderer.render(this.scene, this.camera); // this.doParallax();
+    }
+  }, {
+    key: "updateMenu",
+    value: function updateMenu() {
+      if (this.menu) {
+        var vector = this.camera.getWorldDirection();
+        var endTheta = Math.atan2(vector.x, vector.z);
+        var theta = this.menu.rotation.y + (endTheta - this.menu.rotation.y) / 10;
+        var endY = this.pointer.position.y > 20 ? 0 : 30;
+        var y = this.menu.position.y + (endY - this.menu.position.y) / 10;
+        this.menu.rotation.set(0, theta, 0);
+        this.menu.position.set(0, y, 0); // this.menu.lookAt(this.pivot.worldToLocal(this.camera.position));
+      }
     }
   }, {
     key: "updatePointer",

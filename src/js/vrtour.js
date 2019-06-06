@@ -44,7 +44,7 @@ const ROOM_RADIUS = 200;
 const PANEL_RADIUS = 100;
 const POINT_RADIUS = 99;
 const POINTER_RADIUS = 98;
-const TEST_ENABLED = true;
+const TEST_ENABLED = false;
 
 class VRTour {
 
@@ -249,16 +249,18 @@ class VRTour {
 	addMenu(parent) {
 		const menu = new THREE.Group();
 		// CylinderGeometry(radiusTop : Float, radiusBottom : Float, height : Float, radialSegments : Integer, heightSegments : Integer, openEnded : Boolean, thetaStart : Float, thetaLength : Float)
-		const geometry = new THREE.CylinderGeometry(20, 20, 1, 16, 1, true, 1, Math.PI - 1);
+		const geometry = new THREE.CylinderGeometry(POINTER_RADIUS, POINTER_RADIUS, 8, 32, 1, true, Math.PI - 0.5, 1);
 		geometry.scale(-1, 1, 1);
+		geometry.rotateY(Math.PI);
 		const material = new THREE.MeshBasicMaterial({
 			color: 0x161616,
 			transparent: true,
 			opacity: 1,
 		});
 		const arc = menu.arc = new THREE.Mesh(geometry, material);
-		arc.position.set(0, -30, 0);
-		arc.lookAt(this.origin);
+		// arc.renderOrder = 100;
+		arc.position.set(0, 40, 0);
+		// arc.lookAt(this.origin);
 		menu.add(arc);
 		parent.add(menu);
 		return menu;
@@ -1107,23 +1109,36 @@ class VRTour {
 
 	render(delta) {
 		if (this.vr.mode !== VR_MODE.NONE) {
-			this.dragListener.move();
+			// this.dragListener.move();
+			this.updateMenu();
 			this.updateController();
 		} else if (TEST_ENABLED) {
 			// this.dragListener.move();
-			this.updatePivot();
+			// this.updatePivot();
+			this.updateCamera();
+			this.updateMenu();
 			this.updateController();
 		} else {
-			this.updatePivot();
+			// this.updatePivot();
 			// this.testController();
-			// this.updateCamera();
-		}
-		if (this.menu) {
-			this.menu.lookAt(this.pivot.worldToLocal(this.camera.position));
+			this.updateCamera();
 		}
 		const renderer = this.renderer;
 		renderer.render(this.scene, this.camera);
 		// this.doParallax();
+	}
+
+	updateMenu() {
+		if (this.menu) {
+			const vector = this.camera.getWorldDirection();
+			const endTheta = Math.atan2(vector.x, vector.z);
+			const theta = this.menu.rotation.y + (endTheta - this.menu.rotation.y) / 10;
+			const endY = this.pointer.position.y > 20 ? 0 : 30;
+			const y = this.menu.position.y + (endY - this.menu.position.y) / 10;
+			this.menu.rotation.set(0, theta, 0);
+			this.menu.position.set(0, y, 0);
+			// this.menu.lookAt(this.pivot.worldToLocal(this.camera.position));
+		}
 	}
 
 	updatePointer(raycaster) {
