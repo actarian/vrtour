@@ -44,7 +44,7 @@ const ROOM_RADIUS = 200;
 const PANEL_RADIUS = 100;
 const POINT_RADIUS = 99;
 const POINTER_RADIUS = 98;
-const TEST_ENABLED = false;
+const TEST_ENABLED = true;
 
 class VRTour {
 
@@ -186,6 +186,7 @@ class VRTour {
 		} else if (TEST_ENABLED) {
 			this.addTestController(scene);
 			// const arrows = this.arrows = this.addArrows(scene);
+			const menu = this.menu = this.addMenu(pivot);
 			camera.target.z = ROOM_RADIUS;
 			camera.lookAt(camera.target);
 			const dragListener = this.dragListener = this.addDragListener();
@@ -243,6 +244,24 @@ class VRTour {
 		const camera = new THREE.PerspectiveCamera(70, window.innerWidth / window.innerHeight, 0.01, ROOM_RADIUS * 2);
 		camera.target = new THREE.Vector3();
 		return camera;
+	}
+
+	addMenu(parent) {
+		const menu = new THREE.Group();
+		// CylinderGeometry(radiusTop : Float, radiusBottom : Float, height : Float, radialSegments : Integer, heightSegments : Integer, openEnded : Boolean, thetaStart : Float, thetaLength : Float)
+		const geometry = new THREE.CylinderGeometry(20, 20, 1, 16, 1, true, 1, Math.PI - 1);
+		geometry.scale(-1, 1, 1);
+		const material = new THREE.MeshBasicMaterial({
+			color: 0x161616,
+			transparent: true,
+			opacity: 1,
+		});
+		const arc = menu.arc = new THREE.Mesh(geometry, material);
+		arc.position.set(0, -30, 0);
+		arc.lookAt(this.origin);
+		menu.add(arc);
+		parent.add(menu);
+		return menu;
 	}
 
 	addArrows(parent) {
@@ -1098,6 +1117,9 @@ class VRTour {
 			this.updatePivot();
 			// this.testController();
 			// this.updateCamera();
+		}
+		if (this.menu) {
+			this.menu.lookAt(this.pivot.worldToLocal(this.camera.position));
 		}
 		const renderer = this.renderer;
 		renderer.render(this.scene, this.camera);

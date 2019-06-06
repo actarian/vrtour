@@ -9489,7 +9489,7 @@ var ROOM_RADIUS = 200;
 var PANEL_RADIUS = 100;
 var POINT_RADIUS = 99;
 var POINTER_RADIUS = 98;
-var TEST_ENABLED = false;
+var TEST_ENABLED = true;
 
 var VRTour =
 /*#__PURE__*/
@@ -9592,6 +9592,7 @@ function () {
       } else if (TEST_ENABLED) {
         this.addTestController(scene); // const arrows = this.arrows = this.addArrows(scene);
 
+        var menu = this.menu = this.addMenu(pivot);
         camera.target.z = ROOM_RADIUS;
         camera.lookAt(camera.target);
         var dragListener = this.dragListener = this.addDragListener();
@@ -9658,6 +9659,25 @@ function () {
       var camera = new THREE.PerspectiveCamera(70, window.innerWidth / window.innerHeight, 0.01, ROOM_RADIUS * 2);
       camera.target = new THREE.Vector3();
       return camera;
+    }
+  }, {
+    key: "addMenu",
+    value: function addMenu(parent) {
+      var menu = new THREE.Group(); // CylinderGeometry(radiusTop : Float, radiusBottom : Float, height : Float, radialSegments : Integer, heightSegments : Integer, openEnded : Boolean, thetaStart : Float, thetaLength : Float)
+
+      var geometry = new THREE.CylinderGeometry(20, 20, 1, 16, 1, true, 1, Math.PI - 1);
+      geometry.scale(-1, 1, 1);
+      var material = new THREE.MeshBasicMaterial({
+        color: 0x161616,
+        transparent: true,
+        opacity: 1
+      });
+      var arc = menu.arc = new THREE.Mesh(geometry, material);
+      arc.position.set(0, -30, 0);
+      arc.lookAt(this.origin);
+      menu.add(arc);
+      parent.add(menu);
+      return menu;
     }
   }, {
     key: "addArrows",
@@ -10618,6 +10638,10 @@ function () {
       } else {
         this.updatePivot(); // this.testController();
         // this.updateCamera();
+      }
+
+      if (this.menu) {
+        this.menu.lookAt(this.pivot.worldToLocal(this.camera.position));
       }
 
       var renderer = this.renderer;
