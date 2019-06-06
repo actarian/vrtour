@@ -83,23 +83,19 @@ class VRTour {
 	get hoverPoint() {
 		return this.hoverPoint_;
 	}
-	set hoverPoint(point) {
-		// console.log('hoverPoint', point);
-		if (this.isControllerSelectionDirty) {
-			this.isControllerSelectionDirty = false;
-			this.selectedPoint = point;
-		}
-		if (this.hoverPoint_ !== point) {
-			this.hoverPoint_ = point;
-			if (point) {
-				this.onEnterPanel(point.position.clone());
+	set hoverPoint(intersection) {
+		const object = intersection ? intersection.object : null;
+		if (this.hoverPoint_ !== object) {
+			this.hoverPoint_ = object;
+			if (object) {
+				this.onEnterPanel(object.position.clone());
 			} else {
 				this.onExitPanel();
 			}
 			const tweens = this.points.children.map((x, index) => {
 				const from = { scale: x.scale.x };
 				return TweenMax.to(from, 0.25, {
-					scale: x === point ? 3 : 1,
+					scale: x === object ? 3 : 1,
 					delay: 0,
 					onUpdate: () => {
 						x.scale.set(from.scale, from.scale, from.scale);
@@ -115,14 +111,36 @@ class VRTour {
 	get selectedPoint() {
 		return this.selectedPoint_;
 	}
-	set selectedPoint(point) {
-		if (this.selectedPoint_ !== point) {
-			this.selectedPoint_ = point;
-			const position = point.position;
-			const debugInfo = `selectedPoint => {${position.x}, ${position.y}, ${position.z}}`;
-			this.debugInfo.innerHTML = debugInfo;
-			this.index = (this.index + 1) % this.views.length;
-			// console.log(index, point, debugInfo);
+	set selectedPoint(intersection) {
+		const object = intersection && this.isControllerSelecting ? intersection.object : null;
+		if (this.selectedPoint_ !== object) {
+			this.selectedPoint_ = object;
+			if (object) {
+				const position = object.position;
+				const debugInfo = `selectedPoint => {${position.x}, ${position.y}, ${position.z}}`;
+				this.debugInfo.innerHTML = debugInfo;
+				this.index = (this.index + 1) % this.views.length;
+				// console.log(index, point, debugInfo);
+			}
+		}
+	}
+
+	get menuPoint() {
+		return this.menuPoint_;
+	}
+	set menuPoint(intersection) {
+		const object = intersection && this.isControllerSelecting ? intersection.object : null;
+		if (this.menuPoint_ !== object) {
+			this.menuPoint_ = object;
+			if (object) {
+				// const point = intersection.point;
+				const direction = intersection.faceIndex > object.geometry.faces.length / 2 ? 1 : -1;
+				TweenMax.to(this.pivot.rotation, 0.6, {
+					y: this.pivot.rotation.y + Math.PI / 2 * direction,
+				})
+				// console.log(intersection, point);
+				// latitude
+			}
 		}
 	}
 
@@ -254,7 +272,7 @@ class VRTour {
 		const menu = new THREE.Group();
 		menu.position.set(0, 30, 0);
 		// CylinderGeometry(radiusTop : Float, radiusBottom : Float, height : Float, radialSegments : Integer, heightSegments : Integer, openEnded : Boolean, thetaStart : Float, thetaLength : Float)
-		const geometry = new THREE.CylinderGeometry(POINTER_RADIUS, POINTER_RADIUS, 8, 32, 1, true, Math.PI - 0.5, 1);
+		const geometry = new THREE.CylinderGeometry(POINT_RADIUS, POINT_RADIUS, 8, 32, 1, true, Math.PI - 0.5, 1);
 		geometry.scale(-1, 1, 1);
 		geometry.rotateY(Math.PI);
 		const material = new THREE.MeshBasicMaterial({
@@ -472,7 +490,7 @@ class VRTour {
         */
 		const mesh = new THREE.Mesh(geometry, material);
 		// mesh.position.x = 100000;
-		mesh.position.set(100000, 100000, 100000);
+		mesh.position.set(-100000, -100000, -100000);
 		// mesh.geometry.rotateX(Math.PI);
 		// mesh.lookAt(this.origin);
 		// mesh.lookAt(this.camera.position);
@@ -737,6 +755,7 @@ class VRTour {
 
 	onInitView(previous, current) {
 		// console.log(previous, current);
+		this.onExitPanel();
 		this.onExitPoints(previous).then(() => {
 			// console.log(this.points.vertices);
 			this.onExitView(previous).then(() => {
@@ -1187,22 +1206,24 @@ class VRTour {
 	updateMenu() {
 		const menu = this.menu;
 		const arc = menu.arc;
+		const controller = this.controller;
 		const pointer = this.pointer;
+		const active = controller && pointer.position.y > 15;
 		const vector = this.camera.getWorldDirection(this.cameraDirection);
-		const endTheta = Math.atan2(vector.x, vector.z);
+		const endTheta = Math.atan2(vector.x, vector.z) - this.pivot.rotation.y;
 		// const theta = menu.rotation.y + (endTheta - menu.rotation.y) / 10;
 		menu.rotation.set(0, endTheta, 0);
-		const endY = pointer.position.y > 15 ? 0 : 30;
+		const endY = active ? 0 : 30;
 		const y = menu.position.y + (endY - menu.position.y) / 10;
 		menu.position.set(0, y, 0);
-		const endOpacity = pointer.position.y > 15 ? 1 : 0;
+		const endOpacity = active ? 1 : 0;
 		const opacity = arc.material.opacity + (endOpacity - arc.material.opacity) / 10;
 		arc.material.opacity = opacity;
 		arc.material.needsUpdate = true;
 	}
 
 	updatePointer(raycaster) {
-		const intersections = raycaster.intersectObjects([this.room.sphere]);
+		const intersections = raycaster.intersectObjects(this.room.children);
 		if (intersections.length) {
 			const intersection = intersections[0];
 			// const intersection = intersections.find(x => x !== undefined);
@@ -1213,7 +1234,8 @@ class VRTour {
 				// console.log(index, point, debugInfo);
 				// this.debugInfo.innerHTML = debugInfo;
 				// console.log(intersection.point);
-				const position = intersection.point.normalize().multiplyScalar(POINTER_RADIUS);
+				let position = intersection.point.normalize().multiplyScalar(POINTER_RADIUS);
+				position = this.pivot.worldToLocal(position);
 				this.pointer.position.set(position.x, position.y, position.z);
 				this.pointer.lookAt(this.origin);
 				// console.log(position.x, position.y, position.z);
@@ -1227,13 +1249,33 @@ class VRTour {
 		let point;
 		// raycaster.params.Points.threshold = 10.0;
 		const intersections = raycaster.intersectObjects(this.points.children);
+		/*
 		if (intersections.length) {
 			const intersection = intersections[0];
 			point = intersection.object;
 			point = this.points.children.find(x => x === point);
 		}
+		*/
 		// console.log(intersections);
-		this.hoverPoint = point;
+		const intersection = intersections.length ? intersections[0] : null;
+		this.hoverPoint = intersection;
+		this.selectedPoint = intersection;
+	}
+
+	updateMenuPoint(raycaster) {
+		// raycaster.params.Points.threshold = 10.0;
+		const intersections = raycaster.intersectObjects(this.menu.children);
+		/*
+		let point;
+		if (intersections.length) {
+			const intersection = intersections[0];
+			point = intersection.object;
+			point = this.points.children.find(x => x === point);
+		}
+		*/
+		// console.log(intersections);
+		const intersection = intersections.length ? intersections[0] : null;
+		this.menuPoint = intersection;
 	}
 
 	updateController() {
@@ -1241,12 +1283,13 @@ class VRTour {
 			const controller = this.controller;
 			if (controller) {
 				const raycaster = this.raycaster;
-				const position = this.pivot.worldToLocal(controller.position);
-				const rotation = this.pivot.worldToLocal(controller.getWorldDirection(this.controllerDirection).multiplyScalar(-1));
+				const position = controller.position; // this.pivot.worldToLocal(controller.position);
+				const rotation = controller.getWorldDirection(this.controllerDirection).multiplyScalar(-1); // this.pivot.worldToLocal(controller.getWorldDirection(this.controllerDirection).multiplyScalar(-1));
 				// new THREE.Vector3(controller.rotation.x, controller.rotation.y, controller.rotation.z).normalize();
 				raycaster.set(position, rotation);
 				this.updatePointer(raycaster);
 				this.updateHoverPoint(raycaster);
+				this.updateMenuPoint(raycaster);
 			}
 		} catch (error) {
 			this.debugInfo.innerHTML = error;
