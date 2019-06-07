@@ -14,32 +14,6 @@ export function cm(value) {
 	return value / 100;
 }
 
-const shaderPoint = {
-	vertexShader: `
-	attribute float size;
-	attribute vec4 ca;
-	varying vec4 vColor;
-	void main() {
-		vColor = ca;
-		vec4 mvPosition = modelViewMatrix * vec4(position, 1.0);
-		gl_PointSize = size * (400.0 / -mvPosition.z);
-		gl_Position = projectionMatrix * mvPosition;
-	}
-	`,
-	fragmentShader: `
-	uniform vec3 color;
-	uniform sampler2D texture;
-	varying vec4 vColor;
-	void main() {
-		vec4 textureColor = texture2D(texture, gl_PointCoord);
-		// if (textureColor.a < 0.5) discard;
-		gl_FragColor = textureColor * vec4(color * vColor.xyz, 1.0);
-		// float depth = gl_FragCoord.z / gl_FragCoord.w;
-		gl_FragColor = vec4(vec3(1.0), gl_FragColor.w);
-	}
-	`,
-};
-
 const ROOM_RADIUS = 200;
 const PANEL_RADIUS = 100;
 const POINT_RADIUS = 99;
@@ -87,7 +61,7 @@ class VRTour {
 		const object = intersection ? intersection.object : null;
 		if (this.hoverPoint_ !== object) {
 			this.hoverPoint_ = object;
-			if (object) {
+			if (object !== null) {
 				this.onEnterPanel(object.position.clone());
 			} else {
 				this.onExitPanel();
@@ -115,10 +89,11 @@ class VRTour {
 		const object = intersection && this.isControllerSelecting ? intersection.object : null;
 		if (this.selectedPoint_ !== object) {
 			this.selectedPoint_ = object;
-			if (object) {
+			if (object !== null) {
 				const position = object.position;
 				const debugInfo = `selectedPoint => {${position.x}, ${position.y}, ${position.z}}`;
 				this.debugInfo.innerHTML = debugInfo;
+				// console.log(this.views.length);
 				this.index = (this.index + 1) % this.views.length;
 				// console.log(index, point, debugInfo);
 			}
@@ -132,7 +107,7 @@ class VRTour {
 		const object = intersection && this.isControllerSelecting ? intersection.object : null;
 		if (this.menuPoint_ !== object) {
 			this.menuPoint_ = object;
-			if (object) {
+			if (object !== null) {
 				// const point = intersection.point;
 				const direction = intersection.faceIndex > object.geometry.faces.length / 2 ? 1 : -1;
 				TweenMax.to(this.pivot.rotation, 0.6, {
@@ -201,14 +176,15 @@ class VRTour {
 			const left = this.left = this.addControllerLeft(renderer, scene);
 			const right = this.right = this.addControllerRight(renderer, scene);
 			const menu = this.menu = this.addMenu(pivot);
+			const text = this.text = this.addText(pivot);
 			const pointer = this.pointer = this.addPointer(pivot);
 			// const dragListener = this.dragListener = this.addVRDragListener();
 			// hands
 			// const hands = this.hands = this.addHands();
 		} else if (TEST_ENABLED) {
 			this.addTestController(scene);
-			// const arrows = this.arrows = this.addArrows(scene);
 			const menu = this.menu = this.addMenu(pivot);
+			const text = this.text = this.addText(pivot);
 			camera.target.z = ROOM_RADIUS;
 			camera.lookAt(camera.target);
 			const dragListener = this.dragListener = this.addDragListener();
@@ -271,7 +247,6 @@ class VRTour {
 	addMenu(parent) {
 		const menu = new THREE.Group();
 		menu.position.set(0, 30, 0);
-		// CylinderGeometry(radiusTop : Float, radiusBottom : Float, height : Float, radialSegments : Integer, heightSegments : Integer, openEnded : Boolean, thetaStart : Float, thetaLength : Float)
 		const geometry = new THREE.CylinderGeometry(POINT_RADIUS, POINT_RADIUS, 8, 32, 1, true, Math.PI - 0.5, 1);
 		geometry.scale(-1, 1, 1);
 		geometry.rotateY(Math.PI);
@@ -289,48 +264,113 @@ class VRTour {
 		return menu;
 	}
 
-	addArrows(parent) {
-		const arrows = new THREE.Group();
-		const left = arrows.left = this.addArrow(arrows, new THREE.Vector3(-20, 0, -30), 0);
-		const right = arrows.right = this.addArrow(arrows, new THREE.Vector3(20, 0, -30), 0);
-		parent.add(arrows);
-		return arrows;
+	addText(parent) {
+		const loader = new THREE.FontLoader();
+		loader.load('fonts/helvetiker_regular.typeface.json', (font) => {
+			this.font = font;
+			const material = new THREE.MeshBasicMaterial({
+				color: 0x33c5f6,
+				transparent: true,
+				opacity: 1,
+				side: THREE.DoubleSide
+			});
+			this.fontMaterial = material;
+			/*
+			const shapes = font.generateShapes('0', 10);
+			const geometry = new THREE.ShapeBufferGeometry(shapes);
+			geometry.dynamic = true;
+			geometry.computeBoundingBox();
+			const x = -0.5 * (geometry.boundingBox.max.x - geometry.boundingBox.min.x);
+			geometry.translate(x, 5, -80);
+			// make shape ( N.B. edge view not visible )
+			const text = new THREE.Mesh(geometry, material);
+			// text.position.set(-10000, -10000, -10000);
+			this.text = text;
+			parent.add(text);
+			*/
+			/*
+			// make line shape ( N.B. edge view remains visible )
+			const matDark = new THREE.LineBasicMaterial({
+				color: color,
+				side: THREE.DoubleSide
+			});
+			const holeShapes = [];
+			for (let i = 0; i < shapes.length; i++) {
+				const shape = shapes[i];
+				if (shape.holes && shape.holes.length > 0) {
+					for (let j = 0; j < shape.holes.length; j++) {
+						const hole = shape.holes[j];
+						holeShapes.push(hole);
+					}
+				}
+			}
+			shapes.push.apply(shapes, holeShapes);
+			const lineText = new THREE.Object3D();
+			for (let i = 0; i < shapes.length; i++) {
+				const shape = shapes[i];
+				const points = shape.getPoints();
+				const geometry = new THREE.BufferGeometry().setFromPoints(points);
+				geometry.translate(xMid, 0, 0);
+				const lineMesh = new THREE.Line(geometry, matDark);
+				lineText.add(lineMesh);
+			}
+			parent.add(lineText);
+			*/
+		});
 	}
 
-	addArrow(parent, position, i) {
-		// console.log('addPoint', parent, position, i);
-		// size 2 about 20 cm radius
-		const geometry = new THREE.PlaneBufferGeometry(2, 2, 2, 2);
-		// const geometry = new THREE.BoxGeometry(1, 1, 1);
-		const loader = new THREE.TextureLoader();
-		const texture = loader.load('img/pin.jpg');
-		const material = new THREE.MeshBasicMaterial({
-			alphaMap: texture,
-			transparent: true,
-			opacity: 1,
-		});
-		const arrow = new THREE.Mesh(geometry, material);
-		// position = position.normalize().multiplyScalar(POINT_RADIUS);
-		arrow.position.set(position.x, position.y, position.z);
-		arrow.lookAt(this.origin);
-		parent.add(arrow);
+	setText(message) {
+		message = message || '1';
+		if (this.text) {
+			this.text.parent.remove(this.text);
+			this.text.geometry.dispose();
+		}
+		const shapes = this.font.generateShapes(message, 5);
+		const geometry = new THREE.ShapeBufferGeometry(shapes);
+		// geometry.dynamic = true;
+		geometry.computeBoundingBox();
+		const x = -0.5 * (geometry.boundingBox.max.x - geometry.boundingBox.min.x);
+		geometry.translate(x, 0, 0);
+		// make shape ( N.B. edge view not visible )
+		const text = new THREE.Mesh(geometry, this.fontMaterial);
+		text.position.set(0, 0, -POINTER_RADIUS);
+		this.text = text;
+		this.pivot.add(text);
 		/*
-		const from = { opacity: 0 };
-		TweenMax.to(from, 0.5, {
-			opacity: 1,
-			delay: 0.1 * i,
-			onUpdate: () => {
-				// console.log(index, from.opacity);
-				arrow.material.opacity = from.opacity;
-				arrow.material.needsUpdate = true;
-			},
-			onCompleted: () => {
-				// console.log(index, 'completed');
-			}
-		});
+		const shapes = this.font.generateShapes(message, 10);
+		const geometry = new THREE.ShapeBufferGeometry(shapes);
+		geometry.computeBoundingBox();
+		const x = -0.5 * (geometry.boundingBox.max.x - geometry.boundingBox.min.x);
+		const text = this.text;
+		text.geometry.copy(geometry);
+		text.geometry.translate(x, 0, 0);
+		// text.geometry.position.needsUpdate = true;
+		geometry.dispose();
 		*/
-		return arrow;
-		// console.log(index, 'start');
+	}
+
+	copyGeometry() {
+		var MAX_POINTS = 500;
+
+		// geometry
+		var geometry = new THREE.BufferGeometry();
+
+		// attributes
+		var positions = new Float32Array(MAX_POINTS * 3); // 3 vertices per point
+		geometry.addAttribute('position', new THREE.BufferAttribute(positions, 3));
+
+		// draw range
+		var drawCount = 2; // draw the first 2 points, only
+		geometry.setDrawRange(0, drawCount);
+
+		// material
+		var material = new THREE.LineBasicMaterial({ color: 0xff0000, linewidth: 2 });
+
+		// line
+		var line = new THREE.Line(geometry, material);
+		scene.add(line);
+		// And then to later update after adding new point information:
+		line.geometry.setDrawRange(0, newValue);
 	}
 
 	addPivot(parent) {
@@ -887,6 +927,7 @@ class VRTour {
 
 	onLeftSelectStart(id) {
 		try {
+			this.setText(String(id));
 			if (this.controller !== this.left) {
 				if (this.controller) {
 					this.controller.remove(this.controller.indicator);
@@ -916,6 +957,7 @@ class VRTour {
 
 	onRightSelectStart(id) {
 		try {
+			this.setText(String(id));
 			if (this.controller !== this.right) {
 				if (this.controller) {
 					this.controller.remove(this.controller.indicator);
@@ -967,6 +1009,7 @@ class VRTour {
 	onMouseDown(event) {
 		if (TEST_ENABLED) {
 			// this.dragListener.start();
+			this.setText('down');
 			return;
 		}
 		try {
@@ -1070,6 +1113,7 @@ class VRTour {
 	onMouseUp(event) {
 		if (TEST_ENABLED) {
 			// this.dragListener.end();
+			this.setText('up');
 			return;
 		}
 	}
@@ -1136,6 +1180,9 @@ class VRTour {
 
 	findGamepad(id) {
 		const gamepads = navigator.getGamepads && navigator.getGamepads();
+		if (!gamepads) {
+			return undefined;
+		}
 		for (var i = 0, j = 0, l = gamepads.length; i < l; i++) {
 			const gamepad = gamepads[i];
 			if (gamepad && (
@@ -1382,7 +1429,7 @@ class VRTour {
 				}).then(canvas => {
 					// !!!
 					// document.body.appendChild(canvas);
-					const alpha = this.getAlphaFromCanvas(canvas);
+					// const alpha = this.getAlphaFromCanvas(canvas);
 					// document.body.appendChild(alpha);
 					const map = new THREE.CanvasTexture(canvas);
 					// const alphaMap = new THREE.CanvasTexture(alpha);
@@ -1426,6 +1473,33 @@ tour.animate();
 tour.load('data/vr.json');
 
 /*
+
+const shaderPoint = {
+	vertexShader: `
+	attribute float size;
+	attribute vec4 ca;
+	varying vec4 vColor;
+	void main() {
+		vColor = ca;
+		vec4 mvPosition = modelViewMatrix * vec4(position, 1.0);
+		gl_PointSize = size * (400.0 / -mvPosition.z);
+		gl_Position = projectionMatrix * mvPosition;
+	}
+	`,
+	fragmentShader: `
+	uniform vec3 color;
+	uniform sampler2D texture;
+	varying vec4 vColor;
+	void main() {
+		vec4 textureColor = texture2D(texture, gl_PointCoord);
+		// if (textureColor.a < 0.5) discard;
+		gl_FragColor = textureColor * vec4(color * vColor.xyz, 1.0);
+		// float depth = gl_FragCoord.z / gl_FragCoord.w;
+		gl_FragColor = vec4(vec3(1.0), gl_FragColor.w);
+	}
+	`,
+};
+
 const material = new THREE.PointsMaterial({
 	size: 15,
 	map: loader.load('img/pin.png'),

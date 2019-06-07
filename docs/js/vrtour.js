@@ -9481,10 +9481,6 @@ function cm(value) {
   return value / 100;
 }
 
-var shaderPoint = {
-  vertexShader: "\n\tattribute float size;\n\tattribute vec4 ca;\n\tvarying vec4 vColor;\n\tvoid main() {\n\t\tvColor = ca;\n\t\tvec4 mvPosition = modelViewMatrix * vec4(position, 1.0);\n\t\tgl_PointSize = size * (400.0 / -mvPosition.z);\n\t\tgl_Position = projectionMatrix * mvPosition;\n\t}\n\t",
-  fragmentShader: "\n\tuniform vec3 color;\n\tuniform sampler2D texture;\n\tvarying vec4 vColor;\n\tvoid main() {\n\t\tvec4 textureColor = texture2D(texture, gl_PointCoord);\n\t\t// if (textureColor.a < 0.5) discard;\n\t\tgl_FragColor = textureColor * vec4(color * vColor.xyz, 1.0);\n\t\t// float depth = gl_FragCoord.z / gl_FragCoord.w;\n\t\tgl_FragColor = vec4(vec3(1.0), gl_FragColor.w);\n\t}\n\t"
-};
 var ROOM_RADIUS = 200;
 var PANEL_RADIUS = 100;
 var POINT_RADIUS = 99;
@@ -9589,13 +9585,16 @@ function () {
         var left = this.left = this.addControllerLeft(renderer, scene);
         var right = this.right = this.addControllerRight(renderer, scene);
         var menu = this.menu = this.addMenu(pivot);
+        var text = this.text = this.addText(pivot);
         var pointer = this.pointer = this.addPointer(pivot); // const dragListener = this.dragListener = this.addVRDragListener();
         // hands
         // const hands = this.hands = this.addHands();
       } else if (TEST_ENABLED) {
-        this.addTestController(scene); // const arrows = this.arrows = this.addArrows(scene);
+        this.addTestController(scene);
 
         var _menu = this.menu = this.addMenu(pivot);
+
+        var _text = this.text = this.addText(pivot);
 
         camera.target.z = ROOM_RADIUS;
         camera.lookAt(camera.target);
@@ -9668,8 +9667,7 @@ function () {
     key: "addMenu",
     value: function addMenu(parent) {
       var menu = new THREE.Group();
-      menu.position.set(0, 30, 0); // CylinderGeometry(radiusTop : Float, radiusBottom : Float, height : Float, radialSegments : Integer, heightSegments : Integer, openEnded : Boolean, thetaStart : Float, thetaLength : Float)
-
+      menu.position.set(0, 30, 0);
       var geometry = new THREE.CylinderGeometry(POINT_RADIUS, POINT_RADIUS, 8, 32, 1, true, Math.PI - 0.5, 1);
       geometry.scale(-1, 1, 1);
       geometry.rotateY(Math.PI);
@@ -9687,50 +9685,121 @@ function () {
       return menu;
     }
   }, {
-    key: "addArrows",
-    value: function addArrows(parent) {
-      var arrows = new THREE.Group();
-      var left = arrows.left = this.addArrow(arrows, new THREE.Vector3(-20, 0, -30), 0);
-      var right = arrows.right = this.addArrow(arrows, new THREE.Vector3(20, 0, -30), 0);
-      parent.add(arrows);
-      return arrows;
+    key: "addText",
+    value: function addText(parent) {
+      var _this3 = this;
+
+      var loader = new THREE.FontLoader();
+      loader.load('fonts/helvetiker_regular.typeface.json', function (font) {
+        _this3.font = font;
+        var material = new THREE.MeshBasicMaterial({
+          color: 0x33c5f6,
+          transparent: true,
+          opacity: 1,
+          side: THREE.DoubleSide
+        });
+        _this3.fontMaterial = material;
+        /*
+        const shapes = font.generateShapes('0', 10);
+        const geometry = new THREE.ShapeBufferGeometry(shapes);
+        geometry.dynamic = true;
+        geometry.computeBoundingBox();
+        const x = -0.5 * (geometry.boundingBox.max.x - geometry.boundingBox.min.x);
+        geometry.translate(x, 5, -80);
+        // make shape ( N.B. edge view not visible )
+        const text = new THREE.Mesh(geometry, material);
+        // text.position.set(-10000, -10000, -10000);
+        this.text = text;
+        parent.add(text);
+        */
+
+        /*
+        // make line shape ( N.B. edge view remains visible )
+        const matDark = new THREE.LineBasicMaterial({
+        	color: color,
+        	side: THREE.DoubleSide
+        });
+        const holeShapes = [];
+        for (let i = 0; i < shapes.length; i++) {
+        	const shape = shapes[i];
+        	if (shape.holes && shape.holes.length > 0) {
+        		for (let j = 0; j < shape.holes.length; j++) {
+        			const hole = shape.holes[j];
+        			holeShapes.push(hole);
+        		}
+        	}
+        }
+        shapes.push.apply(shapes, holeShapes);
+        const lineText = new THREE.Object3D();
+        for (let i = 0; i < shapes.length; i++) {
+        	const shape = shapes[i];
+        	const points = shape.getPoints();
+        	const geometry = new THREE.BufferGeometry().setFromPoints(points);
+        	geometry.translate(xMid, 0, 0);
+        	const lineMesh = new THREE.Line(geometry, matDark);
+        	lineText.add(lineMesh);
+        }
+        parent.add(lineText);
+        */
+      });
     }
   }, {
-    key: "addArrow",
-    value: function addArrow(parent, position, i) {
-      // console.log('addPoint', parent, position, i);
-      // size 2 about 20 cm radius
-      var geometry = new THREE.PlaneBufferGeometry(2, 2, 2, 2); // const geometry = new THREE.BoxGeometry(1, 1, 1);
+    key: "setText",
+    value: function setText(message) {
+      message = message || '1';
 
-      var loader = new THREE.TextureLoader();
-      var texture = loader.load('img/pin.jpg');
-      var material = new THREE.MeshBasicMaterial({
-        alphaMap: texture,
-        transparent: true,
-        opacity: 1
-      });
-      var arrow = new THREE.Mesh(geometry, material); // position = position.normalize().multiplyScalar(POINT_RADIUS);
+      if (this.text) {
+        this.text.parent.remove(this.text);
+        this.text.geometry.dispose();
+      }
 
-      arrow.position.set(position.x, position.y, position.z);
-      arrow.lookAt(this.origin);
-      parent.add(arrow);
+      var shapes = this.font.generateShapes(message, 5);
+      var geometry = new THREE.ShapeBufferGeometry(shapes); // geometry.dynamic = true;
+
+      geometry.computeBoundingBox();
+      var x = -0.5 * (geometry.boundingBox.max.x - geometry.boundingBox.min.x);
+      geometry.translate(x, 0, 0); // make shape ( N.B. edge view not visible )
+
+      var text = new THREE.Mesh(geometry, this.fontMaterial);
+      text.position.set(0, 0, -POINTER_RADIUS);
+      this.text = text;
+      this.pivot.add(text);
       /*
-      const from = { opacity: 0 };
-      TweenMax.to(from, 0.5, {
-      	opacity: 1,
-      	delay: 0.1 * i,
-      	onUpdate: () => {
-      		// console.log(index, from.opacity);
-      		arrow.material.opacity = from.opacity;
-      		arrow.material.needsUpdate = true;
-      	},
-      	onCompleted: () => {
-      		// console.log(index, 'completed');
-      	}
-      });
+      const shapes = this.font.generateShapes(message, 10);
+      const geometry = new THREE.ShapeBufferGeometry(shapes);
+      geometry.computeBoundingBox();
+      const x = -0.5 * (geometry.boundingBox.max.x - geometry.boundingBox.min.x);
+      const text = this.text;
+      text.geometry.copy(geometry);
+      text.geometry.translate(x, 0, 0);
+      // text.geometry.position.needsUpdate = true;
+      geometry.dispose();
       */
+    }
+  }, {
+    key: "copyGeometry",
+    value: function copyGeometry() {
+      var MAX_POINTS = 500; // geometry
 
-      return arrow; // console.log(index, 'start');
+      var geometry = new THREE.BufferGeometry(); // attributes
+
+      var positions = new Float32Array(MAX_POINTS * 3); // 3 vertices per point
+
+      geometry.addAttribute('position', new THREE.BufferAttribute(positions, 3)); // draw range
+
+      var drawCount = 2; // draw the first 2 points, only
+
+      geometry.setDrawRange(0, drawCount); // material
+
+      var material = new THREE.LineBasicMaterial({
+        color: 0xff0000,
+        linewidth: 2
+      }); // line
+
+      var line = new THREE.Line(geometry, material);
+      scene.add(line); // And then to later update after adding new point information:
+
+      line.geometry.setDrawRange(0, newValue);
     }
   }, {
     key: "addPivot",
@@ -9761,12 +9830,12 @@ function () {
   }, {
     key: "addVR",
     value: function addVR(renderer, container) {
-      var _this3 = this;
+      var _this4 = this;
 
       var vr = new _vr.default(renderer, {
         referenceSpaceType: 'local'
       }, function (error) {
-        _this3.debugInfo.innerHTML = error;
+        _this4.debugInfo.innerHTML = error;
       });
       container.appendChild(vr.element);
       return vr;
@@ -9980,10 +10049,10 @@ function () {
   }, {
     key: "removePoint",
     value: function removePoint(i) {
-      var _this4 = this;
+      var _this5 = this;
 
       return new Promise(function (resolve, reject) {
-        var point = _this4.points.children[i];
+        var point = _this5.points.children[i];
         var from = {
           opacity: 1
         };
@@ -9996,7 +10065,7 @@ function () {
             point.material.needsUpdate = true;
           },
           onCompleted: function onCompleted() {
-            _this4.points.remove(point);
+            _this5.points.remove(point);
 
             resolve();
           }
@@ -10115,18 +10184,18 @@ function () {
   }, {
     key: "addDragListener",
     value: function addDragListener() {
-      var _this5 = this;
+      var _this6 = this;
 
       var longitude, latitude;
       var dragListener = new _drag.default(this.container, function (event) {
-        longitude = _this5.longitude;
-        latitude = _this5.latitude;
+        longitude = _this6.longitude;
+        latitude = _this6.latitude;
       }, function (event) {
-        _this5.longitude = -event.distance.x * 0.1 + longitude;
-        _this5.latitude = event.distance.y * 0.1 + latitude;
-        _this5.direction = event.distance.x ? event.distance.x / Math.abs(event.distance.x) * -1 : 1; // console.log('longitude', this.longitude, 'latitude', this.latitude, 'direction', this.direction);
+        _this6.longitude = -event.distance.x * 0.1 + longitude;
+        _this6.latitude = event.distance.y * 0.1 + latitude;
+        _this6.direction = event.distance.x ? event.distance.x / Math.abs(event.distance.x) * -1 : 1; // console.log('longitude', this.longitude, 'latitude', this.latitude, 'direction', this.direction);
       }, function (event) {
-        _this5.speed = Math.abs(event.strength.x) * 100; // console.log('speed', this.speed);
+        _this6.speed = Math.abs(event.strength.x) * 100; // console.log('speed', this.speed);
       });
 
       dragListener.move = function () {};
@@ -10136,7 +10205,7 @@ function () {
   }, {
     key: "addVRDragListener",
     value: function addVRDragListener() {
-      var _this6 = this;
+      var _this7 = this;
 
       /*
       let longitude, latitude;
@@ -10158,9 +10227,9 @@ function () {
 
       var dragListener = {
         start: function start() {
-          var dragListener = _this6.dragListener;
-          dragListener.qd = _this6.controller.quaternion.clone();
-          dragListener.qp = _this6.pivot.quaternion.clone();
+          var dragListener = _this7.dragListener;
+          dragListener.qd = _this7.controller.quaternion.clone();
+          dragListener.qp = _this7.pivot.quaternion.clone();
           /*
           dragListener.down = this.controller.getWorldDirection(new THREE.Vector3());
           dragListener.rotation = this.pivot.rotation.toVector3();
@@ -10169,17 +10238,17 @@ function () {
           dragListener.dragging = true;
         },
         move: function move() {
-          var dragListener = _this6.dragListener;
+          var dragListener = _this7.dragListener;
 
           if (dragListener.dragging) {
             var qd = dragListener.qd.clone();
 
-            var qm = _this6.controller.quaternion.clone();
+            var qm = _this7.controller.quaternion.clone();
 
             var diff = qm.multiply(qd.inverse());
             var qp = dragListener.qp.clone();
 
-            _this6.pivot.setRotationFromQuaternion(qp.multiply(diff));
+            _this7.pivot.setRotationFromQuaternion(qp.multiply(diff));
             /*
             const down = dragListener.down;
             const move = this.controller.getWorldDirection(new THREE.Vector3());
@@ -10192,7 +10261,7 @@ function () {
           }
         },
         end: function end() {
-          var dragListener = _this6.dragListener;
+          var dragListener = _this7.dragListener;
           dragListener.dragging = false;
         }
       };
@@ -10201,16 +10270,16 @@ function () {
   }, {
     key: "onInitView",
     value: function onInitView(previous, current) {
-      var _this7 = this;
+      var _this8 = this;
 
       // console.log(previous, current);
       this.onExitPanel();
       this.onExitPoints(previous).then(function () {
         // console.log(this.points.vertices);
-        _this7.onExitView(previous).then(function () {
+        _this8.onExitView(previous).then(function () {
           // if (!previous) {
-          _this7.onEnterView(current).then(function () {
-            _this7.onEnterPoints(current); // console.log(this.points.vertices);
+          _this8.onEnterView(current).then(function () {
+            _this8.onEnterPoints(current); // console.log(this.points.vertices);
 
           }); // }
 
@@ -10220,11 +10289,11 @@ function () {
   }, {
     key: "onExitView",
     value: function onExitView(view) {
-      var _this8 = this;
+      var _this9 = this;
 
       return new Promise(function (resolve, reject) {
         if (view) {
-          TweenMax.to(_this8.room.sphere.material, 0.4, {
+          TweenMax.to(_this9.room.sphere.material, 0.4, {
             opacity: 0,
             delay: 0.0,
             onCompleted: function onCompleted() {
@@ -10241,7 +10310,7 @@ function () {
   }, {
     key: "onEnterView",
     value: function onEnterView(view) {
-      var _this9 = this;
+      var _this10 = this;
 
       return new Promise(function (resolve, reject) {
         if (view) {
@@ -10263,11 +10332,11 @@ function () {
               }
               */
               if (view.orientation) {
-                _this9.latitude = view.orientation.latitude;
-                _this9.longitude = view.orientation.longitude;
+                _this10.latitude = view.orientation.latitude;
+                _this10.longitude = view.orientation.longitude;
               }
 
-              var material = _this9.room.sphere.material;
+              var material = _this10.room.sphere.material;
               material.opacity = 0;
               material.color.setHex(0xffffff); // texture.minFilter = THREE.NearestMipMapNearestFilter;
               // texture.magFilter = THREE.LinearMipMapLinearFilter;
@@ -10292,20 +10361,20 @@ function () {
   }, {
     key: "onEnterPoints",
     value: function onEnterPoints(view) {
-      var _this10 = this;
+      var _this11 = this;
 
       view.points.forEach(function (point, i) {
-        return _this10.addPoint(_this10.points, _construct(THREE.Vector3, _toConsumableArray(point.position)), i);
+        return _this11.addPoint(_this11.points, _construct(THREE.Vector3, _toConsumableArray(point.position)), i);
       });
     }
   }, {
     key: "onExitPoints",
     value: function onExitPoints(view) {
-      var _this11 = this;
+      var _this12 = this;
 
       if (view) {
         return Promise.all(view.points.map(function (point, i) {
-          return _this11.removePoint(i);
+          return _this12.removePoint(i);
         }));
       } else {
         return Promise.resolve();
@@ -10314,11 +10383,11 @@ function () {
   }, {
     key: "onEnterPanel",
     value: function onEnterPanel(point) {
-      var _this12 = this;
+      var _this13 = this;
 
       this.getPanelInfoById('#panel').then(function (info) {
         if (info) {
-          var panel = _this12.panel;
+          var panel = _this13.panel;
           panel.material.map = info.map;
           panel.material.opacity = 0; // panel.material.alphaMap = info.alphaMap;
 
@@ -10328,9 +10397,9 @@ function () {
 
           var position = point.normalize().multiplyScalar(PANEL_RADIUS);
           panel.position.set(position.x, position.y + 30 + 30, position.z);
-          panel.lookAt(_this12.origin);
+          panel.lookAt(_this13.origin);
 
-          _this12.pivot.add(panel);
+          _this13.pivot.add(panel);
 
           var from = {
             value: 1
@@ -10340,7 +10409,7 @@ function () {
             delay: 0.2,
             onUpdate: function onUpdate() {
               panel.position.set(position.x, position.y + 30 + 30 * from.value, position.z);
-              panel.lookAt(_this12.origin);
+              panel.lookAt(_this13.origin);
               panel.material.opacity = 1 - from.value;
               panel.material.needsUpdate = true;
             }
@@ -10362,6 +10431,8 @@ function () {
     key: "onLeftSelectStart",
     value: function onLeftSelectStart(id) {
       try {
+        this.setText(String(id));
+
         if (this.controller !== this.left) {
           if (this.controller) {
             this.controller.remove(this.controller.indicator);
@@ -10394,6 +10465,8 @@ function () {
     key: "onRightSelectStart",
     value: function onRightSelectStart(id) {
       try {
+        this.setText(String(id));
+
         if (this.controller !== this.right) {
           if (this.controller) {
             this.controller.remove(this.controller.indicator);
@@ -10451,6 +10524,7 @@ function () {
     value: function onMouseDown(event) {
       if (TEST_ENABLED) {
         // this.dragListener.start();
+        this.setText('down');
         return;
       }
 
@@ -10569,6 +10643,7 @@ function () {
     value: function onMouseUp(event) {
       if (TEST_ENABLED) {
         // this.dragListener.end();
+        this.setText('up');
         return;
       }
     }
@@ -10643,6 +10718,10 @@ function () {
     value: function findGamepad(id) {
       var gamepads = navigator.getGamepads && navigator.getGamepads();
 
+      if (!gamepads) {
+        return undefined;
+      }
+
       for (var i = 0, j = 0, l = gamepads.length; i < l; i++) {
         var gamepad = gamepads[i];
 
@@ -10689,11 +10768,11 @@ function () {
   }, {
     key: "animate",
     value: function animate() {
-      var _this13 = this;
+      var _this14 = this;
 
       var renderer = this.renderer;
       renderer.setAnimationLoop(function () {
-        _this13.render();
+        _this14.render();
       });
     }
   }, {
@@ -10917,8 +10996,6 @@ function () {
   }, {
     key: "getPanelInfoById",
     value: function getPanelInfoById(id) {
-      var _this14 = this;
-
       return new Promise(function (resolve, reject) {
         var node = document.querySelector(id);
 
@@ -10928,9 +11005,8 @@ function () {
           }).then(function (canvas) {
             // !!!
             // document.body.appendChild(canvas);
-            var alpha = _this14.getAlphaFromCanvas(canvas); // document.body.appendChild(alpha);
-
-
+            // const alpha = this.getAlphaFromCanvas(canvas);
+            // document.body.appendChild(alpha);
             var map = new THREE.CanvasTexture(canvas); // const alphaMap = new THREE.CanvasTexture(alpha);
 
             resolve({
@@ -10997,7 +11073,7 @@ function () {
       if (this.hoverPoint_ !== object) {
         this.hoverPoint_ = object;
 
-        if (object) {
+        if (object !== null) {
           this.onEnterPanel(object.position.clone());
         } else {
           this.onExitPanel();
@@ -11030,10 +11106,11 @@ function () {
       if (this.selectedPoint_ !== object) {
         this.selectedPoint_ = object;
 
-        if (object) {
+        if (object !== null) {
           var position = object.position;
           var debugInfo = "selectedPoint => {".concat(position.x, ", ").concat(position.y, ", ").concat(position.z, "}");
-          this.debugInfo.innerHTML = debugInfo;
+          this.debugInfo.innerHTML = debugInfo; // console.log(this.views.length);
+
           this.index = (this.index + 1) % this.views.length; // console.log(index, point, debugInfo);
         }
       }
@@ -11049,7 +11126,7 @@ function () {
       if (this.menuPoint_ !== object) {
         this.menuPoint_ = object;
 
-        if (object) {
+        if (object !== null) {
           // const point = intersection.point;
           var direction = intersection.faceIndex > object.geometry.faces.length / 2 ? 1 : -1;
           TweenMax.to(this.pivot.rotation, 0.6, {
@@ -11068,6 +11145,33 @@ var tour = new VRTour();
 tour.animate();
 tour.load('data/vr.json');
 /*
+
+const shaderPoint = {
+	vertexShader: `
+	attribute float size;
+	attribute vec4 ca;
+	varying vec4 vColor;
+	void main() {
+		vColor = ca;
+		vec4 mvPosition = modelViewMatrix * vec4(position, 1.0);
+		gl_PointSize = size * (400.0 / -mvPosition.z);
+		gl_Position = projectionMatrix * mvPosition;
+	}
+	`,
+	fragmentShader: `
+	uniform vec3 color;
+	uniform sampler2D texture;
+	varying vec4 vColor;
+	void main() {
+		vec4 textureColor = texture2D(texture, gl_PointCoord);
+		// if (textureColor.a < 0.5) discard;
+		gl_FragColor = textureColor * vec4(color * vColor.xyz, 1.0);
+		// float depth = gl_FragCoord.z / gl_FragCoord.w;
+		gl_FragColor = vec4(vec3(1.0), gl_FragColor.w);
+	}
+	`,
+};
+
 const material = new THREE.PointsMaterial({
 	size: 15,
 	map: loader.load('img/pin.png'),
