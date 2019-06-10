@@ -3,22 +3,9 @@
 
 import html2canvas from 'html2canvas';
 import DragListener from './shared/drag.listener';
-import VR, { VR_MODE } from './shared/vr';
-
-THREE.Euler.prototype.add = function(euler) {
-	this.set(this.x + euler.x, this.y + euler.y, this.z + euler.z, this.order);
-	return this;
-};
-
-export function cm(value) {
-	return value / 100;
-}
-
-const ROOM_RADIUS = 200;
-const PANEL_RADIUS = 100;
-const POINT_RADIUS = 99;
-const POINTER_RADIUS = 98;
-const TEST_ENABLED = false;
+import { cm, PANEL_RADIUS, POINTER_RADIUS, POINT_RADIUS, ROOM_RADIUS, TEST_ENABLED } from './three/const';
+import { Menu } from './three/menu';
+import { VR, VR_MODE } from './three/vr';
 
 class VRTour {
 
@@ -100,25 +87,6 @@ class VRTour {
 		}
 	}
 
-	get menuPoint() {
-		return this.menuPoint_;
-	}
-	set menuPoint(intersection) {
-		const object = intersection && this.isControllerSelecting ? intersection.object : null;
-		if (this.menuPoint_ !== object) {
-			this.menuPoint_ = object;
-			if (object !== null) {
-				// const point = intersection.point;
-				const direction = intersection.faceIndex > object.geometry.faces.length / 2 ? 1 : -1;
-				TweenMax.to(this.pivot.rotation, 0.6, {
-					y: this.pivot.rotation.y + Math.PI / 2 * direction,
-				})
-				// console.log(intersection, point);
-				// latitude
-			}
-		}
-	}
-
 	load(jsonUrl) {
 		try {
 			fetch(jsonUrl).then(response => response.json()).then(response => {
@@ -171,11 +139,11 @@ class VRTour {
 		*/
 		// unsubscribe();
 		// controllers
-		console.log('vr.mode', vr.mode);
+		console.log('vr.mode', vr.mode, TEST_ENABLED);
 		if (vr.mode !== VR_MODE.NONE) {
 			const left = this.left = this.addControllerLeft(renderer, scene);
 			const right = this.right = this.addControllerRight(renderer, scene);
-			const menu = this.menu = this.addMenu(pivot);
+			const menu = this.menu = new Menu(pivot);
 			const text = this.text = this.addText(pivot);
 			const pointer = this.pointer = this.addPointer(pivot);
 			// const dragListener = this.dragListener = this.addVRDragListener();
@@ -183,7 +151,7 @@ class VRTour {
 			// const hands = this.hands = this.addHands();
 		} else if (TEST_ENABLED) {
 			this.addTestController(scene);
-			const menu = this.menu = this.addMenu(pivot);
+			const menu = this.menu = new Menu(pivot);
 			const text = this.text = this.addText(pivot);
 			camera.target.z = ROOM_RADIUS;
 			camera.lookAt(camera.target);
@@ -242,26 +210,6 @@ class VRTour {
 		const camera = new THREE.PerspectiveCamera(70, window.innerWidth / window.innerHeight, 0.01, ROOM_RADIUS * 2);
 		camera.target = new THREE.Vector3();
 		return camera;
-	}
-
-	addMenu(parent) {
-		const menu = new THREE.Group();
-		menu.position.set(0, 30, 0);
-		const geometry = new THREE.CylinderGeometry(POINT_RADIUS, POINT_RADIUS, 8, 32, 1, true, Math.PI - 0.5, 1);
-		geometry.scale(-1, 1, 1);
-		geometry.rotateY(Math.PI);
-		const material = new THREE.MeshBasicMaterial({
-			color: 0x161616,
-			transparent: true,
-			opacity: 0,
-		});
-		const arc = menu.arc = new THREE.Mesh(geometry, material);
-		// arc.renderOrder = 100;
-		arc.position.set(0, 20, 0);
-		// arc.lookAt(this.origin);
-		menu.add(arc);
-		parent.add(menu);
-		return menu;
 	}
 
 	addText(parent) {
@@ -927,6 +875,7 @@ class VRTour {
 
 	onLeftSelectStart(id) {
 		try {
+			// 1 front, 2 side, 3 Y, 4 X, 5?
 			this.setText(String(id));
 			if (this.controller !== this.left) {
 				if (this.controller) {
@@ -957,6 +906,7 @@ class VRTour {
 
 	onRightSelectStart(id) {
 		try {
+			// 1 front, 2 side, 3 A, 4 B, 5?
 			this.setText(String(id));
 			if (this.controller !== this.right) {
 				if (this.controller) {
@@ -1143,41 +1093,6 @@ class VRTour {
 
 	// animation
 
-	doParallax() {
-		// parallax
-		const parallax = this.parallax;
-		parallax.x += (this.mouse.x - parallax.x) / 8;
-		parallax.y += (this.mouse.y - parallax.y) / 8;
-		// this.light1.position.set(parallax.x * 5.0, 6.0 + parallax.y * 2.0, 4.0);
-		// this.light2.position.set(parallax.x * -5.0, -6.0 - parallax.y * 2.0, 4.0);
-		/*
-		const size = this.size;
-		const sx = size.width < 1024 ? 0 : -3;
-		const sy = size.width < 1024 ? -2 : 0;
-		this.tour.position.x = sx + parallax.x * 0.2;
-		this.tour.position.y = sy + parallax.y * 0.2;
-		*/
-		//
-		/*
-		const titleXy = {
-			x: -50 + 0.5 * -parallax.x,
-			y: -50 + 0.5 * -parallax.y,
-		};
-		TweenMax.set(this.title, {
-			transform: 'translateX(' + titleXy.x + '%) translateY(' + titleXy.y + '%)'
-		});
-		*/
-		/*
-		const shadowXy = {
-			x: -50 + 3 * -parallax.x,
-			y: -50 + 3 * -parallax.y,
-		};
-		TweenMax.set(this.shadow, {
-			transform: 'translateX(' + shadowXy.x + '%) translateY(' + shadowXy.y + '%)'
-		});
-		*/
-	}
-
 	findGamepad(id) {
 		const gamepads = navigator.getGamepads && navigator.getGamepads();
 		if (!gamepads) {
@@ -1228,17 +1143,22 @@ class VRTour {
 	}
 
 	render(delta) {
+		const cameraDirection = this.camera.getWorldDirection(this.cameraDirection);
 		if (this.vr.mode !== VR_MODE.NONE) {
 			// this.dragListener.move();
 			this.updateTriggers();
-			this.updateMenu();
+			this.menu.active = this.controller && this.pointer.position.y > 15;
+			this.menu.update(cameraDirection);
+			// this.updateMenu();
 			this.updateController();
 		} else if (TEST_ENABLED) {
 			// this.dragListener.move();
 			// this.updatePivot();
 			this.updateCamera();
 			// this.updateTriggers();
-			this.updateMenu();
+			this.menu.active = this.controller && this.pointer.position.y > 15;
+			this.menu.update(cameraDirection);
+			// this.updateMenu();
 			this.updateController();
 		} else {
 			// this.updatePivot();
@@ -1251,20 +1171,22 @@ class VRTour {
 	}
 
 	updateMenu() {
-		const menu = this.menu;
-		const arc = menu.arc;
+		const menu = this.menu.mesh;
+		const arc = this.menu.arc;
 		const controller = this.controller;
 		const pointer = this.pointer;
 		const active = controller && pointer.position.y > 15;
 		const vector = this.camera.getWorldDirection(this.cameraDirection);
-		const endTheta = Math.atan2(vector.x, vector.z) - this.pivot.rotation.y;
+		const endTheta = Math.atan2(vector.x, vector.z) - this.pivot.rotation.y + Math.PI - this.menu.ry;
+		// const t = this.t ? this.t++ : 0;
 		// const theta = menu.rotation.y + (endTheta - menu.rotation.y) / 10;
 		menu.rotation.set(0, endTheta, 0);
-		const endY = active ? 0 : 30;
+		const endY = active ? 20 : this.menu.py;
 		const y = menu.position.y + (endY - menu.position.y) / 10;
 		menu.position.set(0, y, 0);
 		const endOpacity = active ? 1 : 0;
 		const opacity = arc.material.opacity + (endOpacity - arc.material.opacity) / 10;
+		// console.log(endTheta, active, y, opacity);
 		arc.material.opacity = opacity;
 		arc.material.needsUpdate = true;
 	}
@@ -1309,22 +1231,6 @@ class VRTour {
 		this.selectedPoint = intersection;
 	}
 
-	updateMenuPoint(raycaster) {
-		// raycaster.params.Points.threshold = 10.0;
-		const intersections = raycaster.intersectObjects(this.menu.children);
-		/*
-		let point;
-		if (intersections.length) {
-			const intersection = intersections[0];
-			point = intersection.object;
-			point = this.points.children.find(x => x === point);
-		}
-		*/
-		// console.log(intersections);
-		const intersection = intersections.length ? intersections[0] : null;
-		this.menuPoint = intersection;
-	}
-
 	updateController() {
 		try {
 			const controller = this.controller;
@@ -1336,7 +1242,7 @@ class VRTour {
 				raycaster.set(position, rotation);
 				this.updatePointer(raycaster);
 				this.updateHoverPoint(raycaster);
-				this.updateMenuPoint(raycaster);
+				this.menu.setRaycaster(raycaster, this.isControllerSelecting);
 			}
 		} catch (error) {
 			this.debugInfo.innerHTML = error;
@@ -1473,6 +1379,15 @@ tour.animate();
 tour.load('data/vr.json');
 
 /*
+
+doParallax() {
+	// parallax
+	const parallax = this.parallax;
+	parallax.x += (this.mouse.x - parallax.x) / 8;
+	parallax.y += (this.mouse.y - parallax.y) / 8;
+	// this.light1.position.set(parallax.x * 5.0, 6.0 + parallax.y * 2.0, 4.0);
+	// this.light2.position.set(parallax.x * -5.0, -6.0 - parallax.y * 2.0, 4.0);
+}
 
 const shaderPoint = {
 	vertexShader: `

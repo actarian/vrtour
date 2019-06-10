@@ -1,7 +1,7 @@
 /* jshint esversion: 6 */
 /* global window, document */
 
-import EventEmitter from './event-emitter';
+import EventEmitter from '../shared/event-emitter';
 
 export const VR_MODE = {
 	NONE: 0,
@@ -9,7 +9,7 @@ export const VR_MODE = {
 	XR: 2,
 };
 
-export default class VR extends EventEmitter {
+export class VR extends EventEmitter {
 
 	constructor(renderer, options, onError) {
 		super();
