@@ -4,6 +4,7 @@
 import html2canvas from 'html2canvas';
 import DragListener from './shared/drag.listener';
 import { cm, PANEL_RADIUS, POINTER_RADIUS, POINT_RADIUS, ROOM_RADIUS, TEST_ENABLED } from './three/const';
+import { InteractiveMesh } from './three/interactive.mesh';
 import { Menu } from './three/menu';
 import { VR, VR_MODE } from './three/vr';
 
@@ -137,6 +138,7 @@ class VRTour {
 			this.debugInfo.innerHTML = error;
 		});
 		*/
+		// this.addIO();
 		// unsubscribe();
 		// controllers
 		console.log('vr.mode', vr.mode, TEST_ENABLED);
@@ -171,6 +173,30 @@ class VRTour {
 		this.debugSave.addEventListener('click', this.onSave, false);
 		this.section.classList.add('init');
 		this.onWindowResize();
+	}
+
+	addIO() {
+		const rr = () => {
+			return -20 + Math.random() * 40;
+		}
+		const ims = this.ims = new Array(10).fill(null).map(x => {
+			const im = new InteractiveMesh();
+			im.position.set(rr(), 0, rr());
+			im.on('over', (item) => {
+				item.material.color.setHex(0xff0000);
+			});
+			im.on('out', (item) => {
+				item.material.color.setHex(0xff00ff);
+			});
+			im.on('down', (item) => {
+				item.material.color.setHex(0x00ff00);
+			});
+			im.on('up', (item) => {
+				item.material.color.setHex(0xff00ff);
+			});
+			this.pivot.add(im);
+			return im;
+		});
 	}
 
 	addTestController(scene) {
@@ -1240,9 +1266,9 @@ class VRTour {
 				const rotation = controller.getWorldDirection(this.controllerDirection).multiplyScalar(-1); // this.pivot.worldToLocal(controller.getWorldDirection(this.controllerDirection).multiplyScalar(-1));
 				// new THREE.Vector3(controller.rotation.x, controller.rotation.y, controller.rotation.z).normalize();
 				raycaster.set(position, rotation);
+				InteractiveMesh.hittest(raycaster, this.isControllerSelecting);
 				this.updatePointer(raycaster);
 				this.updateHoverPoint(raycaster);
-				this.menu.setRaycaster(raycaster, this.isControllerSelecting);
 			}
 		} catch (error) {
 			this.debugInfo.innerHTML = error;

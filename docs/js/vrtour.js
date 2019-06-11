@@ -9140,31 +9140,198 @@ THREE.Euler.prototype.add = function (euler) {
 Object.defineProperty(exports, "__esModule", {
   value: true
 });
-exports.MenuItem = exports.Menu = void 0;
-
-var _eventEmitter = _interopRequireDefault(require("../shared/event-emitter"));
+exports.InteractiveMesh = void 0;
 
 var _const = require("./const");
 
-function _interopRequireDefault(obj) { return obj && obj.__esModule ? obj : { default: obj }; }
+function _typeof(obj) { if (typeof Symbol === "function" && typeof Symbol.iterator === "symbol") { _typeof = function _typeof(obj) { return typeof obj; }; } else { _typeof = function _typeof(obj) { return obj && typeof Symbol === "function" && obj.constructor === Symbol && obj !== Symbol.prototype ? "symbol" : typeof obj; }; } return _typeof(obj); }
+
+function _classCallCheck(instance, Constructor) { if (!(instance instanceof Constructor)) { throw new TypeError("Cannot call a class as a function"); } }
+
+function _possibleConstructorReturn(self, call) { if (call && (_typeof(call) === "object" || typeof call === "function")) { return call; } return _assertThisInitialized(self); }
+
+function _getPrototypeOf(o) { _getPrototypeOf = Object.setPrototypeOf ? Object.getPrototypeOf : function _getPrototypeOf(o) { return o.__proto__ || Object.getPrototypeOf(o); }; return _getPrototypeOf(o); }
+
+function _assertThisInitialized(self) { if (self === void 0) { throw new ReferenceError("this hasn't been initialised - super() hasn't been called"); } return self; }
+
+function _defineProperties(target, props) { for (var i = 0; i < props.length; i++) { var descriptor = props[i]; descriptor.enumerable = descriptor.enumerable || false; descriptor.configurable = true; if ("value" in descriptor) descriptor.writable = true; Object.defineProperty(target, descriptor.key, descriptor); } }
+
+function _createClass(Constructor, protoProps, staticProps) { if (protoProps) _defineProperties(Constructor.prototype, protoProps); if (staticProps) _defineProperties(Constructor, staticProps); return Constructor; }
+
+function _inherits(subClass, superClass) { if (typeof superClass !== "function" && superClass !== null) { throw new TypeError("Super expression must either be null or a function"); } subClass.prototype = Object.create(superClass && superClass.prototype, { constructor: { value: subClass, writable: true, configurable: true } }); if (superClass) _setPrototypeOf(subClass, superClass); }
+
+function _setPrototypeOf(o, p) { _setPrototypeOf = Object.setPrototypeOf || function _setPrototypeOf(o, p) { o.__proto__ = p; return o; }; return _setPrototypeOf(o, p); }
+
+function _defineProperty(obj, key, value) { if (key in obj) { Object.defineProperty(obj, key, { value: value, enumerable: true, configurable: true, writable: true }); } else { obj[key] = value; } return obj; }
+
+var SIZE = 8;
+var RADIUS = _const.POINT_RADIUS - 0.1;
+var ARC = SIZE / RADIUS;
+var PY = 50;
+var RY = Math.PI - 0.5;
+var FROM = 0;
+var TO = 1;
+
+var InteractiveMesh =
+/*#__PURE__*/
+function (_THREE$Mesh) {
+  _inherits(InteractiveMesh, _THREE$Mesh);
+
+  _createClass(InteractiveMesh, null, [{
+    key: "hittest",
+    value: function hittest(raycaster, down) {
+      var intersections = raycaster.intersectObjects(InteractiveMesh.items);
+      var intersection = intersections.length ? intersections[0] : null;
+      var object = intersection && intersection.object;
+      InteractiveMesh.items.forEach(function (x) {
+        x.intersection = intersection;
+        x.over = x === object;
+        x.down = down;
+      });
+    }
+  }]);
+
+  function InteractiveMesh(geometry, material) {
+    var _this;
+
+    _classCallCheck(this, InteractiveMesh);
+
+    geometry = geometry || new THREE.BoxGeometry(5, 5, 5);
+    material = material || new THREE.MeshBasicMaterial({
+      color: 0xff00ff // opacity: 1,
+      // transparent: true,
+
+    });
+    _this = _possibleConstructorReturn(this, _getPrototypeOf(InteractiveMesh).call(this, geometry, material)); // this.renderOrder = 10;
+
+    _this.events = {};
+    InteractiveMesh.items.push(_assertThisInitialized(_this));
+    return _this;
+  }
+
+  _createClass(InteractiveMesh, [{
+    key: "on",
+    value: function on(type, callback) {
+      var _this2 = this;
+
+      var event = this.events[type] = this.events[type] || [];
+      event.push(callback);
+      return function () {
+        _this2.events[type] = event.filter(function (x) {
+          return x !== callback;
+        });
+      };
+    }
+  }, {
+    key: "off",
+    value: function off(type, callback) {
+      var event = this.events[type];
+
+      if (event) {
+        this.events[type] = event.filter(function (x) {
+          return x !== callback;
+        });
+      }
+    }
+  }, {
+    key: "emit",
+    value: function emit(type, data) {
+      var event = this.events[type];
+
+      if (event) {
+        event.forEach(function (callback) {
+          // callback.call(this, data);
+          callback(data);
+        });
+      }
+    }
+    /*
+    setRaycaster(raycaster, selecting) {
+    	this.raycaster = raycaster;
+    	this.selecting = selecting;
+    	const intersections = raycaster.intersectObjects(this);
+    	const intersection = intersections.length ? intersections[0] : null;
+    	this.over = intersection;
+    	this.down = intersection;
+    }
+    	update(cameraDirection) {
+    	const y = Math.atan2(cameraDirection.x, cameraDirection.z) - this.parent.rotation.y + Math.PI - this.ry;
+    	this.mesh.rotation.set(0, y, 0);
+    }
+    */
+
+  }, {
+    key: "over",
+    get: function get() {
+      return this.over_;
+    },
+    set: function set(over) {
+      if (this.over_ !== over) {
+        this.over_ = over;
+
+        if (over) {
+          this.emit('over', this);
+        } else {
+          this.emit('out', this);
+        }
+      }
+    }
+  }, {
+    key: "down",
+    get: function get() {
+      return this.down_;
+    },
+    set: function set(down) {
+      down = down && this.over;
+
+      if (this.down_ !== down) {
+        this.down_ = down;
+
+        if (down) {
+          this.emit('down', this);
+        } else {
+          this.emit('up', this);
+        }
+      }
+    }
+  }]);
+
+  return InteractiveMesh;
+}(THREE.Mesh);
+
+exports.InteractiveMesh = InteractiveMesh;
+
+_defineProperty(InteractiveMesh, "items", []);
+
+},{"./const":4}],6:[function(require,module,exports){
+"use strict";
+
+Object.defineProperty(exports, "__esModule", {
+  value: true
+});
+exports.MenuItem = exports.Menu = void 0;
+
+var _const = require("./const");
+
+var _interactive = require("./interactive.mesh");
 
 function _typeof(obj) { if (typeof Symbol === "function" && typeof Symbol.iterator === "symbol") { _typeof = function _typeof(obj) { return typeof obj; }; } else { _typeof = function _typeof(obj) { return obj && typeof Symbol === "function" && obj.constructor === Symbol && obj !== Symbol.prototype ? "symbol" : typeof obj; }; } return _typeof(obj); }
+
+function _possibleConstructorReturn(self, call) { if (call && (_typeof(call) === "object" || typeof call === "function")) { return call; } return _assertThisInitialized(self); }
+
+function _getPrototypeOf(o) { _getPrototypeOf = Object.setPrototypeOf ? Object.getPrototypeOf : function _getPrototypeOf(o) { return o.__proto__ || Object.getPrototypeOf(o); }; return _getPrototypeOf(o); }
+
+function _assertThisInitialized(self) { if (self === void 0) { throw new ReferenceError("this hasn't been initialised - super() hasn't been called"); } return self; }
+
+function _inherits(subClass, superClass) { if (typeof superClass !== "function" && superClass !== null) { throw new TypeError("Super expression must either be null or a function"); } subClass.prototype = Object.create(superClass && superClass.prototype, { constructor: { value: subClass, writable: true, configurable: true } }); if (superClass) _setPrototypeOf(subClass, superClass); }
+
+function _setPrototypeOf(o, p) { _setPrototypeOf = Object.setPrototypeOf || function _setPrototypeOf(o, p) { o.__proto__ = p; return o; }; return _setPrototypeOf(o, p); }
 
 function _classCallCheck(instance, Constructor) { if (!(instance instanceof Constructor)) { throw new TypeError("Cannot call a class as a function"); } }
 
 function _defineProperties(target, props) { for (var i = 0; i < props.length; i++) { var descriptor = props[i]; descriptor.enumerable = descriptor.enumerable || false; descriptor.configurable = true; if ("value" in descriptor) descriptor.writable = true; Object.defineProperty(target, descriptor.key, descriptor); } }
 
 function _createClass(Constructor, protoProps, staticProps) { if (protoProps) _defineProperties(Constructor.prototype, protoProps); if (staticProps) _defineProperties(Constructor, staticProps); return Constructor; }
-
-function _possibleConstructorReturn(self, call) { if (call && (_typeof(call) === "object" || typeof call === "function")) { return call; } return _assertThisInitialized(self); }
-
-function _assertThisInitialized(self) { if (self === void 0) { throw new ReferenceError("this hasn't been initialised - super() hasn't been called"); } return self; }
-
-function _getPrototypeOf(o) { _getPrototypeOf = Object.setPrototypeOf ? Object.getPrototypeOf : function _getPrototypeOf(o) { return o.__proto__ || Object.getPrototypeOf(o); }; return _getPrototypeOf(o); }
-
-function _inherits(subClass, superClass) { if (typeof superClass !== "function" && superClass !== null) { throw new TypeError("Super expression must either be null or a function"); } subClass.prototype = Object.create(superClass && superClass.prototype, { constructor: { value: subClass, writable: true, configurable: true } }); if (superClass) _setPrototypeOf(subClass, superClass); }
-
-function _setPrototypeOf(o, p) { _setPrototypeOf = Object.setPrototypeOf || function _setPrototypeOf(o, p) { o.__proto__ = p; return o; }; return _setPrototypeOf(o, p); }
 
 var SIZE = 8;
 var RADIUS = _const.POINT_RADIUS - 0.1;
@@ -9176,41 +9343,43 @@ var TO = 1;
 
 var Menu =
 /*#__PURE__*/
-function (_EventEmitter) {
-  _inherits(Menu, _EventEmitter);
-
-  function Menu(parent, onError) {
-    var _this;
-
+function () {
+  function Menu(parent) {
     _classCallCheck(this, Menu);
 
-    _this = _possibleConstructorReturn(this, _getPrototypeOf(Menu).call(this));
-    _this.parent = parent;
-
-    if (onError) {
-      // console.log(onError);
-      _this.addListener('error', onError);
-    }
-
-    _this.py = PY;
-    _this.ry = RY;
-
-    var mesh = _this.mesh = _this.addMesh(parent);
-
-    return _this;
+    this.parent = parent;
+    this.py = PY;
+    this.ry = RY;
+    var mesh = this.mesh = this.addMesh(parent);
   }
 
   _createClass(Menu, [{
     key: "addMesh",
     value: function addMesh(parent) {
+      var _this = this;
+
       var mesh = new THREE.Group();
       mesh.position.set(0, PY, 0);
       var arc = this.arc = this.addArc(mesh);
       this.items = [new MenuItem(mesh, 0), new MenuItem(mesh, 1)];
-      this.meshes = this.items.map(function (x) {
-        return x.mesh;
+      this.items.forEach(function (x, index) {
+        x.on('over', function () {
+          x.material.color.setHex(0xffcc00);
+          x.material.needsUpdate = true;
+        });
+        x.on('out', function () {
+          x.material.color.setHex(0x111111);
+          x.material.needsUpdate = true;
+        });
+        x.on('down', function () {
+          var direction = index === 1 ? 1 : -1;
+          var y = _this.parent.rotation.y + Math.PI / 2 * direction;
+          TweenMax.to(_this.parent.rotation, 0.6, {
+            y: y
+          });
+        });
       });
-      this.materials = this.meshes.map(function (x) {
+      this.materials = this.items.map(function (x) {
         return x.material;
       });
       this.materials.unshift(arc.material);
@@ -9234,18 +9403,6 @@ function (_EventEmitter) {
 
       parent.add(arc);
       return arc;
-    }
-  }, {
-    key: "setRaycaster",
-    value: function setRaycaster(raycaster, selecting) {
-      this.raycaster = raycaster;
-      this.selecting = selecting; // raycaster.params.Points.threshold = 10.0;
-
-      var intersections = raycaster.intersectObjects(this.meshes); // console.log(intersections);
-
-      var intersection = intersections.length ? intersections[0] : null;
-      this.hovered = intersection;
-      this.selected = intersection;
     }
   }, {
     key: "update",
@@ -9281,105 +9438,71 @@ function (_EventEmitter) {
         });
       }
     }
-  }, {
-    key: "hovered",
-    get: function get() {
-      return this.hovered_;
-    },
-    set: function set(intersection) {
-      var object = intersection && intersection.object;
-
-      if (this.hovered_ !== object) {
-        this.hovered_ = object;
-        this.meshes.forEach(function (x) {
-          x.material.color.setHex(x === object ? 0xffcc00 : 0x111111);
-          x.material.needsUpdate = true;
-        });
-      }
-    }
-  }, {
-    key: "selected",
-    get: function get() {
-      return this.selected_;
-    },
-    set: function set(intersection) {
-      var object = intersection && this.selecting ? intersection.object : null;
-
-      if (this.selected_ !== object) {
-        this.selected_ = object;
-        var index = this.meshes.reduce(function (p, x, i) {
-          return x === object ? i : p;
-        }, -1);
-        this.emit('selectItem', index);
-
-        if (index !== -1) {
-          var direction = index === 1 ? 1 : -1;
-          var y = this.parent.rotation.y + Math.PI / 2 * direction;
-          TweenMax.to(this.parent.rotation, 0.6, {
-            y: y
-          });
-        }
-        /*
-        if (object !== null) {
-        	// console.log(object.geometry);
-        	// const selected = intersection.selected;
-        	const direction = intersection.faceIndex > object.geometry.faces.length / 2 ? 1 : -1;
-        	const y = this.parent.rotation.y + Math.PI / 2 * direction;
-        	TweenMax.to(this.parent.rotation, 0.6, { y });
-        	// console.log(object, direction, y);
-        	// latitude
-        }
-        */
-
-      }
-    }
   }]);
 
   return Menu;
-}(_eventEmitter.default);
+}();
 
 exports.Menu = Menu;
 
 var MenuItem =
 /*#__PURE__*/
-function (_EventEmitter2) {
-  _inherits(MenuItem, _EventEmitter2);
+function (_InteractiveMesh) {
+  _inherits(MenuItem, _InteractiveMesh);
 
-  function MenuItem(parent, index, onError) {
+  _createClass(MenuItem, null, [{
+    key: "getTexture",
+    value: function getTexture(index) {
+      var canvas = document.createElement('canvas');
+      var ctx = canvas.getContext('2d');
+      canvas.width = canvas.height = 64;
+      ctx.fillStyle = '#ffffff';
+      /*
+      ctx.textAlign = 'center';
+      ctx.font = '30px sans';
+      ctx.fillText(index ? '>' : '<', 32, 32);
+      */
+
+      ctx.beginPath();
+      ctx.moveTo(32 - 10, 32 - 10);
+      ctx.lineTo(32 + 10, 32);
+      ctx.lineTo(32 - 10, 32 - 10);
+      ctx.fill();
+      var texture = new THREE.CanvasTexture(canvas); // CanvasTexture( canvas : HTMLElement, mapping : Constant, wrapS : Constant, wrapT : Constant, magFilter : Constant, minFilter : Constant, format : Constant, type : Constant, anisotropy : Number )
+
+      return texture;
+    }
+  }]);
+
+  function MenuItem(parent, index) {
     var _this3;
 
     _classCallCheck(this, MenuItem);
 
-    _this3 = _possibleConstructorReturn(this, _getPrototypeOf(MenuItem).call(this));
-
-    if (onError) {
-      // console.log(onError);
-      _this3.addListener('error', onError);
-    }
-
+    var texture = MenuItem.getTexture(index);
     var geometry = new THREE.CylinderGeometry(RADIUS, RADIUS, SIZE, 1, 1, true, index ? 1 - ARC : 0, ARC);
     geometry.scale(-1, 1, 1);
     var material = new THREE.MeshBasicMaterial({
       color: 0x363636,
+      map: texture,
       transparent: true,
       opacity: 0
     });
-    var mesh = new THREE.Mesh(geometry, material); // mesh.renderOrder = 100;
-    // mesh.rotation.set(0, -0.5, 0);
-    // mesh.position.set(0, 0, 0);
-    // mesh.lookAt(this.origin);
+    _this3 = _possibleConstructorReturn(this, _getPrototypeOf(MenuItem).call(this, geometry, material)); // this.renderOrder = 100;
+    // this.rotation.set(0, -0.5, 0);
+    // this.position.set(0, 0, 0);
+    // this.lookAt(this.origin);
 
-    parent.add(mesh);
-    _this3.mesh = mesh;
+    parent.add(_assertThisInitialized(_this3));
     return _this3;
   }
 
   return MenuItem;
-}(_eventEmitter.default);
+}(_interactive.InteractiveMesh);
 
 exports.MenuItem = MenuItem;
 
-},{"../shared/event-emitter":3,"./const":4}],6:[function(require,module,exports){
+},{"./const":4,"./interactive.mesh":5}],7:[function(require,module,exports){
 "use strict";
 
 Object.defineProperty(exports, "__esModule", {
@@ -9720,7 +9843,7 @@ function (_EventEmitter) {
 
 exports.VR = VR;
 
-},{"../shared/event-emitter":3}],7:[function(require,module,exports){
+},{"../shared/event-emitter":3}],8:[function(require,module,exports){
 "use strict";
 
 var _html2canvas = _interopRequireDefault(require("html2canvas"));
@@ -9728,6 +9851,8 @@ var _html2canvas = _interopRequireDefault(require("html2canvas"));
 var _drag = _interopRequireDefault(require("./shared/drag.listener"));
 
 var _const = require("./three/const");
+
+var _interactive = require("./three/interactive.mesh");
 
 var _menu2 = require("./three/menu");
 
@@ -9846,6 +9971,7 @@ function () {
       	this.debugInfo.innerHTML = error;
       });
       */
+      // this.addIO();
       // unsubscribe();
       // controllers
 
@@ -9888,9 +10014,39 @@ function () {
       this.onWindowResize();
     }
   }, {
+    key: "addIO",
+    value: function addIO() {
+      var _this2 = this;
+
+      var rr = function rr() {
+        return -20 + Math.random() * 40;
+      };
+
+      var ims = this.ims = new Array(10).fill(null).map(function (x) {
+        var im = new _interactive.InteractiveMesh();
+        im.position.set(rr(), 0, rr());
+        im.on('over', function (item) {
+          item.material.color.setHex(0xff0000);
+        });
+        im.on('out', function (item) {
+          item.material.color.setHex(0xff00ff);
+        });
+        im.on('down', function (item) {
+          item.material.color.setHex(0x00ff00);
+        });
+        im.on('up', function (item) {
+          item.material.color.setHex(0xff00ff);
+        });
+
+        _this2.pivot.add(im);
+
+        return im;
+      });
+    }
+  }, {
     key: "addTestController",
     value: function addTestController(scene) {
-      var _this2 = this;
+      var _this3 = this;
 
       var controller = this.right = new THREE.Group();
       controller.position.set(0, 0, 0);
@@ -9899,10 +10055,10 @@ function () {
 
       var pointer = this.pointer = this.addPointer(this.pivot);
       this.container.addEventListener('mousedown', function () {
-        _this2.onRightSelectStart();
+        _this3.onRightSelectStart();
       });
       this.container.addEventListener('mouseup', function () {
-        _this2.onRightSelectEnd();
+        _this3.onRightSelectEnd();
       });
     }
   }, {
@@ -9936,18 +10092,18 @@ function () {
   }, {
     key: "addText",
     value: function addText(parent) {
-      var _this3 = this;
+      var _this4 = this;
 
       var loader = new THREE.FontLoader();
       loader.load('fonts/helvetiker_regular.typeface.json', function (font) {
-        _this3.font = font;
+        _this4.font = font;
         var material = new THREE.MeshBasicMaterial({
           color: 0x33c5f6,
           transparent: true,
           opacity: 1,
           side: THREE.DoubleSide
         });
-        _this3.fontMaterial = material;
+        _this4.fontMaterial = material;
         /*
         const shapes = font.generateShapes('0', 10);
         const geometry = new THREE.ShapeBufferGeometry(shapes);
@@ -10079,12 +10235,12 @@ function () {
   }, {
     key: "addVR",
     value: function addVR(renderer, container) {
-      var _this4 = this;
+      var _this5 = this;
 
       var vr = new _vr.VR(renderer, {
         referenceSpaceType: 'local'
       }, function (error) {
-        _this4.debugInfo.innerHTML = error;
+        _this5.debugInfo.innerHTML = error;
       });
       container.appendChild(vr.element);
       return vr;
@@ -10298,10 +10454,10 @@ function () {
   }, {
     key: "removePoint",
     value: function removePoint(i) {
-      var _this5 = this;
+      var _this6 = this;
 
       return new Promise(function (resolve, reject) {
-        var point = _this5.points.children[i];
+        var point = _this6.points.children[i];
         var from = {
           opacity: 1
         };
@@ -10314,7 +10470,7 @@ function () {
             point.material.needsUpdate = true;
           },
           onCompleted: function onCompleted() {
-            _this5.points.remove(point);
+            _this6.points.remove(point);
 
             resolve();
           }
@@ -10433,18 +10589,18 @@ function () {
   }, {
     key: "addDragListener",
     value: function addDragListener() {
-      var _this6 = this;
+      var _this7 = this;
 
       var longitude, latitude;
       var dragListener = new _drag.default(this.container, function (event) {
-        longitude = _this6.longitude;
-        latitude = _this6.latitude;
+        longitude = _this7.longitude;
+        latitude = _this7.latitude;
       }, function (event) {
-        _this6.longitude = -event.distance.x * 0.1 + longitude;
-        _this6.latitude = event.distance.y * 0.1 + latitude;
-        _this6.direction = event.distance.x ? event.distance.x / Math.abs(event.distance.x) * -1 : 1; // console.log('longitude', this.longitude, 'latitude', this.latitude, 'direction', this.direction);
+        _this7.longitude = -event.distance.x * 0.1 + longitude;
+        _this7.latitude = event.distance.y * 0.1 + latitude;
+        _this7.direction = event.distance.x ? event.distance.x / Math.abs(event.distance.x) * -1 : 1; // console.log('longitude', this.longitude, 'latitude', this.latitude, 'direction', this.direction);
       }, function (event) {
-        _this6.speed = Math.abs(event.strength.x) * 100; // console.log('speed', this.speed);
+        _this7.speed = Math.abs(event.strength.x) * 100; // console.log('speed', this.speed);
       });
 
       dragListener.move = function () {};
@@ -10454,7 +10610,7 @@ function () {
   }, {
     key: "addVRDragListener",
     value: function addVRDragListener() {
-      var _this7 = this;
+      var _this8 = this;
 
       /*
       let longitude, latitude;
@@ -10476,9 +10632,9 @@ function () {
 
       var dragListener = {
         start: function start() {
-          var dragListener = _this7.dragListener;
-          dragListener.qd = _this7.controller.quaternion.clone();
-          dragListener.qp = _this7.pivot.quaternion.clone();
+          var dragListener = _this8.dragListener;
+          dragListener.qd = _this8.controller.quaternion.clone();
+          dragListener.qp = _this8.pivot.quaternion.clone();
           /*
           dragListener.down = this.controller.getWorldDirection(new THREE.Vector3());
           dragListener.rotation = this.pivot.rotation.toVector3();
@@ -10487,17 +10643,17 @@ function () {
           dragListener.dragging = true;
         },
         move: function move() {
-          var dragListener = _this7.dragListener;
+          var dragListener = _this8.dragListener;
 
           if (dragListener.dragging) {
             var qd = dragListener.qd.clone();
 
-            var qm = _this7.controller.quaternion.clone();
+            var qm = _this8.controller.quaternion.clone();
 
             var diff = qm.multiply(qd.inverse());
             var qp = dragListener.qp.clone();
 
-            _this7.pivot.setRotationFromQuaternion(qp.multiply(diff));
+            _this8.pivot.setRotationFromQuaternion(qp.multiply(diff));
             /*
             const down = dragListener.down;
             const move = this.controller.getWorldDirection(new THREE.Vector3());
@@ -10510,7 +10666,7 @@ function () {
           }
         },
         end: function end() {
-          var dragListener = _this7.dragListener;
+          var dragListener = _this8.dragListener;
           dragListener.dragging = false;
         }
       };
@@ -10519,16 +10675,16 @@ function () {
   }, {
     key: "onInitView",
     value: function onInitView(previous, current) {
-      var _this8 = this;
+      var _this9 = this;
 
       // console.log(previous, current);
       this.onExitPanel();
       this.onExitPoints(previous).then(function () {
         // console.log(this.points.vertices);
-        _this8.onExitView(previous).then(function () {
+        _this9.onExitView(previous).then(function () {
           // if (!previous) {
-          _this8.onEnterView(current).then(function () {
-            _this8.onEnterPoints(current); // console.log(this.points.vertices);
+          _this9.onEnterView(current).then(function () {
+            _this9.onEnterPoints(current); // console.log(this.points.vertices);
 
           }); // }
 
@@ -10538,11 +10694,11 @@ function () {
   }, {
     key: "onExitView",
     value: function onExitView(view) {
-      var _this9 = this;
+      var _this10 = this;
 
       return new Promise(function (resolve, reject) {
         if (view) {
-          TweenMax.to(_this9.room.sphere.material, 0.4, {
+          TweenMax.to(_this10.room.sphere.material, 0.4, {
             opacity: 0,
             delay: 0.0,
             onCompleted: function onCompleted() {
@@ -10559,7 +10715,7 @@ function () {
   }, {
     key: "onEnterView",
     value: function onEnterView(view) {
-      var _this10 = this;
+      var _this11 = this;
 
       return new Promise(function (resolve, reject) {
         if (view) {
@@ -10581,11 +10737,11 @@ function () {
               }
               */
               if (view.orientation) {
-                _this10.latitude = view.orientation.latitude;
-                _this10.longitude = view.orientation.longitude;
+                _this11.latitude = view.orientation.latitude;
+                _this11.longitude = view.orientation.longitude;
               }
 
-              var material = _this10.room.sphere.material;
+              var material = _this11.room.sphere.material;
               material.opacity = 0;
               material.color.setHex(0xffffff); // texture.minFilter = THREE.NearestMipMapNearestFilter;
               // texture.magFilter = THREE.LinearMipMapLinearFilter;
@@ -10610,20 +10766,20 @@ function () {
   }, {
     key: "onEnterPoints",
     value: function onEnterPoints(view) {
-      var _this11 = this;
+      var _this12 = this;
 
       view.points.forEach(function (point, i) {
-        return _this11.addPoint(_this11.points, _construct(THREE.Vector3, _toConsumableArray(point.position)), i);
+        return _this12.addPoint(_this12.points, _construct(THREE.Vector3, _toConsumableArray(point.position)), i);
       });
     }
   }, {
     key: "onExitPoints",
     value: function onExitPoints(view) {
-      var _this12 = this;
+      var _this13 = this;
 
       if (view) {
         return Promise.all(view.points.map(function (point, i) {
-          return _this12.removePoint(i);
+          return _this13.removePoint(i);
         }));
       } else {
         return Promise.resolve();
@@ -10632,11 +10788,11 @@ function () {
   }, {
     key: "onEnterPanel",
     value: function onEnterPanel(point) {
-      var _this13 = this;
+      var _this14 = this;
 
       this.getPanelInfoById('#panel').then(function (info) {
         if (info) {
-          var panel = _this13.panel;
+          var panel = _this14.panel;
           panel.material.map = info.map;
           panel.material.opacity = 0; // panel.material.alphaMap = info.alphaMap;
 
@@ -10646,9 +10802,9 @@ function () {
 
           var position = point.normalize().multiplyScalar(_const.PANEL_RADIUS);
           panel.position.set(position.x, position.y + 30 + 30, position.z);
-          panel.lookAt(_this13.origin);
+          panel.lookAt(_this14.origin);
 
-          _this13.pivot.add(panel);
+          _this14.pivot.add(panel);
 
           var from = {
             value: 1
@@ -10658,7 +10814,7 @@ function () {
             delay: 0.2,
             onUpdate: function onUpdate() {
               panel.position.set(position.x, position.y + 30 + 30 * from.value, position.z);
-              panel.lookAt(_this13.origin);
+              panel.lookAt(_this14.origin);
               panel.material.opacity = 1 - from.value;
               panel.material.needsUpdate = true;
             }
@@ -10981,11 +11137,11 @@ function () {
   }, {
     key: "animate",
     value: function animate() {
-      var _this14 = this;
+      var _this15 = this;
 
       var renderer = this.renderer;
       renderer.setAnimationLoop(function () {
-        _this14.render();
+        _this15.render();
       });
     }
   }, {
@@ -11098,9 +11254,11 @@ function () {
           // new THREE.Vector3(controller.rotation.x, controller.rotation.y, controller.rotation.z).normalize();
 
           raycaster.set(position, rotation);
+
+          _interactive.InteractiveMesh.hittest(raycaster, this.isControllerSelecting);
+
           this.updatePointer(raycaster);
           this.updateHoverPoint(raycaster);
-          this.menu.setRaycaster(raycaster, this.isControllerSelecting);
         }
       } catch (error) {
         this.debugInfo.innerHTML = error;
@@ -11548,5 +11706,5 @@ if (SHOW_HELPERS) {
 }
 */
 
-},{"./shared/drag.listener":2,"./three/const":4,"./three/menu":5,"./three/vr":6,"html2canvas":1}]},{},[7]);
+},{"./shared/drag.listener":2,"./three/const":4,"./three/interactive.mesh":5,"./three/menu":6,"./three/vr":7,"html2canvas":1}]},{},[8]);
 //# sourceMappingURL=vrtour.js.map

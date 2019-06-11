@@ -13,23 +13,43 @@ const TO = 1;
 
 export class InteractiveMesh extends THREE.Mesh {
 
+	static items = [];
+
+	static hittest(raycaster, down) {
+		const intersections = raycaster.intersectObjects(InteractiveMesh.items);
+		const intersection = intersections.length ? intersections[0] : null;
+		const object = intersection && intersection.object;
+		InteractiveMesh.items.forEach(x => {
+			x.intersection = intersection;
+			x.over = x === object;
+			x.down = down;
+		});
+	}
+
 	constructor(geometry, material) {
-		this.events = {};
-		geometry = geometry || new THREE.SphereGeometry(1, 16, 16);
+		geometry = geometry || new THREE.BoxGeometry(5, 5, 5);
 		material = material || new THREE.MeshBasicMaterial({
-			color: 0x0000ff,
+			color: 0xff00ff,
+			// opacity: 1,
+			// transparent: true,
 		});
 		super(geometry, material);
+		// this.renderOrder = 10;
+		this.events = {};
+		InteractiveMesh.items.push(this);
 	}
 
 	get over() {
 		return this.over_;
 	}
-	set over(intersection) {
-		const object = intersection && intersection.object;
-		if (this.over_ !== object) {
-			this.over_ = object;
-			this.emit('over', this);
+	set over(over) {
+		if (this.over_ !== over) {
+			this.over_ = over;
+			if (over) {
+				this.emit('over', this);
+			} else {
+				this.emit('out', this);
+			}
 		}
 	}
 
@@ -37,14 +57,18 @@ export class InteractiveMesh extends THREE.Mesh {
 		return this.down_;
 	}
 	set down(down) {
-		const object = down && this.over;
-		if (this.down_ !== object) {
-			this.down_ = object;
-			this.emit('down', this);
+		down = down && this.over;
+		if (this.down_ !== down) {
+			this.down_ = down;
+			if (down) {
+				this.emit('down', this);
+			} else {
+				this.emit('up', this);
+			}
 		}
 	}
 
-	addListener(type, callback) {
+	on(type, callback) {
 		const event = this.events[type] = this.events[type] || [];
 		event.push(callback);
 		return () => {
@@ -52,7 +76,7 @@ export class InteractiveMesh extends THREE.Mesh {
 		}
 	}
 
-	removeListener(type, callback) {
+	off(type, callback) {
 		const event = this.events[type];
 		if (event) {
 			this.events[type] = event.filter(x => x !== callback);
