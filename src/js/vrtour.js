@@ -1262,6 +1262,17 @@ class VRTour {
 			const controller = this.controller;
 			if (controller) {
 				const raycaster = this.raycaster;
+				/*
+				if (TEST_ENABLED) {
+					raycaster.setFromCamera(this.mouse, this.camera);
+					controller.position.copy(this.camera.position);
+					controller.rotation.copy(this.camera.rotation);
+				} else {
+					const position = controller.position; // this.pivot.worldToLocal(controller.position);
+					const rotation = controller.getWorldDirection(this.controllerDirection).multiplyScalar(-1); // this.pivot.worldToLocal(controller.getWorldDirection(this.controllerDirection).multiplyScalar(-1));
+					raycaster.set(position, rotation);
+				}
+				*/
 				const position = controller.position; // this.pivot.worldToLocal(controller.position);
 				const rotation = controller.getWorldDirection(this.controllerDirection).multiplyScalar(-1); // this.pivot.worldToLocal(controller.getWorldDirection(this.controllerDirection).multiplyScalar(-1));
 				// new THREE.Vector3(controller.rotation.x, controller.rotation.y, controller.rotation.z).normalize();

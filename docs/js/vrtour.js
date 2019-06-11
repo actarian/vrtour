@@ -9364,14 +9364,19 @@ function () {
       this.items = [new MenuItem(mesh, 0), new MenuItem(mesh, 1)];
       this.items.forEach(function (x, index) {
         x.on('over', function () {
-          x.material.color.setHex(0xffcc00);
+          x.material.color.setHex(0xffffff);
+          x.material.opacity = 0.8;
           x.material.needsUpdate = true;
         });
         x.on('out', function () {
-          x.material.color.setHex(0x111111);
+          x.material.color.setHex(0xffffff);
+          x.material.opacity = 0.5;
           x.material.needsUpdate = true;
         });
         x.on('down', function () {
+          x.material.color.setHex(0x33c5f5);
+          x.material.opacity = 1;
+          x.material.needsUpdate = true;
           var direction = index === 1 ? 1 : -1;
           var y = _this.parent.rotation.y + Math.PI / 2 * direction;
           TweenMax.to(_this.parent.rotation, 0.6, {
@@ -9389,11 +9394,14 @@ function () {
   }, {
     key: "addArc",
     value: function addArc(parent) {
+      var loader = new THREE.TextureLoader();
+      var texture = loader.load('img/menu.png');
       var geometry = new THREE.CylinderGeometry(_const.POINT_RADIUS, _const.POINT_RADIUS, 8, 32, 1, true, FROM, TO);
       geometry.scale(-1, 1, 1); // geometry.rotateY(Math.PI);
 
       var material = new THREE.MeshBasicMaterial({
-        color: 0x161616,
+        color: 0xffffff,
+        map: texture,
         transparent: true,
         opacity: 0
       });
@@ -9430,8 +9438,8 @@ function () {
           value: active ? 1 : 0,
           onUpdate: function onUpdate() {
             mesh.position.y = _this2.py - 30 * from.value;
-            materials.forEach(function (x) {
-              x.opacity = from.value;
+            materials.forEach(function (x, i) {
+              x.opacity = i === 0 ? from.value * 0.8 : from.value * 0.5;
               x.needsUpdate = true;
             });
           }
@@ -9479,11 +9487,13 @@ function (_InteractiveMesh) {
 
     _classCallCheck(this, MenuItem);
 
-    var texture = MenuItem.getTexture(index);
+    // const texture = MenuItem.getTexture(index);
+    var loader = new THREE.TextureLoader();
+    var texture = loader.load(index === 1 ? 'img/right.png' : 'img/left.png');
     var geometry = new THREE.CylinderGeometry(RADIUS, RADIUS, SIZE, 1, 1, true, index ? 1 - ARC : 0, ARC);
     geometry.scale(-1, 1, 1);
     var material = new THREE.MeshBasicMaterial({
-      color: 0x363636,
+      color: 0xffffff,
       map: texture,
       transparent: true,
       opacity: 0
@@ -11248,6 +11258,18 @@ function () {
 
         if (controller) {
           var raycaster = this.raycaster;
+          /*
+          if (TEST_ENABLED) {
+          	raycaster.setFromCamera(this.mouse, this.camera);
+          	controller.position.copy(this.camera.position);
+          	controller.rotation.copy(this.camera.rotation);
+          } else {
+          	const position = controller.position; // this.pivot.worldToLocal(controller.position);
+          	const rotation = controller.getWorldDirection(this.controllerDirection).multiplyScalar(-1); // this.pivot.worldToLocal(controller.getWorldDirection(this.controllerDirection).multiplyScalar(-1));
+          	raycaster.set(position, rotation);
+          }
+          */
+
           var position = controller.position; // this.pivot.worldToLocal(controller.position);
 
           var rotation = controller.getWorldDirection(this.controllerDirection).multiplyScalar(-1); // this.pivot.worldToLocal(controller.getWorldDirection(this.controllerDirection).multiplyScalar(-1));

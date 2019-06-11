@@ -31,14 +31,19 @@ export class Menu {
 		];
 		this.items.forEach((x, index) => {
 			x.on('over', () => {
-				x.material.color.setHex(0xffcc00);
+				x.material.color.setHex(0xffffff);
+				x.material.opacity = 0.8;
 				x.material.needsUpdate = true;
 			});
 			x.on('out', () => {
-				x.material.color.setHex(0x111111);
+				x.material.color.setHex(0xffffff);
+				x.material.opacity = 0.5;
 				x.material.needsUpdate = true;
 			});
 			x.on('down', () => {
+				x.material.color.setHex(0x33c5f5);
+				x.material.opacity = 1;
+				x.material.needsUpdate = true;
 				const direction = index === 1 ? 1 : -1;
 				const y = this.parent.rotation.y + Math.PI / 2 * direction;
 				TweenMax.to(this.parent.rotation, 0.6, { y });
@@ -51,11 +56,14 @@ export class Menu {
 	}
 
 	addArc(parent) {
+		const loader = new THREE.TextureLoader();
+		const texture = loader.load('img/menu.png');
 		const geometry = new THREE.CylinderGeometry(POINT_RADIUS, POINT_RADIUS, 8, 32, 1, true, FROM, TO);
 		geometry.scale(-1, 1, 1);
 		// geometry.rotateY(Math.PI);
 		const material = new THREE.MeshBasicMaterial({
-			color: 0x161616,
+			color: 0xffffff,
+			map: texture,
 			transparent: true,
 			opacity: 0,
 		});
@@ -86,8 +94,8 @@ export class Menu {
 				value: active ? 1 : 0,
 				onUpdate: () => {
 					mesh.position.y = this.py - 30 * from.value;
-					materials.forEach(x => {
-						x.opacity = from.value;
+					materials.forEach((x, i) => {
+						x.opacity = i === 0 ? from.value * 0.8 : from.value * 0.5;
 						x.needsUpdate = true;
 					});
 				}
@@ -120,11 +128,13 @@ export class MenuItem extends InteractiveMesh {
 	}
 
 	constructor(parent, index) {
-		const texture = MenuItem.getTexture(index);
+		// const texture = MenuItem.getTexture(index);
+		const loader = new THREE.TextureLoader();
+		const texture = loader.load(index === 1 ? 'img/right.png' : 'img/left.png');
 		const geometry = new THREE.CylinderGeometry(RADIUS, RADIUS, SIZE, 1, 1, true, index ? 1 - ARC : 0, ARC);
 		geometry.scale(-1, 1, 1);
 		const material = new THREE.MeshBasicMaterial({
-			color: 0x363636,
+			color: 0xffffff,
 			map: texture,
 			transparent: true,
 			opacity: 0,
