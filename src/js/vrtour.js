@@ -1218,6 +1218,10 @@ class VRTour {
 	}
 
 	updatePointer(raycaster) {
+		/*
+		this.room.sphere.geometry.computeBoundingBox();
+		this.room.sphere.geometry.computeBoundingSphere();
+		*/
 		const intersections = raycaster.intersectObjects(this.room.children);
 		if (intersections.length) {
 			const intersection = intersections[0];
@@ -1238,6 +1242,9 @@ class VRTour {
 		}
 		this.pointer.material.color.setHex(this.isControllerSelecting ? 0x0000ff : 0xffffff);
 		this.pointer.material.opacity = this.isControllerSelecting ? 1.0 : 0.5;
+		this.pointer.scale.setScalar(this.pivot.busy ? 0 : 1);
+		// this.pivot.rotation.y = (this.pivot.ery || 0);
+		// this.pivot.rotation.y += ((this.pivot.ery || 0) - this.pivot.rotation.y) / 10;
 	}
 
 	updateHoverPoint(raycaster) {

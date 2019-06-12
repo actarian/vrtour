@@ -46,7 +46,14 @@ export class Menu {
 				x.material.needsUpdate = true;
 				const direction = index === 1 ? 1 : -1;
 				const y = this.parent.rotation.y + Math.PI / 2 * direction;
-				TweenMax.to(this.parent.rotation, 0.6, { y });
+				// this.parent.ery = y;
+				this.parent.busy = true;
+				TweenMax.to(this.parent.rotation, 0.6, {
+					y,
+					onComplete: () => {
+						this.parent.busy = false;
+					}
+				});
 			});
 		});
 		this.materials = this.items.map(x => x.material);

@@ -9378,9 +9378,14 @@ function () {
           x.material.opacity = 1;
           x.material.needsUpdate = true;
           var direction = index === 1 ? 1 : -1;
-          var y = _this.parent.rotation.y + Math.PI / 2 * direction;
+          var y = _this.parent.rotation.y + Math.PI / 2 * direction; // this.parent.ery = y;
+
+          _this.parent.busy = true;
           TweenMax.to(_this.parent.rotation, 0.6, {
-            y: y
+            y: y,
+            onComplete: function onComplete() {
+              _this.parent.busy = false;
+            }
           });
         });
       });
@@ -11209,6 +11214,10 @@ function () {
   }, {
     key: "updatePointer",
     value: function updatePointer(raycaster) {
+      /*
+      this.room.sphere.geometry.computeBoundingBox();
+      this.room.sphere.geometry.computeBoundingSphere();
+      */
       var intersections = raycaster.intersectObjects(this.room.children);
 
       if (intersections.length) {
@@ -11230,6 +11239,8 @@ function () {
 
       this.pointer.material.color.setHex(this.isControllerSelecting ? 0x0000ff : 0xffffff);
       this.pointer.material.opacity = this.isControllerSelecting ? 1.0 : 0.5;
+      this.pointer.scale.setScalar(this.pivot.busy ? 0 : 1); // this.pivot.rotation.y = (this.pivot.ery || 0);
+      // this.pivot.rotation.y += ((this.pivot.ery || 0) - this.pivot.rotation.y) / 10;
     }
   }, {
     key: "updateHoverPoint",
