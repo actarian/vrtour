@@ -2,10 +2,12 @@
 /* global window, document, TweenMax, THREE, WEBVR */
 
 import html2canvas from 'html2canvas';
-import DragListener from './shared/drag.listener';
-import { cm, PANEL_RADIUS, POINTER_RADIUS, POINT_RADIUS, ROOM_RADIUS, TEST_ENABLED } from './three/const';
-import { InteractiveMesh } from './three/interactive.mesh';
-import { Menu } from './three/menu';
+import { POINTER_RADIUS, ROOM_RADIUS, TEST_ENABLED } from './three/const';
+import Controllers from './three/controllers';
+import InteractiveMesh from './three/interactive.mesh';
+import Orbit from './three/orbit';
+import TopBar from './three/top-bar';
+import Views from './three/views';
 import { VR, VR_MODE } from './three/vr';
 
 class VRTour {
@@ -14,32 +16,9 @@ class VRTour {
 		this.mouse = { x: 0, y: 0 };
 		this.parallax = { x: 0, y: 0 };
 		this.size = { width: 0, height: 0, aspect: 0 };
-		this.isUserInteracting = false;
-		this.longitude = 0;
-		this.latitude = 0;
-		this.direction = 1;
-		this.speed = 1;
-		this.inertia = new THREE.Vector3();
 		this.origin = new THREE.Vector3();
 		this.cameraDirection = new THREE.Vector3();
-		this.controllerDirection = new THREE.Vector3();
 		this.init();
-	}
-
-	get index() {
-		return this.index_;
-	}
-	set index(index) {
-		this.index_ = index;
-		this.view = this.views[index];
-	}
-
-	get view() {
-		return this.view_;
-	}
-	set view(view) {
-		this.onInitView(this.view_, view);
-		this.view_ = view;
 	}
 
 	get hoverPoint() {
@@ -50,11 +29,11 @@ class VRTour {
 		if (this.hoverPoint_ !== object) {
 			this.hoverPoint_ = object;
 			if (object !== null) {
-				this.onEnterPanel(object.position.clone());
+				this.pivot.onEnterPanel(object.position.clone());
 			} else {
-				this.onExitPanel();
+				this.pivot.onExitPanel();
 			}
-			const tweens = this.points.children.map((x, index) => {
+			const tweens = this.pivot.points.children.map((x, index) => {
 				const from = { scale: x.scale.x };
 				return TweenMax.to(from, 0.25, {
 					scale: x === object ? 3 : 1,
@@ -74,7 +53,7 @@ class VRTour {
 		return this.selectedPoint_;
 	}
 	set selectedPoint(intersection) {
-		const object = intersection && this.isControllerSelecting ? intersection.object : null;
+		const object = intersection && this.controllers.isControllerSelecting ? intersection.object : null;
 		if (this.selectedPoint_ !== object) {
 			this.selectedPoint_ = object;
 			if (object !== null) {
@@ -82,7 +61,7 @@ class VRTour {
 				const debugInfo = `selectedPoint => {${position.x}, ${position.y}, ${position.z}}`;
 				this.debugInfo.innerHTML = debugInfo;
 				// console.log(this.views.length);
-				this.index = (this.index + 1) % this.views.length;
+				this.pivot.index = (this.pivot.index + 1) % this.pivot.views.length;
 				// console.log(index, point, debugInfo);
 			}
 		}
@@ -92,7 +71,7 @@ class VRTour {
 		try {
 			fetch(jsonUrl).then(response => response.json()).then(response => {
 				this.views = response.views;
-				this.index = 0;
+				this.pivot.views = response.views;
 			});
 		} catch (error) {
 			this.debugInfo.innerHTML = error;
@@ -113,55 +92,35 @@ class VRTour {
 		this.onMouseUp = this.onMouseUp.bind(this);
 		this.onMouseWheel = this.onMouseWheel.bind(this);
 		this.onSave = this.onSave.bind(this);
-		this.onLeftSelectStart = this.onLeftSelectStart.bind(this);
-		this.onLeftSelectEnd = this.onLeftSelectEnd.bind(this);
-		this.onRightSelectStart = this.onRightSelectStart.bind(this);
-		this.onRightSelectEnd = this.onRightSelectEnd.bind(this);
-		this.initRenderer();
-	}
-
-	initRenderer() {
+		//
 		const scene = this.scene = this.addScene();
 		const camera = this.camera = this.addCamera();
-		const pivot = this.pivot = this.addPivot(scene);
-		const room = this.room = this.addRoom(pivot);
-		const floor = this.floor = this.addFloor(pivot);
-		const ceil = this.ceil = this.addCeil(pivot);
-		const points = this.points = this.addPoints(pivot);
-		const panel = this.panel = this.addPanel(pivot);
-		// renderer
-		const renderer = this.renderer = this.addRenderer();
-		// this.container.appendChild(WEBVR.createButton(renderer, { referenceSpaceType: 'local' }));
-		const vr = this.vr = this.addVR(renderer, this.container);
-		/*
-		const unsubscribe = vr.addListener('error', (error) => {
-			this.debugInfo.innerHTML = error;
+		const pivot = this.pivot = new Views(scene);
+		pivot.on('onEnterView', (view) => {
+			this.orbit.setOrientation(view.orientation);
 		});
-		*/
+		const renderer = this.renderer = this.addRenderer();
+		// container.appendChild(WEBVR.createButton(renderer, { referenceSpaceType: 'local' }));
+		const vr = this.vr = this.addVR(renderer, container);
 		// this.addIO();
-		// unsubscribe();
-		// controllers
 		console.log('vr.mode', vr.mode, TEST_ENABLED);
 		if (vr.mode !== VR_MODE.NONE) {
-			const left = this.left = this.addControllerLeft(renderer, scene);
-			const right = this.right = this.addControllerRight(renderer, scene);
-			const menu = this.menu = new Menu(pivot);
-			const text = this.text = this.addText(pivot);
+			const controllers = this.controllers = new Controllers(renderer, scene, pivot);
+			const topBar = this.topBar = new TopBar(pivot);
 			const pointer = this.pointer = this.addPointer(pivot);
-			// const dragListener = this.dragListener = this.addVRDragListener();
-			// hands
-			// const hands = this.hands = this.addHands();
 		} else if (TEST_ENABLED) {
-			this.addTestController(scene);
-			const menu = this.menu = new Menu(pivot);
-			const text = this.text = this.addText(pivot);
+			const controllers = this.controllers = new Controllers(renderer, scene, pivot);
+			const topBar = this.topBar = new TopBar(pivot);
+			const pointer = this.pointer = this.addPointer(pivot);
 			camera.target.z = ROOM_RADIUS;
 			camera.lookAt(camera.target);
-			const dragListener = this.dragListener = this.addDragListener();
+			const orbit = this.orbit = new Orbit();
+			const dragListener = this.dragListener = orbit.setDragListener(container);
 		} else {
 			camera.target.z = ROOM_RADIUS;
 			camera.lookAt(camera.target);
-			const dragListener = this.dragListener = this.addDragListener();
+			const orbit = this.orbit = new Orbit();
+			const dragListener = this.dragListener = orbit.setDragListener(container);
 		}
 		// raycaster
 		const raycaster = this.raycaster = new THREE.Raycaster();
@@ -173,184 +132,6 @@ class VRTour {
 		this.debugSave.addEventListener('click', this.onSave, false);
 		this.section.classList.add('init');
 		this.onWindowResize();
-	}
-
-	addIO() {
-		const rr = () => {
-			return -20 + Math.random() * 40;
-		}
-		const ims = this.ims = new Array(10).fill(null).map(x => {
-			const im = new InteractiveMesh();
-			im.position.set(rr(), 0, rr());
-			im.on('over', (item) => {
-				item.material.color.setHex(0xff0000);
-			});
-			im.on('out', (item) => {
-				item.material.color.setHex(0xff00ff);
-			});
-			im.on('down', (item) => {
-				item.material.color.setHex(0x00ff00);
-			});
-			im.on('up', (item) => {
-				item.material.color.setHex(0xff00ff);
-			});
-			this.pivot.add(im);
-			return im;
-		});
-	}
-
-	addTestController(scene) {
-		const controller = this.right = new THREE.Group();
-		controller.position.set(0, 0, 0);
-		this.addControllerCylinder(controller, 0);
-		this.scene.add(controller);
-		// this.controller = controller;
-		const pointer = this.pointer = this.addPointer(this.pivot);
-		this.container.addEventListener('mousedown', () => {
-			this.onRightSelectStart();
-		});
-		this.container.addEventListener('mouseup', () => {
-			this.onRightSelectEnd();
-		});
-	}
-
-	testController() {
-		if (TEST_ENABLED) {
-			if (this.controller) {
-				this.controller.position.x = this.mouse.x * 50;
-				this.controller.position.y = this.mouse.y * 50;
-			}
-			this.updateController();
-		}
-	}
-
-	addScene() {
-		const scene = new THREE.Scene();
-		// scene.background = new THREE.Color(0x00000000);
-		// scene.background = new THREE.Color(0x404040);
-		// scene.fog = new THREE.Fog(scene.background, 10, 700);
-		return scene;
-	}
-
-	addCamera() {
-		const camera = new THREE.PerspectiveCamera(70, window.innerWidth / window.innerHeight, 0.01, ROOM_RADIUS * 2);
-		camera.target = new THREE.Vector3();
-		return camera;
-	}
-
-	addText(parent) {
-		const loader = new THREE.FontLoader();
-		loader.load('fonts/helvetiker_regular.typeface.json', (font) => {
-			this.font = font;
-			const material = new THREE.MeshBasicMaterial({
-				color: 0x33c5f6,
-				transparent: true,
-				opacity: 1,
-				side: THREE.DoubleSide
-			});
-			this.fontMaterial = material;
-			/*
-			const shapes = font.generateShapes('0', 10);
-			const geometry = new THREE.ShapeBufferGeometry(shapes);
-			geometry.dynamic = true;
-			geometry.computeBoundingBox();
-			const x = -0.5 * (geometry.boundingBox.max.x - geometry.boundingBox.min.x);
-			geometry.translate(x, 5, -80);
-			// make shape ( N.B. edge view not visible )
-			const text = new THREE.Mesh(geometry, material);
-			// text.position.set(-10000, -10000, -10000);
-			this.text = text;
-			parent.add(text);
-			*/
-			/*
-			// make line shape ( N.B. edge view remains visible )
-			const matDark = new THREE.LineBasicMaterial({
-				color: color,
-				side: THREE.DoubleSide
-			});
-			const holeShapes = [];
-			for (let i = 0; i < shapes.length; i++) {
-				const shape = shapes[i];
-				if (shape.holes && shape.holes.length > 0) {
-					for (let j = 0; j < shape.holes.length; j++) {
-						const hole = shape.holes[j];
-						holeShapes.push(hole);
-					}
-				}
-			}
-			shapes.push.apply(shapes, holeShapes);
-			const lineText = new THREE.Object3D();
-			for (let i = 0; i < shapes.length; i++) {
-				const shape = shapes[i];
-				const points = shape.getPoints();
-				const geometry = new THREE.BufferGeometry().setFromPoints(points);
-				geometry.translate(xMid, 0, 0);
-				const lineMesh = new THREE.Line(geometry, matDark);
-				lineText.add(lineMesh);
-			}
-			parent.add(lineText);
-			*/
-		});
-	}
-
-	setText(message) {
-		message = message || '1';
-		if (this.text) {
-			this.text.parent.remove(this.text);
-			this.text.geometry.dispose();
-		}
-		const shapes = this.font.generateShapes(message, 5);
-		const geometry = new THREE.ShapeBufferGeometry(shapes);
-		// geometry.dynamic = true;
-		geometry.computeBoundingBox();
-		const x = -0.5 * (geometry.boundingBox.max.x - geometry.boundingBox.min.x);
-		geometry.translate(x, 0, 0);
-		// make shape ( N.B. edge view not visible )
-		const text = new THREE.Mesh(geometry, this.fontMaterial);
-		text.position.set(0, 0, -POINTER_RADIUS);
-		this.text = text;
-		this.pivot.add(text);
-		/*
-		const shapes = this.font.generateShapes(message, 10);
-		const geometry = new THREE.ShapeBufferGeometry(shapes);
-		geometry.computeBoundingBox();
-		const x = -0.5 * (geometry.boundingBox.max.x - geometry.boundingBox.min.x);
-		const text = this.text;
-		text.geometry.copy(geometry);
-		text.geometry.translate(x, 0, 0);
-		// text.geometry.position.needsUpdate = true;
-		geometry.dispose();
-		*/
-	}
-
-	copyGeometry() {
-		var MAX_POINTS = 500;
-
-		// geometry
-		var geometry = new THREE.BufferGeometry();
-
-		// attributes
-		var positions = new Float32Array(MAX_POINTS * 3); // 3 vertices per point
-		geometry.addAttribute('position', new THREE.BufferAttribute(positions, 3));
-
-		// draw range
-		var drawCount = 2; // draw the first 2 points, only
-		geometry.setDrawRange(0, drawCount);
-
-		// material
-		var material = new THREE.LineBasicMaterial({ color: 0xff0000, linewidth: 2 });
-
-		// line
-		var line = new THREE.Line(geometry, material);
-		scene.add(line);
-		// And then to later update after adding new point information:
-		line.geometry.setDrawRange(0, newValue);
-	}
-
-	addPivot(parent) {
-		const group = new THREE.Group();
-		parent.add(group);
-		return group;
 	}
 
 	addRenderer() {
@@ -371,96 +152,26 @@ class VRTour {
 		return renderer;
 	}
 
+	addScene() {
+		const scene = new THREE.Scene();
+		// scene.background = new THREE.Color(0x00000000);
+		// scene.background = new THREE.Color(0x404040);
+		// scene.fog = new THREE.Fog(scene.background, 10, 700);
+		return scene;
+	}
+
+	addCamera() {
+		const camera = new THREE.PerspectiveCamera(70, window.innerWidth / window.innerHeight, 0.01, ROOM_RADIUS * 2);
+		camera.target = new THREE.Vector3();
+		return camera;
+	}
+
 	addVR(renderer, container) {
 		const vr = new VR(renderer, { referenceSpaceType: 'local' }, (error) => {
 			this.debugInfo.innerHTML = error;
 		});
 		container.appendChild(vr.element);
 		return vr;
-	}
-
-	addRoom(parent) {
-		const group = new THREE.Group();
-		const geometry = new THREE.SphereBufferGeometry(ROOM_RADIUS, 72, 72);
-		// const geometry = new THREE.IcosahedronBufferGeometry(ROOM_RADIUS, 4);
-		// console.log(geometry);
-		// invert the geometry on the x-axis so that all of the faces point inward
-		geometry.scale(-1, 1, 1);
-		const material = new THREE.MeshBasicMaterial({
-			color: 0x000000,
-			depthTest: false,
-			transparent: true,
-			opacity: 0.0,
-			// wireframe: true
-		});
-		/*
-		const material = new THREE.MeshStandardMaterial({
-			color: '#fefefe',
-			roughness: 0.9,
-			metalness: 0.1,
-			roughnessMap: texture,
-			map: texture,
-			transparent: true,
-			opacity: 0,
-			// premultipliedAlpha: true,
-		});
-		*/
-		const sphere = new THREE.Mesh(geometry, material);
-		// sphere.castShadow = false;
-		// sphere.receiveShadow = true;
-		group.renderOrder = -1;
-		group.add(sphere);
-		group.sphere = sphere;
-		//
-		/*
-		const rotation = new THREE.Euler(0.0, 0.0, 0.0, 'XYZ');
-		group.rotation.set(rotation.x, rotation.y, rotation.z);
-		*/
-		parent.add(group);
-		return group;
-	}
-
-	addFloor(parent) {
-		const geometry = new THREE.PlaneGeometry(ROOM_RADIUS / 5 * 3, ROOM_RADIUS / 5 * 3, 3, 3);
-		const loader = new THREE.TextureLoader();
-		const texture = loader.load('img/floor.jpg');
-		const textureAlpha = loader.load('img/floor-alpha.jpg');
-		const material = new THREE.MeshBasicMaterial({
-			map: texture,
-			alphaMap: textureAlpha,
-			// alphaTest: 0.5,
-			// blending: THREE.AdditiveBlending,
-			// depthTest: true,
-			transparent: true
-		});
-		/*
-		material.blending = THREE.AdditiveBlending;
-		*/
-		const mesh = new THREE.Mesh(geometry, material);
-		mesh.position.y = -ROOM_RADIUS / 5 * 3;
-		mesh.rotation.x = -Math.PI / 2;
-		parent.add(mesh);
-		return mesh;
-	}
-
-	addCeil(parent) {
-		const geometry = new THREE.PlaneGeometry(ROOM_RADIUS / 5 * 2, ROOM_RADIUS / 5 * 2, 3, 3);
-		const loader = new THREE.TextureLoader();
-		const texture = loader.load('img/ceil.jpg');
-		const textureAlpha = loader.load('img/ceil-alpha.jpg');
-		const material = new THREE.MeshBasicMaterial({
-			map: texture,
-			alphaMap: textureAlpha,
-			// alphaTest: 0.5,
-			// blending: THREE.AdditiveBlending,
-			// depthTest: true,
-			transparent: true
-		});
-		const mesh = new THREE.Mesh(geometry, material);
-		mesh.position.y = ROOM_RADIUS / 5 * 4;
-		mesh.rotation.x = Math.PI / 2;
-		parent.add(mesh);
-		return mesh;
 	}
 
 	addPointer(parent) {
@@ -512,454 +223,31 @@ class VRTour {
 		return mesh;
 	}
 
-	addPanel(parent) {
-		const geometry = new THREE.PlaneBufferGeometry(PANEL_RADIUS / 2.5, PANEL_RADIUS / 2.5, 3, 3);
-		const material = new THREE.MeshBasicMaterial({
-			transparent: true,
-			opacity: 1,
-			// side: THREE.DoubleSide,
-		});
-		const mesh = new THREE.Mesh(geometry, material);
-		mesh.position.set(100000, 100000, 100000);
-		// parent.add(mesh);
-		return mesh;
-	}
-
-	removePoints() {
-		/*
-		if (this.points) {
-			this.points.remove();
-			delete this.points;
-		}
-		*/
-	}
-
-	addPoints(parent) {
-		const points = new THREE.Group();
-		parent.add(points);
-		return points;
-	}
-
-	addPoint(parent, position, i) {
-		// console.log('addPoint', parent, position, i);
-		// size 2 about 20 cm radius
-		const geometry = new THREE.PlaneBufferGeometry(2, 2, 2, 2);
-		const loader = new THREE.TextureLoader();
-		const texture = loader.load('img/pin.jpg');
-		const material = new THREE.MeshBasicMaterial({
-			alphaMap: texture,
-			transparent: true,
-			opacity: 0,
-		});
-		const point = new THREE.Mesh(geometry, material);
-		position = position.normalize().multiplyScalar(POINT_RADIUS);
-		point.position.set(position.x, position.y, position.z);
-		point.lookAt(this.origin);
-		parent.add(point);
-		const from = { opacity: 0 };
-		TweenMax.to(from, 0.5, {
-			opacity: 1,
-			delay: 0.1 * i,
-			onUpdate: () => {
-				// console.log(index, from.opacity);
-				point.material.opacity = from.opacity;
-				point.material.needsUpdate = true;
-			},
-			onCompleted: () => {
-				// console.log(index, 'completed');
-			}
-		});
-		return point;
-		// console.log(index, 'start');
-	}
-
-	removePoint(i) {
-		return new Promise((resolve, reject) => {
-			const point = this.points.children[i];
-			const from = { opacity: 1 };
-			TweenMax.to(from, 0.5, {
-				opacity: 0,
-				delay: 0.0 * i,
-				onUpdate: () => {
-					// console.log(index, from.opacity);
-					point.material.opacity = from.opacity;
-					point.material.needsUpdate = true;
-				},
-				onCompleted: () => {
-					this.points.remove(point);
-					resolve();
-				}
-			});
-		});
-	}
-
-	createPoint(intersection) {
-		const position = intersection.point.clone();
-		this.addPoint(this.points, position, 0);
-		this.view.points.push({
-			id: 2,
-			position: position.toArray(),
-			type: 1,
-			name: 'Point 2',
-			key: 'POINT2',
-		});
-	}
-
-	addControllerLeft(renderer, parent) {
-		const controller = renderer.vr.getController(0);
-		const cylinder = controller.cylinder = this.addControllerCylinder(controller, 0);
-		// controller.addEventListener('selectstart', this.onLeftSelectStart);
-		// controller.addEventListener('selectend', this.onLeftSelectEnd);
-		parent.add(controller);
-		return controller;
-	}
-
-	addControllerRight(renderer, parent) {
-		const controller = renderer.vr.getController(1);
-		const cylinder = controller.cylinder = this.addControllerCylinder(controller, 1);
-		/*
-		controller.addEventListener('selectstart', this.onRightSelectStart);
-		controller.addEventListener('selectend', this.onRightSelectEnd);
-		*/
-		parent.add(controller);
-		return controller;
-	}
-
-	addControllerCylinder(controller, i) {
-		const geometry = new THREE.CylinderBufferGeometry(cm(2), cm(2), cm(12), 24);
-		const texture = new THREE.TextureLoader().load('img/matcap.jpg');
-		const material = new THREE.MeshMatcapMaterial({
-			color: i === 0 ? 0xff0000 : 0x0000ff,
-			matcap: texture,
-			transparent: true,
-			opacity: 1,
-		});
-		/*
-		const material = new THREE.MeshBasicMaterial({
-			color: i === 0 ? 0x0000ff : 0xff0000,
-			// roughness: 0.2,
-			// metalness: 0.1,
-		});
-		*/
-		/*
-		const modifier = new THREE.SubdivisionModifier(2);
-		const smoothGeometry = modifier.modify(geometry);
-		const smoothBufferGeometry = new THREE.BufferGeometry().fromGeometry(smoothGeometry);
-		const mesh = new THREE.Mesh(smoothBufferGeometry, material);
-		*/
-		const mesh = new THREE.Mesh(geometry, material);
-		mesh.geometry.rotateX(Math.PI / 2);
-		controller.add(mesh);
-		//
-		const geometryIndicator = new THREE.CylinderBufferGeometry(cm(0.5), cm(0.1), 10, 12);
-		const materialIndicator = new THREE.MeshBasicMaterial({
-			color: 0xffffff,
-			// matcap: texture,
-			transparent: true,
-			opacity: 0.5,
-		});
-		const indicator = new THREE.Mesh(geometryIndicator, materialIndicator);
-		controller.indicator = indicator;
-		indicator.geometry.rotateX(Math.PI / 2);
-		indicator.position.set(0, 0, -5);
-		// controller.add(indicator);
-		//
-	}
-
-	addHands() {
-		const hands = [];
-		const left = this.left;
-		const right = this.right;
-		const file = 'https://cdn.glitch.com/7ae766be-18fb-4945-ad9d-8cc3be027694%2Fhand.obj?1558677422910';
-		const loader = new THREE.OBJLoader();
-		loader.load(file, (group) => {
-			const texture = new THREE.TextureLoader().load('https://cdn.glitch.com/7ae766be-18fb-4945-ad9d-8cc3be027694%2FBazC_SkinMat.jpg?1558678160164');
-			const hand = group.children[0];
-			hand.geometry.rotateZ(-Math.PI / 2);
-			hand.geometry.rotateY(Math.PI);
-			hand.geometry.translate(1, -0.2, 0.25);
-			hand.geometry.scale(0.1, 0.1, 0.1);
-			hand.material = new THREE.MeshMatcapMaterial({ matcap: texture });
-			hand.scale.x = -1;
-			const leftHand = hand.clone();
-			right.add(leftHand);
-			hands.push(leftHand);
-			hand.scale.x = 1;
-			// const bills = this.addBillsToHand(hand);
-			const rightHand = hand.clone();
-			left.add(rightHand);
-			hands.push(rightHand);
-		});
-		return hands;
-	}
-
-	addDragListener() {
-		let longitude, latitude;
-		const dragListener = new DragListener(this.container, (event) => {
-			longitude = this.longitude;
-			latitude = this.latitude;
-		}, (event) => {
-			this.longitude = -event.distance.x * 0.1 + longitude;
-			this.latitude = event.distance.y * 0.1 + latitude;
-			this.direction = event.distance.x ? (event.distance.x / Math.abs(event.distance.x) * -1) : 1;
-			// console.log('longitude', this.longitude, 'latitude', this.latitude, 'direction', this.direction);
-		}, (event) => {
-			this.speed = Math.abs(event.strength.x) * 100;
-			// console.log('speed', this.speed);
-		});
-		dragListener.move = () => {};
-		return dragListener;
-	}
-
-	addVRDragListener() {
-		/*
-		let longitude, latitude;
-		const dragListener = new DragListener(this.container, (event) => {
-			longitude = this.longitude;
-			latitude = this.latitude;
-		}, (event) => {
-			this.longitude = -event.distance.x * 0.1 + longitude;
-			this.latitude = event.distance.y * 0.1 + latitude;
-			this.direction = event.distance.x ? (event.distance.x / Math.abs(event.distance.x) * -1) : 1;
-			// console.log('longitude', this.longitude, 'latitude', this.latitude, 'direction', this.direction);
-		}, (event) => {
-			this.speed = Math.abs(event.strength.x) * 100;
-			// console.log('speed', this.speed);
-		});
-		*/
-		const raycaster = this.raycaster;
-		// const position = this.pivot.worldToLocal(controller.position);
-		// const rotation = this.pivot.worldToLocal(controller.getWorldDirection(new THREE.Vector3()).multiplyScalar(-1));
-		const dragListener = {
-			start: () => {
-				const dragListener = this.dragListener;
-				dragListener.qd = this.controller.quaternion.clone();
-				dragListener.qp = this.pivot.quaternion.clone();
-				/*
-				dragListener.down = this.controller.getWorldDirection(new THREE.Vector3());
-				dragListener.rotation = this.pivot.rotation.toVector3();
-				*/
-				dragListener.dragging = true;
-			},
-			move: () => {
-				const dragListener = this.dragListener;
-				if (dragListener.dragging) {
-					const qd = dragListener.qd.clone();
-					const qm = this.controller.quaternion.clone();
-					const diff = qm.multiply(qd.inverse());
-					const qp = dragListener.qp.clone();
-					this.pivot.setRotationFromQuaternion(qp.multiply(diff));
-					/*
-					const down = dragListener.down;
-					const move = this.controller.getWorldDirection(new THREE.Vector3());
-					const rotation = dragListener.rotation.clone();
-					rotation.add(move);
-					rotation.sub(down);
-					this.pivot.rotation.set(-rotation.y, rotation.x, rotation.z);
-					*/
-				}
-			},
-			end: () => {
-				const dragListener = this.dragListener;
-				dragListener.dragging = false;
-			},
+	addIO() {
+		const rr = () => {
+			return -20 + Math.random() * 40;
 		};
-		return dragListener;
-	}
-
-	onInitView(previous, current) {
-		// console.log(previous, current);
-		this.onExitPanel();
-		this.onExitPoints(previous).then(() => {
-			// console.log(this.points.vertices);
-			this.onExitView(previous).then(() => {
-				// if (!previous) {
-				this.onEnterView(current).then(() => {
-					this.onEnterPoints(current);
-					// console.log(this.points.vertices);
-				});
-				// }
+		const ims = this.ims = new Array(10).fill(null).map(x => {
+			const im = new InteractiveMesh();
+			im.position.set(rr(), 0, rr());
+			im.on('over', (item) => {
+				item.material.color.setHex(0xff0000);
 			});
+			im.on('out', (item) => {
+				item.material.color.setHex(0xff00ff);
+			});
+			im.on('down', (item) => {
+				item.material.color.setHex(0x00ff00);
+			});
+			im.on('up', (item) => {
+				item.material.color.setHex(0xff00ff);
+			});
+			this.pivot.add(im);
+			return im;
 		});
-	}
-
-	onExitView(view) {
-		return new Promise((resolve, reject) => {
-			if (view) {
-				TweenMax.to(this.room.sphere.material, 0.4, {
-					opacity: 0,
-					delay: 0.0,
-					onCompleted: () => {
-						setTimeout(() => {
-							resolve(view);
-						}, 250);
-					}
-				});
-			} else {
-				resolve(view);
-			}
-		});
-	}
-
-	onEnterView(view) {
-		return new Promise((resolve, reject) => {
-			if (view) {
-				setTimeout(() => {
-					// const tourTextureSrc = container.getAttribute('texture');
-					const loader = new THREE.TextureLoader();
-					loader.crossOrigin = '';
-					loader.load(view.image, (texture) => {
-						/*
-						// texture.wrapS = texture.wrapT = THREE.RepeatWrapping;
-						// texture.repeat.set(2, 2);
-						this.tourTexture = texture;
-						this.createScene();
-						*/
-						/*
-						if (this.room.sphere.material.map) {
-							this.room.sphere.material.map.dispose();
-						}
-						*/
-						if (view.orientation) {
-							this.latitude = view.orientation.latitude;
-							this.longitude = view.orientation.longitude;
-						}
-						const material = this.room.sphere.material;
-						material.opacity = 0;
-						material.color.setHex(0xffffff);
-						// texture.minFilter = THREE.NearestMipMapNearestFilter;
-						// texture.magFilter = THREE.LinearMipMapLinearFilter;
-						material.map = texture;
-						material.map.needsUpdate = true;
-						material.needsUpdate = true;
-						TweenMax.to(material, 0.6, {
-							opacity: TEST_ENABLED ? 0.5 : 1,
-							delay: 0.1,
-							onCompleted: () => {
-								resolve(view);
-							}
-						});
-					});
-				}, 100);
-			} else {
-				reject(view);
-			}
-		});
-	}
-
-	onEnterPoints(view) {
-		view.points.forEach((point, i) => this.addPoint(this.points, new THREE.Vector3(...point.position), i));
-	}
-
-	onExitPoints(view) {
-		if (view) {
-			return Promise.all(view.points.map((point, i) => this.removePoint(i)));
-		} else {
-			return Promise.resolve();
-		}
-	}
-
-	onEnterPanel(point) {
-		this.getPanelInfoById('#panel').then(info => {
-			if (info) {
-				const panel = this.panel;
-				panel.material.map = info.map;
-				panel.material.opacity = 0;
-				// panel.material.alphaMap = info.alphaMap;
-				panel.material.needsUpdate = true;
-				// const scale = info.width / 256;
-				// panel.geometry.scale(scale, scale, scale);
-				// panel.geometry.verticesNeedUpdate = true;
-				const position = point.normalize().multiplyScalar(PANEL_RADIUS);
-				panel.position.set(position.x, position.y + 30 + 30, position.z);
-				panel.lookAt(this.origin);
-				this.pivot.add(panel);
-				const from = { value: 1 };
-				TweenMax.to(from, 0.2, {
-					value: 0,
-					delay: 0.2,
-					onUpdate: () => {
-						panel.position.set(position.x, position.y + 30 + 30 * from.value, position.z);
-						panel.lookAt(this.origin);
-						panel.material.opacity = 1 - from.value;
-						panel.material.needsUpdate = true;
-					}
-				});
-				// console.log('getPanelInfoById', panel.position);
-			}
-		});
-	}
-
-	onExitPanel() {
-		const panel = this.panel;
-		if (panel && panel.parent) {
-			panel.parent.remove(panel);
-		}
 	}
 
 	// events
-
-	onLeftSelectStart(id) {
-		try {
-			// 1 front, 2 side, 3 Y, 4 X, 5?
-			this.setText(String(id));
-			if (this.controller !== this.left) {
-				if (this.controller) {
-					this.controller.remove(this.controller.indicator);
-				}
-				this.controller = this.left;
-				this.controller.add(this.controller.indicator);
-			}
-			this.isControllerSelecting = true;
-			this.isControllerSelectionDirty = true;
-			// this.dragListener.start();
-		} catch (error) {
-			this.debugInfo.innerHTML = error;
-		}
-	}
-
-	onLeftSelectEnd() {
-		try {
-			if (this.controller === this.left) {
-				this.isControllerSelecting = false;
-				this.isControllerSelectionDirty = false;
-			}
-			// this.dragListener.end();
-		} catch (error) {
-			this.debugInfo.innerHTML = error;
-		}
-	}
-
-	onRightSelectStart(id) {
-		try {
-			// 1 front, 2 side, 3 A, 4 B, 5?
-			this.setText(String(id));
-			if (this.controller !== this.right) {
-				if (this.controller) {
-					this.controller.remove(this.controller.indicator);
-				}
-				this.controller = this.right;
-				this.controller.add(this.controller.indicator);
-			}
-			this.isControllerSelecting = true;
-			this.isControllerSelectionDirty = true;
-			// this.dragListener.start();
-		} catch (error) {
-			this.debugInfo.innerHTML = error;
-		}
-	}
-
-	onRightSelectEnd() {
-		try {
-			if (this.controller === this.right) {
-				this.isControllerSelecting = false;
-				this.isControllerSelectionDirty = false;
-			}
-			// this.dragListener.end();
-		} catch (error) {
-			this.debugInfo.innerHTML = error;
-		}
-	}
 
 	onWindowResize() {
 		try {
@@ -985,7 +273,7 @@ class VRTour {
 	onMouseDown(event) {
 		if (TEST_ENABLED) {
 			// this.dragListener.start();
-			this.setText('down');
+			this.controllers.setText('down');
 			return;
 		}
 		try {
@@ -994,7 +282,7 @@ class VRTour {
 			raycaster.setFromCamera(this.mouse, this.camera);
 			// calculate objects intersecting the picking ray
 			if (event.shiftKey) {
-				const intersections = raycaster.intersectObjects(this.room.children);
+				const intersections = raycaster.intersectObjects(this.pivot.room.children);
 				if (intersections) {
 					const intersection = intersections.find(x => x !== undefined);
 					this.createPoint(intersection);
@@ -1034,53 +322,12 @@ class VRTour {
 				x: (event.clientX - w2) / w2,
 				y: -(event.clientY - h2) / h2,
 			};
-			if (TEST_ENABLED && this.controller) {
-				this.controller.rotation.y = -this.mouse.x * Math.PI;
-				this.controller.rotation.x = this.mouse.y * Math.PI / 2;
-				return;
+			if (TEST_ENABLED) {
+				return this.controllers.updateTest(this.mouse);
 			}
 			const raycaster = this.raycaster;
 			raycaster.setFromCamera(this.mouse, this.camera);
 			this.updateHoverPoint(raycaster);
-			/*
-			if (TEST_ENABLED) {
-				const controller = this.controller;
-				const raycaster = this.raycaster;
-				const rotation = controller.getWorldDirection(new THREE.Vector3()).multiplyScalar(-1);
-				raycaster.set(controller.position, rotation);
-				let intersections = raycaster.intersectObjects([this.room.sphere]);
-				if (intersections) {
-					const intersection = intersections.find(x => x !== undefined);
-					if (intersection) {
-						const position = intersection.point.normalize();
-						console.log('s', position.x, position.y, position.z);
-					}
-				}
-				if (this.points && this.points.children.length) {
-					const point = this.points.children[0];
-					const position = point.position.clone().normalize();
-					console.log('p', position.x, position.y, position.z);
-				}
-			}
-			*/
-			// console.log('onMouseMove', this.mouse);
-			/*
-			var attributes = geometry.attributes;
-			raycaster.setFromCamera( mouse, camera );
-			intersects = raycaster.intersectObject( points );
-			if ( intersects.length > 0 ) {
-				if ( INTERSECTED != intersects[ 0 ].index ) {
-					attributes.size.array[ INTERSECTED ] = PARTICLE_SIZE;
-					INTERSECTED = intersects[ 0 ].index;
-					attributes.size.array[ INTERSECTED ] = PARTICLE_SIZE * 1.25;
-					attributes.size.needsUpdate = true;
-				}
-			} else if ( INTERSECTED !== null ) {
-				attributes.size.array[ INTERSECTED ] = PARTICLE_SIZE;
-				attributes.size.needsUpdate = true;
-				INTERSECTED = null;
-			}
-			*/
 		} catch (error) {
 			this.debugInfo.innerHTML = error;
 		}
@@ -1089,7 +336,7 @@ class VRTour {
 	onMouseUp(event) {
 		if (TEST_ENABLED) {
 			// this.dragListener.end();
-			this.setText('up');
+			this.controllers.setText('up');
 			return;
 		}
 	}
@@ -1107,10 +354,7 @@ class VRTour {
 
 	onSave(event) {
 		try {
-			this.view.orientation = {
-				latitude: this.latitude,
-				longitude: this.longitude,
-			};
+			this.view.orientation = this.orbit.getOrientation();
 			this.saveData({ views: this.views }, 'vr.json');
 		} catch (error) {
 			this.debugInfo.innerHTML = error;
@@ -1118,48 +362,6 @@ class VRTour {
 	}
 
 	// animation
-
-	findGamepad(id) {
-		const gamepads = navigator.getGamepads && navigator.getGamepads();
-		if (!gamepads) {
-			return undefined;
-		}
-		for (var i = 0, j = 0, l = gamepads.length; i < l; i++) {
-			const gamepad = gamepads[i];
-			if (gamepad && (
-					gamepad.id === 'Daydream Controller' ||
-					gamepad.id === 'Gear VR Controller' || gamepad.id === 'Oculus Go Controller' ||
-					gamepad.id === 'OpenVR Gamepad' || gamepad.id.startsWith('Oculus Touch') ||
-					gamepad.id.startsWith('Spatial Controller')
-				)) {
-				if (j === id) {
-					return gamepad;
-				}
-				j++;
-			}
-		}
-	}
-
-	updateTriggers() {
-		const gamePadLeft = this.findGamepad(0);
-		if (gamePadLeft) {
-			const triggerLeft = gamePadLeft ? gamePadLeft.buttons.reduce((p, b, i) => b.pressed ? i : p, -1) : -1;
-			if (triggerLeft !== -1) {
-				this.onLeftSelectStart(triggerLeft);
-			} else {
-				this.onLeftSelectEnd();
-			}
-		}
-		const gamePadRight = this.findGamepad(1);
-		if (gamePadRight) {
-			const triggerRight = gamePadRight ? gamePadRight.buttons.reduce((p, b, i) => b.pressed ? i : p, -1) : -1;
-			if (triggerRight !== -1) {
-				this.onRightSelectStart(triggerRight);
-			} else {
-				this.onRightSelectEnd();
-			}
-		}
-	}
 
 	animate() {
 		const renderer = this.renderer;
@@ -1172,57 +374,25 @@ class VRTour {
 		const cameraDirection = this.camera.getWorldDirection(this.cameraDirection);
 		if (this.vr.mode !== VR_MODE.NONE) {
 			// this.dragListener.move();
-			this.updateTriggers();
-			this.menu.active = this.controller && this.pointer.position.y > 15;
-			this.menu.update(cameraDirection);
-			// this.updateMenu();
+			this.controllers.update();
 			this.updateController();
+			this.topBar.active = this.controllers.controller && this.pointer.position.y > 15;
+			this.topBar.update(cameraDirection);
 		} else if (TEST_ENABLED) {
 			// this.dragListener.move();
-			// this.updatePivot();
 			this.updateCamera();
-			// this.updateTriggers();
-			this.menu.active = this.controller && this.pointer.position.y > 15;
-			this.menu.update(cameraDirection);
-			// this.updateMenu();
 			this.updateController();
+			this.topBar.active = this.controllers.controller && this.pointer.position.y > 15;
+			this.topBar.update(cameraDirection);
 		} else {
-			// this.updatePivot();
-			// this.testController();
 			this.updateCamera();
 		}
 		const renderer = this.renderer;
 		renderer.render(this.scene, this.camera);
-		// this.doParallax();
-	}
-
-	updateMenu() {
-		const menu = this.menu.mesh;
-		const arc = this.menu.arc;
-		const controller = this.controller;
-		const pointer = this.pointer;
-		const active = controller && pointer.position.y > 15;
-		const vector = this.camera.getWorldDirection(this.cameraDirection);
-		const endTheta = Math.atan2(vector.x, vector.z) - this.pivot.rotation.y + Math.PI - this.menu.ry;
-		// const t = this.t ? this.t++ : 0;
-		// const theta = menu.rotation.y + (endTheta - menu.rotation.y) / 10;
-		menu.rotation.set(0, endTheta, 0);
-		const endY = active ? 20 : this.menu.py;
-		const y = menu.position.y + (endY - menu.position.y) / 10;
-		menu.position.set(0, y, 0);
-		const endOpacity = active ? 1 : 0;
-		const opacity = arc.material.opacity + (endOpacity - arc.material.opacity) / 10;
-		// console.log(endTheta, active, y, opacity);
-		arc.material.opacity = opacity;
-		arc.material.needsUpdate = true;
 	}
 
 	updatePointer(raycaster) {
-		/*
-		this.room.sphere.geometry.computeBoundingBox();
-		this.room.sphere.geometry.computeBoundingSphere();
-		*/
-		const intersections = raycaster.intersectObjects(this.room.children);
+		const intersections = raycaster.intersectObjects(this.pivot.room.children);
 		if (intersections.length) {
 			const intersection = intersections[0];
 			// const intersection = intersections.find(x => x !== undefined);
@@ -1240,8 +410,8 @@ class VRTour {
 				// console.log(position.x, position.y, position.z);
 			}
 		}
-		this.pointer.material.color.setHex(this.isControllerSelecting ? 0x0000ff : 0xffffff);
-		this.pointer.material.opacity = this.isControllerSelecting ? 1.0 : 0.5;
+		this.pointer.material.color.setHex(this.controllers.isControllerSelecting ? 0x0000ff : 0xffffff);
+		this.pointer.material.opacity = this.controllers.isControllerSelecting ? 1.0 : 0.5;
 		this.pointer.scale.setScalar(this.pivot.busy ? 0 : 1);
 		// this.pivot.rotation.y = (this.pivot.ery || 0);
 		// this.pivot.rotation.y += ((this.pivot.ery || 0) - this.pivot.rotation.y) / 10;
@@ -1250,7 +420,7 @@ class VRTour {
 	updateHoverPoint(raycaster) {
 		let point;
 		// raycaster.params.Points.threshold = 10.0;
-		const intersections = raycaster.intersectObjects(this.points.children);
+		const intersections = raycaster.intersectObjects(this.pivot.points.children);
 		/*
 		if (intersections.length) {
 			const intersection = intersections[0];
@@ -1264,90 +434,37 @@ class VRTour {
 		this.selectedPoint = intersection;
 	}
 
-	updateController() {
-		try {
-			const controller = this.controller;
-			if (controller) {
-				const raycaster = this.raycaster;
-				/*
-				if (TEST_ENABLED) {
-					raycaster.setFromCamera(this.mouse, this.camera);
-					controller.position.copy(this.camera.position);
-					controller.rotation.copy(this.camera.rotation);
-				} else {
-					const position = controller.position; // this.pivot.worldToLocal(controller.position);
-					const rotation = controller.getWorldDirection(this.controllerDirection).multiplyScalar(-1); // this.pivot.worldToLocal(controller.getWorldDirection(this.controllerDirection).multiplyScalar(-1));
-					raycaster.set(position, rotation);
-				}
-				*/
-				const position = controller.position; // this.pivot.worldToLocal(controller.position);
-				const rotation = controller.getWorldDirection(this.controllerDirection).multiplyScalar(-1); // this.pivot.worldToLocal(controller.getWorldDirection(this.controllerDirection).multiplyScalar(-1));
-				// new THREE.Vector3(controller.rotation.x, controller.rotation.y, controller.rotation.z).normalize();
-				raycaster.set(position, rotation);
-				InteractiveMesh.hittest(raycaster, this.isControllerSelecting);
-				this.updatePointer(raycaster);
-				this.updateHoverPoint(raycaster);
-			}
-		} catch (error) {
-			this.debugInfo.innerHTML = error;
-		}
-	}
-
-	updatePivot() {
-		const pivot = this.pivot;
-		const direction = this.direction;
-		const inertia = this.inertia;
-		let speed = this.speed;
-		let latitude = this.latitude;
-		let longitude = this.longitude;
-		if (this.dragListener && this.dragListener.dragging === false) {
-			// longitude += 0.01 * direction * speed;
-			speed = Math.max(1, speed * 0.98);
-			inertia.multiplyScalar(0.98);
-		}
-		latitude = Math.max(-85, Math.min(85, latitude));
-		const phi = THREE.Math.degToRad(90 - latitude);
-		const theta = THREE.Math.degToRad(longitude);
-		pivot.rotation.set(phi - Math.PI / 2, theta + Math.PI / 2, 0);
-		/*
-		pivot.target.x = ROOM_RADIUS * Math.sin(phi) * Math.cos(theta);
-		pivot.target.y = ROOM_RADIUS * Math.cos(phi);
-		pivot.target.z = ROOM_RADIUS * Math.sin(phi) * Math.sin(theta);
-		pivot.lookAt(pivot.target);
-		*/
-		this.latitude = latitude;
-		this.longitude = longitude;
-		this.speed = speed;
-		this.inertia = inertia;
-	}
-
 	updateCamera() {
+		const orbit = this.orbit;
 		const camera = this.camera;
-		const direction = this.direction;
-		const inertia = this.inertia;
-		let speed = this.speed;
-		let latitude = this.latitude;
-		let longitude = this.longitude;
-		if (this.dragListener && this.dragListener.dragging === false) {
-			// longitude += 0.01 * direction * speed;
-			speed = Math.max(1, speed * 0.98);
-			inertia.multiplyScalar(0.98);
-		}
-		latitude = Math.max(-85, Math.min(85, latitude));
-		const phi = THREE.Math.degToRad(90 - latitude);
-		const theta = THREE.Math.degToRad(longitude);
-		camera.target.x = ROOM_RADIUS * Math.sin(phi) * Math.cos(theta);
-		camera.target.y = ROOM_RADIUS * Math.cos(phi);
-		camera.target.z = ROOM_RADIUS * Math.sin(phi) * Math.sin(theta);
+		orbit.update();
+		camera.target.x = ROOM_RADIUS * Math.sin(orbit.phi) * Math.cos(orbit.theta);
+		camera.target.y = ROOM_RADIUS * Math.cos(orbit.phi);
+		camera.target.z = ROOM_RADIUS * Math.sin(orbit.phi) * Math.sin(orbit.theta);
 		camera.lookAt(camera.target);
-		this.latitude = latitude;
-		this.longitude = longitude;
-		this.speed = speed;
-		this.inertia = inertia;
 		/*
 		// distortion
 		camera.position.copy( camera.target ).negate();
 		*/
+	}
+
+	updateController() {
+		try {
+			const controllers = this.controllers;
+			const controller = controllers.controller;
+			if (controller) {
+				const raycaster = this.raycaster;
+				const position = controller.position;
+				const rotation = controller.getWorldDirection(controllers.controllerDirection).multiplyScalar(-1);
+				raycaster.set(position, rotation);
+				InteractiveMesh.hittest(raycaster, controllers.isControllerSelecting);
+				// this.pivot.hittest(raycaster); // !!!
+				this.updateHoverPoint(raycaster);
+				this.updatePointer(raycaster);
+			}
+		} catch (error) {
+			this.debugInfo.innerHTML = error;
+		}
 	}
 
 	// utils
@@ -1423,6 +540,25 @@ tour.animate();
 tour.load('data/vr.json');
 
 /*
+
+copyGeometry() {
+	var MAX_POINTS = 500;
+	// geometry
+	var geometry = new THREE.BufferGeometry();
+	// attributes
+	var positions = new Float32Array(MAX_POINTS * 3); // 3 vertices per point
+	geometry.addAttribute('position', new THREE.BufferAttribute(positions, 3));
+	// draw range
+	var drawCount = 2; // draw the first 2 points, only
+	geometry.setDrawRange(0, drawCount);
+	// material
+	var material = new THREE.LineBasicMaterial({ color: 0xff0000, linewidth: 2 });
+	// line
+	var line = new THREE.Line(geometry, material);
+	scene.add(line);
+	// And then to later update after adding new point information:
+	line.geometry.setDrawRange(0, newValue);
+}
 
 doParallax() {
 	// parallax

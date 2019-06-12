@@ -2,7 +2,7 @@
 /* global window, document */
 
 import { POINT_RADIUS } from './const';
-import { InteractiveMesh } from './interactive.mesh';
+import InteractiveMesh from './interactive.mesh';
 
 const SIZE = 8;
 const RADIUS = POINT_RADIUS - 0.1;
@@ -12,7 +12,7 @@ const RY = Math.PI - 0.5;
 const FROM = 0;
 const TO = 1;
 
-export class Menu {
+export default class TopBar {
 
 	constructor(parent) {
 		this.parent = parent;
@@ -26,8 +26,8 @@ export class Menu {
 		mesh.position.set(0, PY, 0);
 		const arc = this.arc = this.addArc(mesh);
 		this.items = [
-			new MenuItem(mesh, 0),
-			new MenuItem(mesh, 1)
+			new TopBarItem(mesh, 0),
+			new TopBarItem(mesh, 1)
 		];
 		this.items.forEach((x, index) => {
 			x.on('over', () => {
@@ -112,7 +112,7 @@ export class Menu {
 
 }
 
-export class MenuItem extends InteractiveMesh {
+export class TopBarItem extends InteractiveMesh {
 
 	static getTexture(index) {
 		const canvas = document.createElement('canvas');

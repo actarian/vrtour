@@ -28,7 +28,7 @@
 		"tfs": false,
 		"server": {
 			"src": "./docs",
-			"port": 9999
+			"port": 7777
 		}
 	}
 }

@@ -9140,76 +9140,444 @@ THREE.Euler.prototype.add = function (euler) {
 Object.defineProperty(exports, "__esModule", {
   value: true
 });
-exports.InteractiveMesh = void 0;
+exports.default = void 0;
 
 var _const = require("./const");
 
-function _typeof(obj) { if (typeof Symbol === "function" && typeof Symbol.iterator === "symbol") { _typeof = function _typeof(obj) { return typeof obj; }; } else { _typeof = function _typeof(obj) { return obj && typeof Symbol === "function" && obj.constructor === Symbol && obj !== Symbol.prototype ? "symbol" : typeof obj; }; } return _typeof(obj); }
-
 function _classCallCheck(instance, Constructor) { if (!(instance instanceof Constructor)) { throw new TypeError("Cannot call a class as a function"); } }
-
-function _possibleConstructorReturn(self, call) { if (call && (_typeof(call) === "object" || typeof call === "function")) { return call; } return _assertThisInitialized(self); }
-
-function _getPrototypeOf(o) { _getPrototypeOf = Object.setPrototypeOf ? Object.getPrototypeOf : function _getPrototypeOf(o) { return o.__proto__ || Object.getPrototypeOf(o); }; return _getPrototypeOf(o); }
-
-function _assertThisInitialized(self) { if (self === void 0) { throw new ReferenceError("this hasn't been initialised - super() hasn't been called"); } return self; }
 
 function _defineProperties(target, props) { for (var i = 0; i < props.length; i++) { var descriptor = props[i]; descriptor.enumerable = descriptor.enumerable || false; descriptor.configurable = true; if ("value" in descriptor) descriptor.writable = true; Object.defineProperty(target, descriptor.key, descriptor); } }
 
 function _createClass(Constructor, protoProps, staticProps) { if (protoProps) _defineProperties(Constructor.prototype, protoProps); if (staticProps) _defineProperties(Constructor, staticProps); return Constructor; }
 
+var Controllers =
+/*#__PURE__*/
+function () {
+  function Controllers(renderer, scene, pivot) {
+    _classCallCheck(this, Controllers);
+
+    this.events = {};
+    this.gamepads = {};
+    this.renderer = renderer;
+    this.scene = scene;
+    this.pivot = pivot;
+    this.controllerDirection = new THREE.Vector3();
+    this.onLeftSelectStart = this.onLeftSelectStart.bind(this);
+    this.onLeftSelectEnd = this.onLeftSelectEnd.bind(this);
+    this.onRightSelectStart = this.onRightSelectStart.bind(this);
+    this.onRightSelectEnd = this.onRightSelectEnd.bind(this);
+
+    if (_const.TEST_ENABLED) {
+      var right = this.right = this.addControllerTest(scene);
+      document.addEventListener('mousedown', this.onRightSelectStart);
+      document.addEventListener('mouseup', this.onRightSelectEnd);
+    } else {
+      var left = this.left = this.addControllerLeft(renderer, scene);
+
+      var _right = this.right = this.addControllerRight(renderer, scene);
+    }
+
+    var text = this.text = this.addText(pivot);
+  }
+
+  _createClass(Controllers, [{
+    key: "on",
+    value: function on(type, callback) {
+      var _this = this;
+
+      var event = this.events[type] = this.events[type] || [];
+      event.push(callback);
+      return function () {
+        _this.events[type] = event.filter(function (x) {
+          return x !== callback;
+        });
+      };
+    }
+  }, {
+    key: "off",
+    value: function off(type, callback) {
+      var event = this.events[type];
+
+      if (event) {
+        this.events[type] = event.filter(function (x) {
+          return x !== callback;
+        });
+      }
+    }
+  }, {
+    key: "emit",
+    value: function emit(type, data) {
+      var event = this.events[type];
+
+      if (event) {
+        event.forEach(function (callback) {
+          // callback.call(this, data);
+          callback(data);
+        });
+      }
+    }
+  }, {
+    key: "update",
+    value: function update() {
+      var gamePadLeft = this.findGamepad_(0);
+
+      if (gamePadLeft) {
+        var triggerLeft = gamePadLeft ? gamePadLeft.buttons.reduce(function (p, b, i) {
+          return b.pressed ? i : p;
+        }, -1) : -1;
+
+        if (triggerLeft !== -1) {
+          this.onLeftSelectStart(triggerLeft);
+        } else {
+          this.onLeftSelectEnd();
+        }
+      }
+
+      var gamePadRight = this.findGamepad_(1);
+
+      if (gamePadRight) {
+        var triggerRight = gamePadRight ? gamePadRight.buttons.reduce(function (p, b, i) {
+          return b.pressed ? i : p;
+        }, -1) : -1;
+
+        if (triggerRight !== -1) {
+          this.onRightSelectStart(triggerRight);
+        } else {
+          this.onRightSelectEnd();
+        }
+      }
+    }
+  }, {
+    key: "updateTest",
+    value: function updateTest(mouse) {
+      var controller = this.controller;
+
+      if (controller) {
+        controller.rotation.y = -mouse.x * Math.PI;
+        controller.rotation.x = mouse.y * Math.PI / 2;
+      }
+    }
+  }, {
+    key: "onLeftSelectStart",
+    value: function onLeftSelectStart(id) {
+      try {
+        // 1 front, 2 side, 3 Y, 4 X, 5?
+        this.setText(String(id));
+
+        if (this.controller !== this.left) {
+          if (this.controller) {
+            this.controller.remove(this.controller.indicator);
+          }
+
+          this.controller = this.left;
+          this.controller.add(this.controller.indicator);
+        }
+
+        this.isControllerSelecting = true;
+        this.isControllerSelectionDirty = true;
+      } catch (error) {
+        this.emit('error', error);
+      }
+    }
+  }, {
+    key: "onLeftSelectEnd",
+    value: function onLeftSelectEnd() {
+      try {
+        if (this.controller === this.left) {
+          this.isControllerSelecting = false;
+          this.isControllerSelectionDirty = false;
+        }
+      } catch (error) {
+        this.emit('error', error);
+      }
+    }
+  }, {
+    key: "onRightSelectStart",
+    value: function onRightSelectStart(id) {
+      try {
+        // 1 front, 2 side, 3 A, 4 B, 5?
+        this.setText(String(id));
+
+        if (this.controller !== this.right) {
+          if (this.controller) {
+            this.controller.remove(this.controller.indicator);
+          }
+
+          this.controller = this.right;
+          this.controller.add(this.controller.indicator);
+        }
+
+        this.isControllerSelecting = true;
+        this.isControllerSelectionDirty = true;
+      } catch (error) {
+        this.emit('error', error);
+      }
+    }
+  }, {
+    key: "onRightSelectEnd",
+    value: function onRightSelectEnd() {
+      try {
+        if (this.controller === this.right) {
+          this.isControllerSelecting = false;
+          this.isControllerSelectionDirty = false;
+        }
+      } catch (error) {
+        this.emit('error', error);
+      }
+    }
+  }, {
+    key: "addControllerTest",
+    value: function addControllerTest(scene) {
+      var controller = new THREE.Group();
+      controller.position.set(0, 0, 0);
+      var cylinder = controller.cylinder = this.addControllerCylinder(controller, 0);
+      scene.add(controller);
+      return controller;
+    }
+  }, {
+    key: "addControllerLeft",
+    value: function addControllerLeft(renderer, scene) {
+      var controller = renderer.vr.getController(0);
+      var cylinder = controller.cylinder = this.addControllerCylinder(controller, 0);
+      scene.add(controller);
+      return controller;
+    }
+  }, {
+    key: "addControllerRight",
+    value: function addControllerRight(renderer, scene) {
+      var controller = renderer.vr.getController(1);
+      var cylinder = controller.cylinder = this.addControllerCylinder(controller, 1);
+      scene.add(controller);
+      return controller;
+    }
+  }, {
+    key: "addControllerCylinder",
+    value: function addControllerCylinder(controller, i) {
+      var geometry = new THREE.CylinderBufferGeometry((0, _const.cm)(2), (0, _const.cm)(2), (0, _const.cm)(12), 24);
+      var texture = new THREE.TextureLoader().load('img/matcap.jpg');
+      var material = new THREE.MeshMatcapMaterial({
+        color: i === 0 ? 0xff0000 : 0x0000ff,
+        matcap: texture,
+        transparent: true,
+        opacity: 1
+      });
+      /*
+      const material = new THREE.MeshBasicMaterial({
+      	color: i === 0 ? 0x0000ff : 0xff0000,
+      	// roughness: 0.2,
+      	// metalness: 0.1,
+      });
+      */
+
+      /*
+      const modifier = new THREE.SubdivisionModifier(2);
+      const smoothGeometry = modifier.modify(geometry);
+      const smoothBufferGeometry = new THREE.BufferGeometry().fromGeometry(smoothGeometry);
+      const mesh = new THREE.Mesh(smoothBufferGeometry, material);
+      */
+
+      var mesh = new THREE.Mesh(geometry, material);
+      mesh.geometry.rotateX(Math.PI / 2);
+      controller.add(mesh); //
+
+      var geometryIndicator = new THREE.CylinderBufferGeometry((0, _const.cm)(0.5), (0, _const.cm)(0.1), 10, 12);
+      var materialIndicator = new THREE.MeshBasicMaterial({
+        color: 0xffffff,
+        // matcap: texture,
+        transparent: true,
+        opacity: 0.5
+      });
+      var indicator = new THREE.Mesh(geometryIndicator, materialIndicator);
+      controller.indicator = indicator;
+      indicator.geometry.rotateX(Math.PI / 2);
+      indicator.position.set(0, 0, -5); // controller.add(indicator);
+      //
+    }
+  }, {
+    key: "addText",
+    value: function addText(parent) {
+      var _this2 = this;
+
+      var loader = new THREE.FontLoader();
+      loader.load('fonts/helvetiker_regular.typeface.json', function (font) {
+        _this2.font = font;
+        var material = new THREE.MeshBasicMaterial({
+          color: 0x33c5f6,
+          transparent: true,
+          opacity: 1,
+          side: THREE.DoubleSide
+        });
+        _this2.fontMaterial = material;
+        /*
+        const shapes = font.generateShapes('0', 10);
+        const geometry = new THREE.ShapeBufferGeometry(shapes);
+        geometry.dynamic = true;
+        geometry.computeBoundingBox();
+        const x = -0.5 * (geometry.boundingBox.max.x - geometry.boundingBox.min.x);
+        geometry.translate(x, 5, -80);
+        // make shape ( N.B. edge view not visible )
+        const text = new THREE.Mesh(geometry, material);
+        // text.position.set(-10000, -10000, -10000);
+        this.text = text;
+        parent.add(text);
+        */
+
+        /*
+        // make line shape ( N.B. edge view remains visible )
+        const matDark = new THREE.LineBasicMaterial({
+        	color: color,
+        	side: THREE.DoubleSide
+        });
+        const holeShapes = [];
+        for (let i = 0; i < shapes.length; i++) {
+        	const shape = shapes[i];
+        	if (shape.holes && shape.holes.length > 0) {
+        		for (let j = 0; j < shape.holes.length; j++) {
+        			const hole = shape.holes[j];
+        			holeShapes.push(hole);
+        		}
+        	}
+        }
+        shapes.push.apply(shapes, holeShapes);
+        const lineText = new THREE.Object3D();
+        for (let i = 0; i < shapes.length; i++) {
+        	const shape = shapes[i];
+        	const points = shape.getPoints();
+        	const geometry = new THREE.BufferGeometry().setFromPoints(points);
+        	geometry.translate(xMid, 0, 0);
+        	const lineMesh = new THREE.Line(geometry, matDark);
+        	lineText.add(lineMesh);
+        }
+        parent.add(lineText);
+        */
+      });
+    }
+  }, {
+    key: "setText",
+    value: function setText(message) {
+      message = message || '1';
+
+      if (this.text) {
+        this.text.parent.remove(this.text);
+        this.text.geometry.dispose();
+      }
+
+      var shapes = this.font.generateShapes(message, 5);
+      var geometry = new THREE.ShapeBufferGeometry(shapes); // geometry.dynamic = true;
+
+      geometry.computeBoundingBox();
+      var x = -0.5 * (geometry.boundingBox.max.x - geometry.boundingBox.min.x);
+      geometry.translate(x, 0, 0); // make shape ( N.B. edge view not visible )
+
+      var text = new THREE.Mesh(geometry, this.fontMaterial);
+      text.position.set(0, 0, -_const.POINTER_RADIUS);
+      this.text = text;
+      this.pivot.add(text);
+      /*
+      const shapes = this.font.generateShapes(message, 10);
+      const geometry = new THREE.ShapeBufferGeometry(shapes);
+      geometry.computeBoundingBox();
+      const x = -0.5 * (geometry.boundingBox.max.x - geometry.boundingBox.min.x);
+      const text = this.text;
+      text.geometry.copy(geometry);
+      text.geometry.translate(x, 0, 0);
+      // text.geometry.position.needsUpdate = true;
+      geometry.dispose();
+      */
+    }
+  }, {
+    key: "findGamepad_",
+    value: function findGamepad_(id) {
+      var gamepad = this.gamepads[id];
+
+      if (gamepad) {
+        return gamepad;
+      }
+
+      var gamepads = navigator.getGamepads && navigator.getGamepads();
+
+      if (!gamepads) {
+        return undefined;
+      }
+
+      for (var i = 0, j = 0, l = gamepads.length; i < l; i++) {
+        gamepad = gamepads[i];
+
+        if (gamepad && (gamepad.id === 'Daydream Controller' || gamepad.id === 'Gear VR Controller' || gamepad.id === 'Oculus Go Controller' || gamepad.id === 'OpenVR Gamepad' || gamepad.id.startsWith('Oculus Touch') || gamepad.id.startsWith('Spatial Controller'))) {
+          if (j === id) {
+            this.gamepads[id] = gamepad;
+            return gamepad;
+          }
+
+          j++;
+        }
+      }
+    }
+    /*
+    testController() {
+    	if (TEST_ENABLED) {
+    		if (this.controller) {
+    			this.controller.position.x = this.mouse.x * 50;
+    			this.controller.position.y = this.mouse.y * 50;
+    		}
+    		this.updateController();
+    	}
+    }
+    */
+
+  }]);
+
+  return Controllers;
+}();
+
+exports.default = Controllers;
+
+},{"./const":4}],6:[function(require,module,exports){
+"use strict";
+
+Object.defineProperty(exports, "__esModule", {
+  value: true
+});
+exports.default = void 0;
+
+function _typeof(obj) { if (typeof Symbol === "function" && typeof Symbol.iterator === "symbol") { _typeof = function _typeof(obj) { return typeof obj; }; } else { _typeof = function _typeof(obj) { return obj && typeof Symbol === "function" && obj.constructor === Symbol && obj !== Symbol.prototype ? "symbol" : typeof obj; }; } return _typeof(obj); }
+
+function _classCallCheck(instance, Constructor) { if (!(instance instanceof Constructor)) { throw new TypeError("Cannot call a class as a function"); } }
+
+function _defineProperties(target, props) { for (var i = 0; i < props.length; i++) { var descriptor = props[i]; descriptor.enumerable = descriptor.enumerable || false; descriptor.configurable = true; if ("value" in descriptor) descriptor.writable = true; Object.defineProperty(target, descriptor.key, descriptor); } }
+
+function _createClass(Constructor, protoProps, staticProps) { if (protoProps) _defineProperties(Constructor.prototype, protoProps); if (staticProps) _defineProperties(Constructor, staticProps); return Constructor; }
+
+function _possibleConstructorReturn(self, call) { if (call && (_typeof(call) === "object" || typeof call === "function")) { return call; } return _assertThisInitialized(self); }
+
+function _assertThisInitialized(self) { if (self === void 0) { throw new ReferenceError("this hasn't been initialised - super() hasn't been called"); } return self; }
+
+function _getPrototypeOf(o) { _getPrototypeOf = Object.setPrototypeOf ? Object.getPrototypeOf : function _getPrototypeOf(o) { return o.__proto__ || Object.getPrototypeOf(o); }; return _getPrototypeOf(o); }
+
 function _inherits(subClass, superClass) { if (typeof superClass !== "function" && superClass !== null) { throw new TypeError("Super expression must either be null or a function"); } subClass.prototype = Object.create(superClass && superClass.prototype, { constructor: { value: subClass, writable: true, configurable: true } }); if (superClass) _setPrototypeOf(subClass, superClass); }
 
 function _setPrototypeOf(o, p) { _setPrototypeOf = Object.setPrototypeOf || function _setPrototypeOf(o, p) { o.__proto__ = p; return o; }; return _setPrototypeOf(o, p); }
 
-function _defineProperty(obj, key, value) { if (key in obj) { Object.defineProperty(obj, key, { value: value, enumerable: true, configurable: true, writable: true }); } else { obj[key] = value; } return obj; }
+/* jshint esversion: 6 */
 
-var SIZE = 8;
-var RADIUS = _const.POINT_RADIUS - 0.1;
-var ARC = SIZE / RADIUS;
-var PY = 50;
-var RY = Math.PI - 0.5;
-var FROM = 0;
-var TO = 1;
-
-var InteractiveMesh =
+/* global window, document */
+var EmittableGroup =
 /*#__PURE__*/
-function (_THREE$Mesh) {
-  _inherits(InteractiveMesh, _THREE$Mesh);
+function (_THREE$Group) {
+  _inherits(EmittableGroup, _THREE$Group);
 
-  _createClass(InteractiveMesh, null, [{
-    key: "hittest",
-    value: function hittest(raycaster, down) {
-      var intersections = raycaster.intersectObjects(InteractiveMesh.items);
-      var intersection = intersections.length ? intersections[0] : null;
-      var object = intersection && intersection.object;
-      InteractiveMesh.items.forEach(function (x) {
-        x.intersection = intersection;
-        x.over = x === object;
-        x.down = down;
-      });
-    }
-  }]);
-
-  function InteractiveMesh(geometry, material) {
+  function EmittableGroup() {
     var _this;
 
-    _classCallCheck(this, InteractiveMesh);
+    _classCallCheck(this, EmittableGroup);
 
-    geometry = geometry || new THREE.BoxGeometry(5, 5, 5);
-    material = material || new THREE.MeshBasicMaterial({
-      color: 0xff00ff // opacity: 1,
-      // transparent: true,
-
-    });
-    _this = _possibleConstructorReturn(this, _getPrototypeOf(InteractiveMesh).call(this, geometry, material)); // this.renderOrder = 10;
+    _this = _possibleConstructorReturn(this, _getPrototypeOf(EmittableGroup).call(this)); // this.renderOrder = 10;
 
     _this.events = {};
-    InteractiveMesh.items.push(_assertThisInitialized(_this));
     return _this;
   }
 
-  _createClass(InteractiveMesh, [{
+  _createClass(EmittableGroup, [{
     key: "on",
     value: function on(type, callback) {
       var _this2 = this;
@@ -9245,22 +9613,168 @@ function (_THREE$Mesh) {
         });
       }
     }
-    /*
-    setRaycaster(raycaster, selecting) {
-    	this.raycaster = raycaster;
-    	this.selecting = selecting;
-    	const intersections = raycaster.intersectObjects(this);
-    	const intersection = intersections.length ? intersections[0] : null;
-    	this.over = intersection;
-    	this.down = intersection;
-    }
-    	update(cameraDirection) {
-    	const y = Math.atan2(cameraDirection.x, cameraDirection.z) - this.parent.rotation.y + Math.PI - this.ry;
-    	this.mesh.rotation.set(0, y, 0);
-    }
-    */
+  }]);
 
+  return EmittableGroup;
+}(THREE.Group);
+
+exports.default = EmittableGroup;
+
+},{}],7:[function(require,module,exports){
+"use strict";
+
+Object.defineProperty(exports, "__esModule", {
+  value: true
+});
+exports.default = void 0;
+
+function _typeof(obj) { if (typeof Symbol === "function" && typeof Symbol.iterator === "symbol") { _typeof = function _typeof(obj) { return typeof obj; }; } else { _typeof = function _typeof(obj) { return obj && typeof Symbol === "function" && obj.constructor === Symbol && obj !== Symbol.prototype ? "symbol" : typeof obj; }; } return _typeof(obj); }
+
+function _classCallCheck(instance, Constructor) { if (!(instance instanceof Constructor)) { throw new TypeError("Cannot call a class as a function"); } }
+
+function _defineProperties(target, props) { for (var i = 0; i < props.length; i++) { var descriptor = props[i]; descriptor.enumerable = descriptor.enumerable || false; descriptor.configurable = true; if ("value" in descriptor) descriptor.writable = true; Object.defineProperty(target, descriptor.key, descriptor); } }
+
+function _createClass(Constructor, protoProps, staticProps) { if (protoProps) _defineProperties(Constructor.prototype, protoProps); if (staticProps) _defineProperties(Constructor, staticProps); return Constructor; }
+
+function _possibleConstructorReturn(self, call) { if (call && (_typeof(call) === "object" || typeof call === "function")) { return call; } return _assertThisInitialized(self); }
+
+function _assertThisInitialized(self) { if (self === void 0) { throw new ReferenceError("this hasn't been initialised - super() hasn't been called"); } return self; }
+
+function _getPrototypeOf(o) { _getPrototypeOf = Object.setPrototypeOf ? Object.getPrototypeOf : function _getPrototypeOf(o) { return o.__proto__ || Object.getPrototypeOf(o); }; return _getPrototypeOf(o); }
+
+function _inherits(subClass, superClass) { if (typeof superClass !== "function" && superClass !== null) { throw new TypeError("Super expression must either be null or a function"); } subClass.prototype = Object.create(superClass && superClass.prototype, { constructor: { value: subClass, writable: true, configurable: true } }); if (superClass) _setPrototypeOf(subClass, superClass); }
+
+function _setPrototypeOf(o, p) { _setPrototypeOf = Object.setPrototypeOf || function _setPrototypeOf(o, p) { o.__proto__ = p; return o; }; return _setPrototypeOf(o, p); }
+
+/* jshint esversion: 6 */
+
+/* global window, document */
+var EmittableMesh =
+/*#__PURE__*/
+function (_THREE$Mesh) {
+  _inherits(EmittableMesh, _THREE$Mesh);
+
+  function EmittableMesh(geometry, material) {
+    var _this;
+
+    _classCallCheck(this, EmittableMesh);
+
+    geometry = geometry || new THREE.BoxGeometry(5, 5, 5);
+    material = material || new THREE.MeshBasicMaterial({
+      color: 0xff00ff // opacity: 1,
+      // transparent: true,
+
+    });
+    _this = _possibleConstructorReturn(this, _getPrototypeOf(EmittableMesh).call(this, geometry, material)); // this.renderOrder = 10;
+
+    _this.events = {};
+    return _this;
+  }
+
+  _createClass(EmittableMesh, [{
+    key: "on",
+    value: function on(type, callback) {
+      var _this2 = this;
+
+      var event = this.events[type] = this.events[type] || [];
+      event.push(callback);
+      return function () {
+        _this2.events[type] = event.filter(function (x) {
+          return x !== callback;
+        });
+      };
+    }
   }, {
+    key: "off",
+    value: function off(type, callback) {
+      var event = this.events[type];
+
+      if (event) {
+        this.events[type] = event.filter(function (x) {
+          return x !== callback;
+        });
+      }
+    }
+  }, {
+    key: "emit",
+    value: function emit(type, data) {
+      var event = this.events[type];
+
+      if (event) {
+        event.forEach(function (callback) {
+          // callback.call(this, data);
+          callback(data);
+        });
+      }
+    }
+  }]);
+
+  return EmittableMesh;
+}(THREE.Mesh);
+
+exports.default = EmittableMesh;
+
+},{}],8:[function(require,module,exports){
+"use strict";
+
+Object.defineProperty(exports, "__esModule", {
+  value: true
+});
+exports.default = void 0;
+
+var _emittable = _interopRequireDefault(require("./emittable.mesh"));
+
+function _interopRequireDefault(obj) { return obj && obj.__esModule ? obj : { default: obj }; }
+
+function _typeof(obj) { if (typeof Symbol === "function" && typeof Symbol.iterator === "symbol") { _typeof = function _typeof(obj) { return typeof obj; }; } else { _typeof = function _typeof(obj) { return obj && typeof Symbol === "function" && obj.constructor === Symbol && obj !== Symbol.prototype ? "symbol" : typeof obj; }; } return _typeof(obj); }
+
+function _classCallCheck(instance, Constructor) { if (!(instance instanceof Constructor)) { throw new TypeError("Cannot call a class as a function"); } }
+
+function _possibleConstructorReturn(self, call) { if (call && (_typeof(call) === "object" || typeof call === "function")) { return call; } return _assertThisInitialized(self); }
+
+function _getPrototypeOf(o) { _getPrototypeOf = Object.setPrototypeOf ? Object.getPrototypeOf : function _getPrototypeOf(o) { return o.__proto__ || Object.getPrototypeOf(o); }; return _getPrototypeOf(o); }
+
+function _assertThisInitialized(self) { if (self === void 0) { throw new ReferenceError("this hasn't been initialised - super() hasn't been called"); } return self; }
+
+function _defineProperties(target, props) { for (var i = 0; i < props.length; i++) { var descriptor = props[i]; descriptor.enumerable = descriptor.enumerable || false; descriptor.configurable = true; if ("value" in descriptor) descriptor.writable = true; Object.defineProperty(target, descriptor.key, descriptor); } }
+
+function _createClass(Constructor, protoProps, staticProps) { if (protoProps) _defineProperties(Constructor.prototype, protoProps); if (staticProps) _defineProperties(Constructor, staticProps); return Constructor; }
+
+function _inherits(subClass, superClass) { if (typeof superClass !== "function" && superClass !== null) { throw new TypeError("Super expression must either be null or a function"); } subClass.prototype = Object.create(superClass && superClass.prototype, { constructor: { value: subClass, writable: true, configurable: true } }); if (superClass) _setPrototypeOf(subClass, superClass); }
+
+function _setPrototypeOf(o, p) { _setPrototypeOf = Object.setPrototypeOf || function _setPrototypeOf(o, p) { o.__proto__ = p; return o; }; return _setPrototypeOf(o, p); }
+
+var InteractiveMesh =
+/*#__PURE__*/
+function (_EmittableMesh) {
+  _inherits(InteractiveMesh, _EmittableMesh);
+
+  _createClass(InteractiveMesh, null, [{
+    key: "hittest",
+    value: function hittest(raycaster, down) {
+      var intersections = raycaster.intersectObjects(InteractiveMesh.items);
+      var intersection = intersections.length ? intersections[0] : null;
+      var object = intersection && intersection.object;
+      InteractiveMesh.items.forEach(function (x) {
+        x.intersection = intersection;
+        x.over = x === object;
+        x.down = down;
+      });
+    }
+  }]);
+
+  function InteractiveMesh(geometry, material) {
+    var _this;
+
+    _classCallCheck(this, InteractiveMesh);
+
+    _this = _possibleConstructorReturn(this, _getPrototypeOf(InteractiveMesh).call(this, geometry, material)); // this.renderOrder = 10;
+
+    InteractiveMesh.items.push(_assertThisInitialized(_this));
+    return _this;
+  }
+
+  _createClass(InteractiveMesh, [{
     key: "over",
     get: function get() {
       return this.over_;
@@ -9297,23 +9811,125 @@ function (_THREE$Mesh) {
   }]);
 
   return InteractiveMesh;
-}(THREE.Mesh);
+}(_emittable.default);
 
-exports.InteractiveMesh = InteractiveMesh;
+exports.default = InteractiveMesh;
+InteractiveMesh.items = [];
 
-_defineProperty(InteractiveMesh, "items", []);
-
-},{"./const":4}],6:[function(require,module,exports){
+},{"./emittable.mesh":7}],9:[function(require,module,exports){
 "use strict";
 
 Object.defineProperty(exports, "__esModule", {
   value: true
 });
-exports.MenuItem = exports.Menu = void 0;
+exports.default = void 0;
+
+var _drag = _interopRequireDefault(require("../shared/drag.listener"));
+
+function _interopRequireDefault(obj) { return obj && obj.__esModule ? obj : { default: obj }; }
+
+function _classCallCheck(instance, Constructor) { if (!(instance instanceof Constructor)) { throw new TypeError("Cannot call a class as a function"); } }
+
+function _defineProperties(target, props) { for (var i = 0; i < props.length; i++) { var descriptor = props[i]; descriptor.enumerable = descriptor.enumerable || false; descriptor.configurable = true; if ("value" in descriptor) descriptor.writable = true; Object.defineProperty(target, descriptor.key, descriptor); } }
+
+function _createClass(Constructor, protoProps, staticProps) { if (protoProps) _defineProperties(Constructor.prototype, protoProps); if (staticProps) _defineProperties(Constructor, staticProps); return Constructor; }
+
+var Orbit =
+/*#__PURE__*/
+function () {
+  function Orbit() {
+    _classCallCheck(this, Orbit);
+
+    this.longitude = 0;
+    this.latitude = 0;
+    this.direction = 1;
+    this.speed = 1;
+    this.inertia = new THREE.Vector3();
+  }
+
+  _createClass(Orbit, [{
+    key: "setOrientation",
+    value: function setOrientation(orientation) {
+      if (orientation) {
+        this.longitude = orientation.longitude;
+        this.latitude = orientation.latitude;
+      }
+    }
+  }, {
+    key: "getOrientation",
+    value: function getOrientation() {
+      return {
+        latitude: this.latitude,
+        longitude: this.longitude
+      };
+    }
+  }, {
+    key: "setDragListener",
+    value: function setDragListener(container) {
+      var _this = this;
+
+      var longitude, latitude;
+      var dragListener = new _drag.default(this.container, function (event) {
+        longitude = _this.longitude;
+        latitude = _this.latitude;
+      }, function (event) {
+        _this.longitude = -event.distance.x * 0.1 + longitude;
+        _this.latitude = event.distance.y * 0.1 + latitude;
+        _this.direction = event.distance.x ? event.distance.x / Math.abs(event.distance.x) * -1 : 1; // console.log('longitude', this.longitude, 'latitude', this.latitude, 'direction', this.direction);
+      }, function (event) {
+        _this.speed = Math.abs(event.strength.x) * 100; // console.log('speed', this.speed);
+      });
+
+      dragListener.move = function () {};
+
+      this.dragListener = dragListener;
+      return dragListener;
+    }
+  }, {
+    key: "update",
+    value: function update() {
+      var direction = this.direction;
+      var inertia = this.inertia;
+      var speed = this.speed;
+      var latitude = this.latitude;
+      var longitude = this.longitude;
+
+      if (this.dragListener && this.dragListener.dragging === false) {
+        // longitude += 0.01 * direction * speed;
+        speed = Math.max(1, speed * 0.98);
+        inertia.multiplyScalar(0.98);
+      }
+
+      latitude = Math.max(-85, Math.min(85, latitude));
+      var phi = THREE.Math.degToRad(90 - latitude);
+      var theta = THREE.Math.degToRad(longitude);
+      this.phi = phi;
+      this.theta = theta;
+      this.latitude = latitude;
+      this.longitude = longitude;
+      this.speed = speed;
+      this.inertia = inertia;
+    }
+  }]);
+
+  return Orbit;
+}();
+
+exports.default = Orbit;
+
+},{"../shared/drag.listener":2}],10:[function(require,module,exports){
+"use strict";
+
+Object.defineProperty(exports, "__esModule", {
+  value: true
+});
+exports.TopBarItem = exports.default = void 0;
 
 var _const = require("./const");
 
-var _interactive = require("./interactive.mesh");
+var _interactive = _interopRequireDefault(require("./interactive.mesh"));
+
+function _interopRequireDefault(obj) { return obj && obj.__esModule ? obj : { default: obj }; }
 
 function _typeof(obj) { if (typeof Symbol === "function" && typeof Symbol.iterator === "symbol") { _typeof = function _typeof(obj) { return typeof obj; }; } else { _typeof = function _typeof(obj) { return obj && typeof Symbol === "function" && obj.constructor === Symbol && obj !== Symbol.prototype ? "symbol" : typeof obj; }; } return _typeof(obj); }
 
@@ -9341,11 +9957,11 @@ var RY = Math.PI - 0.5;
 var FROM = 0;
 var TO = 1;
 
-var Menu =
+var TopBar =
 /*#__PURE__*/
 function () {
-  function Menu(parent) {
-    _classCallCheck(this, Menu);
+  function TopBar(parent) {
+    _classCallCheck(this, TopBar);
 
     this.parent = parent;
     this.py = PY;
@@ -9353,7 +9969,7 @@ function () {
     var mesh = this.mesh = this.addMesh(parent);
   }
 
-  _createClass(Menu, [{
+  _createClass(TopBar, [{
     key: "addMesh",
     value: function addMesh(parent) {
       var _this = this;
@@ -9361,7 +9977,7 @@ function () {
       var mesh = new THREE.Group();
       mesh.position.set(0, PY, 0);
       var arc = this.arc = this.addArc(mesh);
-      this.items = [new MenuItem(mesh, 0), new MenuItem(mesh, 1)];
+      this.items = [new TopBarItem(mesh, 0), new TopBarItem(mesh, 1)];
       this.items.forEach(function (x, index) {
         x.on('over', function () {
           x.material.color.setHex(0xffffff);
@@ -9453,17 +10069,17 @@ function () {
     }
   }]);
 
-  return Menu;
+  return TopBar;
 }();
 
-exports.Menu = Menu;
+exports.default = TopBar;
 
-var MenuItem =
+var TopBarItem =
 /*#__PURE__*/
 function (_InteractiveMesh) {
-  _inherits(MenuItem, _InteractiveMesh);
+  _inherits(TopBarItem, _InteractiveMesh);
 
-  _createClass(MenuItem, null, [{
+  _createClass(TopBarItem, null, [{
     key: "getTexture",
     value: function getTexture(index) {
       var canvas = document.createElement('canvas');
@@ -9487,10 +10103,10 @@ function (_InteractiveMesh) {
     }
   }]);
 
-  function MenuItem(parent, index) {
+  function TopBarItem(parent, index) {
     var _this3;
 
-    _classCallCheck(this, MenuItem);
+    _classCallCheck(this, TopBarItem);
 
     // const texture = MenuItem.getTexture(index);
     var loader = new THREE.TextureLoader();
@@ -9503,7 +10119,7 @@ function (_InteractiveMesh) {
       transparent: true,
       opacity: 0
     });
-    _this3 = _possibleConstructorReturn(this, _getPrototypeOf(MenuItem).call(this, geometry, material)); // this.renderOrder = 100;
+    _this3 = _possibleConstructorReturn(this, _getPrototypeOf(TopBarItem).call(this, geometry, material)); // this.renderOrder = 100;
     // this.rotation.set(0, -0.5, 0);
     // this.position.set(0, 0, 0);
     // this.lookAt(this.origin);
@@ -9512,12 +10128,534 @@ function (_InteractiveMesh) {
     return _this3;
   }
 
-  return MenuItem;
-}(_interactive.InteractiveMesh);
+  return TopBarItem;
+}(_interactive.default);
 
-exports.MenuItem = MenuItem;
+exports.TopBarItem = TopBarItem;
 
-},{"./const":4,"./interactive.mesh":5}],7:[function(require,module,exports){
+},{"./const":4,"./interactive.mesh":8}],11:[function(require,module,exports){
+"use strict";
+
+Object.defineProperty(exports, "__esModule", {
+  value: true
+});
+exports.default = void 0;
+
+var _const = require("./const");
+
+var _emittable = _interopRequireDefault(require("./emittable.group"));
+
+function _interopRequireDefault(obj) { return obj && obj.__esModule ? obj : { default: obj }; }
+
+function _typeof(obj) { if (typeof Symbol === "function" && typeof Symbol.iterator === "symbol") { _typeof = function _typeof(obj) { return typeof obj; }; } else { _typeof = function _typeof(obj) { return obj && typeof Symbol === "function" && obj.constructor === Symbol && obj !== Symbol.prototype ? "symbol" : typeof obj; }; } return _typeof(obj); }
+
+function isNativeReflectConstruct() { if (typeof Reflect === "undefined" || !Reflect.construct) return false; if (Reflect.construct.sham) return false; if (typeof Proxy === "function") return true; try { Date.prototype.toString.call(Reflect.construct(Date, [], function () {})); return true; } catch (e) { return false; } }
+
+function _construct(Parent, args, Class) { if (isNativeReflectConstruct()) { _construct = Reflect.construct; } else { _construct = function _construct(Parent, args, Class) { var a = [null]; a.push.apply(a, args); var Constructor = Function.bind.apply(Parent, a); var instance = new Constructor(); if (Class) _setPrototypeOf(instance, Class.prototype); return instance; }; } return _construct.apply(null, arguments); }
+
+function _toConsumableArray(arr) { return _arrayWithoutHoles(arr) || _iterableToArray(arr) || _nonIterableSpread(); }
+
+function _nonIterableSpread() { throw new TypeError("Invalid attempt to spread non-iterable instance"); }
+
+function _iterableToArray(iter) { if (Symbol.iterator in Object(iter) || Object.prototype.toString.call(iter) === "[object Arguments]") return Array.from(iter); }
+
+function _arrayWithoutHoles(arr) { if (Array.isArray(arr)) { for (var i = 0, arr2 = new Array(arr.length); i < arr.length; i++) { arr2[i] = arr[i]; } return arr2; } }
+
+function _classCallCheck(instance, Constructor) { if (!(instance instanceof Constructor)) { throw new TypeError("Cannot call a class as a function"); } }
+
+function _defineProperties(target, props) { for (var i = 0; i < props.length; i++) { var descriptor = props[i]; descriptor.enumerable = descriptor.enumerable || false; descriptor.configurable = true; if ("value" in descriptor) descriptor.writable = true; Object.defineProperty(target, descriptor.key, descriptor); } }
+
+function _createClass(Constructor, protoProps, staticProps) { if (protoProps) _defineProperties(Constructor.prototype, protoProps); if (staticProps) _defineProperties(Constructor, staticProps); return Constructor; }
+
+function _possibleConstructorReturn(self, call) { if (call && (_typeof(call) === "object" || typeof call === "function")) { return call; } return _assertThisInitialized(self); }
+
+function _getPrototypeOf(o) { _getPrototypeOf = Object.setPrototypeOf ? Object.getPrototypeOf : function _getPrototypeOf(o) { return o.__proto__ || Object.getPrototypeOf(o); }; return _getPrototypeOf(o); }
+
+function _assertThisInitialized(self) { if (self === void 0) { throw new ReferenceError("this hasn't been initialised - super() hasn't been called"); } return self; }
+
+function _inherits(subClass, superClass) { if (typeof superClass !== "function" && superClass !== null) { throw new TypeError("Super expression must either be null or a function"); } subClass.prototype = Object.create(superClass && superClass.prototype, { constructor: { value: subClass, writable: true, configurable: true } }); if (superClass) _setPrototypeOf(subClass, superClass); }
+
+function _setPrototypeOf(o, p) { _setPrototypeOf = Object.setPrototypeOf || function _setPrototypeOf(o, p) { o.__proto__ = p; return o; }; return _setPrototypeOf(o, p); }
+
+var Views =
+/*#__PURE__*/
+function (_EmittableGroup) {
+  _inherits(Views, _EmittableGroup);
+
+  function Views(parent) {
+    var _this;
+
+    _classCallCheck(this, Views);
+
+    _this = _possibleConstructorReturn(this, _getPrototypeOf(Views).call(this));
+    _this.views_ = [];
+    _this.origin = new THREE.Vector3();
+
+    var room = _this.room = _this.addRoom(_assertThisInitialized(_this));
+
+    var floor = _this.floor = _this.addFloor(_assertThisInitialized(_this));
+
+    var ceil = _this.ceil = _this.addCeil(_assertThisInitialized(_this));
+
+    var points = _this.points = _this.addPoints(_assertThisInitialized(_this));
+
+    var panel = _this.panel = _this.addPanel(_assertThisInitialized(_this));
+
+    parent.add(_assertThisInitialized(_this));
+    return _this;
+  }
+
+  _createClass(Views, [{
+    key: "hittest",
+    value: function hittest(raycaster) {
+      var point; // raycaster.params.Points.threshold = 10.0;
+
+      var intersections = raycaster.intersectObjects(this.points.children);
+      var intersection = intersections.length ? intersections[0] : null;
+      this.over = intersection;
+      this.down = intersection;
+    } // !!!
+
+  }, {
+    key: "onInitView",
+    value: function onInitView(previous, current) {
+      var _this2 = this;
+
+      // console.log(previous, current);
+      this.onExitPanel();
+      this.onExitPoints(previous).then(function () {
+        // console.log(this.points.vertices);
+        _this2.onExitView(previous).then(function () {
+          // if (!previous) {
+          _this2.onEnterView(current).then(function () {
+            _this2.onEnterPoints(current); // console.log(this.points.vertices);
+
+          }); // }
+
+        });
+      });
+    }
+  }, {
+    key: "onExitView",
+    value: function onExitView(view) {
+      var _this3 = this;
+
+      return new Promise(function (resolve, reject) {
+        if (view) {
+          TweenMax.to(_this3.room.sphere.material, 0.4, {
+            opacity: 0,
+            delay: 0.0,
+            onCompleted: function onCompleted() {
+              setTimeout(function () {
+                resolve(view);
+              }, 250);
+            }
+          });
+        } else {
+          resolve(view);
+        }
+      });
+    }
+  }, {
+    key: "onEnterView",
+    value: function onEnterView(view) {
+      var _this4 = this;
+
+      return new Promise(function (resolve, reject) {
+        if (view) {
+          setTimeout(function () {
+            // const tourTextureSrc = container.getAttribute('texture');
+            var loader = new THREE.TextureLoader();
+            loader.crossOrigin = '';
+            loader.load(view.image, function (texture) {
+              /*
+              // texture.wrapS = texture.wrapT = THREE.RepeatWrapping;
+              // texture.repeat.set(2, 2);
+              this.tourTexture = texture;
+              this.createScene();
+              */
+
+              /*
+              if (this.room.sphere.material.map) {
+              	this.room.sphere.material.map.dispose();
+              }
+              */
+              var material = _this4.room.sphere.material;
+              material.opacity = 0;
+              material.color.setHex(0xffffff); // texture.minFilter = THREE.NearestMipMapNearestFilter;
+              // texture.magFilter = THREE.LinearMipMapLinearFilter;
+
+              material.map = texture;
+              material.map.needsUpdate = true;
+              material.needsUpdate = true;
+              TweenMax.to(material, 0.6, {
+                opacity: _const.TEST_ENABLED ? 0.5 : 1,
+                delay: 0.1,
+                onCompleted: function onCompleted() {
+                  resolve(view);
+                }
+              });
+
+              _this4.emit('onEnterView', view);
+            });
+          }, 100);
+        } else {
+          reject(view);
+        }
+      });
+    }
+  }, {
+    key: "onEnterPoints",
+    value: function onEnterPoints(view) {
+      var _this5 = this;
+
+      view.points.forEach(function (point, i) {
+        return _this5.addPoint(_this5.points, _construct(THREE.Vector3, _toConsumableArray(point.position)), i);
+      });
+    }
+  }, {
+    key: "onExitPoints",
+    value: function onExitPoints(view) {
+      var _this6 = this;
+
+      if (view) {
+        return Promise.all(view.points.map(function (point, i) {
+          return _this6.removePoint(i);
+        }));
+      } else {
+        return Promise.resolve();
+      }
+    }
+  }, {
+    key: "onEnterPanel",
+    value: function onEnterPanel(point) {
+      var _this7 = this;
+
+      this.getPanelInfoById('#panel').then(function (info) {
+        if (info) {
+          var panel = _this7.panel;
+          panel.material.map = info.map;
+          panel.material.opacity = 0; // panel.material.alphaMap = info.alphaMap;
+
+          panel.material.needsUpdate = true; // const scale = info.width / 256;
+          // panel.geometry.scale(scale, scale, scale);
+          // panel.geometry.verticesNeedUpdate = true;
+
+          var position = point.normalize().multiplyScalar(_const.PANEL_RADIUS);
+          panel.position.set(position.x, position.y + 30 + 30, position.z);
+          panel.lookAt(_this7.origin);
+
+          _this7.add(panel);
+
+          var from = {
+            value: 1
+          };
+          TweenMax.to(from, 0.2, {
+            value: 0,
+            delay: 0.2,
+            onUpdate: function onUpdate() {
+              panel.position.set(position.x, position.y + 30 + 30 * from.value, position.z);
+              panel.lookAt(_this7.origin);
+              panel.material.opacity = 1 - from.value;
+              panel.material.needsUpdate = true;
+            }
+          }); // console.log('getPanelInfoById', panel.position);
+        }
+      });
+    }
+  }, {
+    key: "onExitPanel",
+    value: function onExitPanel() {
+      var panel = this.panel;
+
+      if (panel && panel.parent) {
+        panel.parent.remove(panel);
+      }
+    } //
+
+  }, {
+    key: "addRoom",
+    value: function addRoom(parent) {
+      var group = new THREE.Group();
+      var geometry = new THREE.SphereBufferGeometry(_const.ROOM_RADIUS, 72, 72); // const geometry = new THREE.IcosahedronBufferGeometry(ROOM_RADIUS, 4);
+      // console.log(geometry);
+      // invert the geometry on the x-axis so that all of the faces point inward
+
+      geometry.scale(-1, 1, 1);
+      var material = new THREE.MeshBasicMaterial({
+        color: 0x000000,
+        depthTest: false,
+        transparent: true,
+        opacity: 0.0 // wireframe: true
+
+      });
+      /*
+      const material = new THREE.MeshStandardMaterial({
+      	color: '#fefefe',
+      	roughness: 0.9,
+      	metalness: 0.1,
+      	roughnessMap: texture,
+      	map: texture,
+      	transparent: true,
+      	opacity: 0,
+      	// premultipliedAlpha: true,
+      });
+      */
+
+      var sphere = new THREE.Mesh(geometry, material); // sphere.castShadow = false;
+      // sphere.receiveShadow = true;
+
+      group.renderOrder = -1;
+      group.add(sphere);
+      group.sphere = sphere; //
+
+      /*
+      const rotation = new THREE.Euler(0.0, 0.0, 0.0, 'XYZ');
+      group.rotation.set(rotation.x, rotation.y, rotation.z);
+      */
+
+      parent.add(group);
+      return group;
+    }
+  }, {
+    key: "addFloor",
+    value: function addFloor(parent) {
+      var geometry = new THREE.PlaneGeometry(_const.ROOM_RADIUS / 5 * 3, _const.ROOM_RADIUS / 5 * 3, 3, 3);
+      var loader = new THREE.TextureLoader();
+      var texture = loader.load('img/floor.jpg');
+      var textureAlpha = loader.load('img/floor-alpha.jpg');
+      var material = new THREE.MeshBasicMaterial({
+        map: texture,
+        alphaMap: textureAlpha,
+        // alphaTest: 0.5,
+        // blending: THREE.AdditiveBlending,
+        // depthTest: true,
+        transparent: true
+      });
+      /*
+      material.blending = THREE.AdditiveBlending;
+      */
+
+      var mesh = new THREE.Mesh(geometry, material);
+      mesh.position.y = -_const.ROOM_RADIUS / 5 * 3;
+      mesh.rotation.x = -Math.PI / 2;
+      parent.add(mesh);
+      return mesh;
+    }
+  }, {
+    key: "addCeil",
+    value: function addCeil(parent) {
+      var geometry = new THREE.PlaneGeometry(_const.ROOM_RADIUS / 5 * 2, _const.ROOM_RADIUS / 5 * 2, 3, 3);
+      var loader = new THREE.TextureLoader();
+      var texture = loader.load('img/ceil.jpg');
+      var textureAlpha = loader.load('img/ceil-alpha.jpg');
+      var material = new THREE.MeshBasicMaterial({
+        map: texture,
+        alphaMap: textureAlpha,
+        // alphaTest: 0.5,
+        // blending: THREE.AdditiveBlending,
+        // depthTest: true,
+        transparent: true
+      });
+      var mesh = new THREE.Mesh(geometry, material);
+      mesh.position.y = _const.ROOM_RADIUS / 5 * 4;
+      mesh.rotation.x = Math.PI / 2;
+      parent.add(mesh);
+      return mesh;
+    }
+  }, {
+    key: "addPanel",
+    value: function addPanel(parent) {
+      var geometry = new THREE.PlaneBufferGeometry(_const.PANEL_RADIUS / 2.5, _const.PANEL_RADIUS / 2.5, 3, 3);
+      var material = new THREE.MeshBasicMaterial({
+        transparent: true,
+        opacity: 1 // side: THREE.DoubleSide,
+
+      });
+      var mesh = new THREE.Mesh(geometry, material);
+      mesh.position.set(100000, 100000, 100000); // parent.add(mesh);
+
+      return mesh;
+    }
+  }, {
+    key: "addPoints",
+    value: function addPoints(parent) {
+      var points = new THREE.Group();
+      parent.add(points);
+      return points;
+    }
+  }, {
+    key: "removePoints",
+    value: function removePoints() {
+      /*
+      if (this.points) {
+      	this.points.remove();
+      	delete this.points;
+      }
+      */
+    }
+  }, {
+    key: "addPoint",
+    value: function addPoint(parent, position, i) {
+      // console.log('addPoint', parent, position, i);
+      // size 2 about 20 cm radius
+      var geometry = new THREE.PlaneBufferGeometry(2, 2, 2, 2);
+      var loader = new THREE.TextureLoader();
+      var texture = loader.load('img/pin.jpg');
+      var material = new THREE.MeshBasicMaterial({
+        alphaMap: texture,
+        transparent: true,
+        opacity: 0
+      });
+      var point = new THREE.Mesh(geometry, material);
+      position = position.normalize().multiplyScalar(_const.POINT_RADIUS);
+      point.position.set(position.x, position.y, position.z);
+      point.lookAt(this.origin);
+      parent.add(point);
+      var from = {
+        opacity: 0
+      };
+      TweenMax.to(from, 0.5, {
+        opacity: 1,
+        delay: 0.1 * i,
+        onUpdate: function onUpdate() {
+          // console.log(index, from.opacity);
+          point.material.opacity = from.opacity;
+          point.material.needsUpdate = true;
+        },
+        onCompleted: function onCompleted() {// console.log(index, 'completed');
+        }
+      });
+      return point; // console.log(index, 'start');
+    }
+  }, {
+    key: "removePoint",
+    value: function removePoint(i) {
+      var _this8 = this;
+
+      return new Promise(function (resolve, reject) {
+        var point = _this8.points.children[i];
+        var from = {
+          opacity: 1
+        };
+        TweenMax.to(from, 0.5, {
+          opacity: 0,
+          delay: 0.0 * i,
+          onUpdate: function onUpdate() {
+            // console.log(index, from.opacity);
+            point.material.opacity = from.opacity;
+            point.material.needsUpdate = true;
+          },
+          onCompleted: function onCompleted() {
+            _this8.points.remove(point);
+
+            resolve();
+          }
+        });
+      });
+    }
+  }, {
+    key: "createPoint",
+    value: function createPoint(intersection) {
+      var position = intersection.point.clone();
+      this.addPoint(this.points, position, 0);
+      this.view.points.push({
+        id: 2,
+        position: position.toArray(),
+        type: 1,
+        name: 'Point 2',
+        key: 'POINT2'
+      });
+    }
+  }, {
+    key: "views",
+    get: function get() {
+      return this.views_;
+    },
+    set: function set(views) {
+      this.views_ = views;
+      this.index = 0;
+    }
+  }, {
+    key: "view",
+    get: function get() {
+      return this.view_;
+    },
+    set: function set(view) {
+      this.onInitView(this.view_, view);
+      this.view_ = view;
+    }
+  }, {
+    key: "index",
+    get: function get() {
+      return this.index_;
+    },
+    set: function set(index) {
+      this.index_ = index;
+      this.view = this.views[index];
+    } // !!!
+
+  }, {
+    key: "over",
+    get: function get() {
+      return this.over_;
+    },
+    set: function set(intersection) {
+      var object = intersection ? intersection.object : null;
+
+      if (this.over_ !== object) {
+        this.over_ = object;
+
+        if (object !== null) {
+          this.onEnterPanel(object.position.clone());
+        } else {
+          this.onExitPanel();
+        }
+
+        var tweens = this.points.children.map(function (x, index) {
+          var from = {
+            scale: x.scale.x
+          };
+          return TweenMax.to(from, 0.25, {
+            scale: x === object ? 3 : 1,
+            delay: 0,
+            onUpdate: function onUpdate() {
+              x.scale.set(from.scale, from.scale, from.scale);
+            },
+            onCompleted: function onCompleted() {// console.log(index, 'completed');
+            }
+          });
+        });
+      }
+    }
+  }, {
+    key: "down",
+    get: function get() {
+      return this.down_;
+    },
+    set: function set(intersection) {
+      var object = intersection && this.controllers.isControllerSelecting ? intersection.object : null;
+
+      if (this.down_ !== object) {
+        this.down_ = object;
+
+        if (object !== null) {
+          var position = object.position; // const debugInfo = `down => {${position.x}, ${position.y}, ${position.z}}`;
+          // this.debugInfo.innerHTML = debugInfo;
+          // console.log(this.views.length);
+          // this.pivot.index = (this.pivot.index + 1) % this.pivot.views.length;
+          // console.log(index, point, debugInfo);
+        }
+      }
+    }
+  }]);
+
+  return Views;
+}(_emittable.default);
+
+exports.default = Views;
+
+},{"./const":4,"./emittable.group":6}],12:[function(require,module,exports){
 "use strict";
 
 Object.defineProperty(exports, "__esModule", {
@@ -9858,38 +10996,28 @@ function (_EventEmitter) {
 
 exports.VR = VR;
 
-},{"../shared/event-emitter":3}],8:[function(require,module,exports){
+},{"../shared/event-emitter":3}],13:[function(require,module,exports){
 "use strict";
 
 var _html2canvas = _interopRequireDefault(require("html2canvas"));
 
-var _drag = _interopRequireDefault(require("./shared/drag.listener"));
-
 var _const = require("./three/const");
 
-var _interactive = require("./three/interactive.mesh");
+var _controllers2 = _interopRequireDefault(require("./three/controllers"));
 
-var _menu2 = require("./three/menu");
+var _interactive = _interopRequireDefault(require("./three/interactive.mesh"));
+
+var _orbit2 = _interopRequireDefault(require("./three/orbit"));
+
+var _topBar2 = _interopRequireDefault(require("./three/top-bar"));
+
+var _views = _interopRequireDefault(require("./three/views"));
 
 var _vr = require("./three/vr");
 
 function _interopRequireDefault(obj) { return obj && obj.__esModule ? obj : { default: obj }; }
 
 function _typeof(obj) { if (typeof Symbol === "function" && typeof Symbol.iterator === "symbol") { _typeof = function _typeof(obj) { return typeof obj; }; } else { _typeof = function _typeof(obj) { return obj && typeof Symbol === "function" && obj.constructor === Symbol && obj !== Symbol.prototype ? "symbol" : typeof obj; }; } return _typeof(obj); }
-
-function isNativeReflectConstruct() { if (typeof Reflect === "undefined" || !Reflect.construct) return false; if (Reflect.construct.sham) return false; if (typeof Proxy === "function") return true; try { Date.prototype.toString.call(Reflect.construct(Date, [], function () {})); return true; } catch (e) { return false; } }
-
-function _construct(Parent, args, Class) { if (isNativeReflectConstruct()) { _construct = Reflect.construct; } else { _construct = function _construct(Parent, args, Class) { var a = [null]; a.push.apply(a, args); var Constructor = Function.bind.apply(Parent, a); var instance = new Constructor(); if (Class) _setPrototypeOf(instance, Class.prototype); return instance; }; } return _construct.apply(null, arguments); }
-
-function _setPrototypeOf(o, p) { _setPrototypeOf = Object.setPrototypeOf || function _setPrototypeOf(o, p) { o.__proto__ = p; return o; }; return _setPrototypeOf(o, p); }
-
-function _toConsumableArray(arr) { return _arrayWithoutHoles(arr) || _iterableToArray(arr) || _nonIterableSpread(); }
-
-function _nonIterableSpread() { throw new TypeError("Invalid attempt to spread non-iterable instance"); }
-
-function _iterableToArray(iter) { if (Symbol.iterator in Object(iter) || Object.prototype.toString.call(iter) === "[object Arguments]") return Array.from(iter); }
-
-function _arrayWithoutHoles(arr) { if (Array.isArray(arr)) { for (var i = 0, arr2 = new Array(arr.length); i < arr.length; i++) { arr2[i] = arr[i]; } return arr2; } }
 
 function _classCallCheck(instance, Constructor) { if (!(instance instanceof Constructor)) { throw new TypeError("Cannot call a class as a function"); } }
 
@@ -9916,15 +11044,8 @@ function () {
       height: 0,
       aspect: 0
     };
-    this.isUserInteracting = false;
-    this.longitude = 0;
-    this.latitude = 0;
-    this.direction = 1;
-    this.speed = 1;
-    this.inertia = new THREE.Vector3();
     this.origin = new THREE.Vector3();
     this.cameraDirection = new THREE.Vector3();
-    this.controllerDirection = new THREE.Vector3();
     this.init();
   }
 
@@ -9938,7 +11059,7 @@ function () {
           return response.json();
         }).then(function (response) {
           _this.views = response.views;
-          _this.index = 0;
+          _this.pivot.views = response.views;
         });
       } catch (error) {
         this.debugInfo.innerHTML = error;
@@ -9947,6 +11068,8 @@ function () {
   }, {
     key: "init",
     value: function init() {
+      var _this2 = this;
+
       var body = this.body = document.querySelector('body');
       var section = this.section = document.querySelector('.vrtour');
       var container = this.container = section.querySelector('.vrtour__container');
@@ -9959,62 +11082,42 @@ function () {
       this.onMouseMove = this.onMouseMove.bind(this);
       this.onMouseUp = this.onMouseUp.bind(this);
       this.onMouseWheel = this.onMouseWheel.bind(this);
-      this.onSave = this.onSave.bind(this);
-      this.onLeftSelectStart = this.onLeftSelectStart.bind(this);
-      this.onLeftSelectEnd = this.onLeftSelectEnd.bind(this);
-      this.onRightSelectStart = this.onRightSelectStart.bind(this);
-      this.onRightSelectEnd = this.onRightSelectEnd.bind(this);
-      this.initRenderer();
-    }
-  }, {
-    key: "initRenderer",
-    value: function initRenderer() {
+      this.onSave = this.onSave.bind(this); //
+
       var scene = this.scene = this.addScene();
       var camera = this.camera = this.addCamera();
-      var pivot = this.pivot = this.addPivot(scene);
-      var room = this.room = this.addRoom(pivot);
-      var floor = this.floor = this.addFloor(pivot);
-      var ceil = this.ceil = this.addCeil(pivot);
-      var points = this.points = this.addPoints(pivot);
-      var panel = this.panel = this.addPanel(pivot); // renderer
-
-      var renderer = this.renderer = this.addRenderer(); // this.container.appendChild(WEBVR.createButton(renderer, { referenceSpaceType: 'local' }));
-
-      var vr = this.vr = this.addVR(renderer, this.container);
-      /*
-      const unsubscribe = vr.addListener('error', (error) => {
-      	this.debugInfo.innerHTML = error;
+      var pivot = this.pivot = new _views.default(scene);
+      pivot.on('onEnterView', function (view) {
+        _this2.orbit.setOrientation(view.orientation);
       });
-      */
-      // this.addIO();
-      // unsubscribe();
-      // controllers
+      var renderer = this.renderer = this.addRenderer(); // container.appendChild(WEBVR.createButton(renderer, { referenceSpaceType: 'local' }));
+
+      var vr = this.vr = this.addVR(renderer, container); // this.addIO();
 
       console.log('vr.mode', vr.mode, _const.TEST_ENABLED);
 
       if (vr.mode !== _vr.VR_MODE.NONE) {
-        var left = this.left = this.addControllerLeft(renderer, scene);
-        var right = this.right = this.addControllerRight(renderer, scene);
-        var menu = this.menu = new _menu2.Menu(pivot);
-        var text = this.text = this.addText(pivot);
-        var pointer = this.pointer = this.addPointer(pivot); // const dragListener = this.dragListener = this.addVRDragListener();
-        // hands
-        // const hands = this.hands = this.addHands();
+        var controllers = this.controllers = new _controllers2.default(renderer, scene, pivot);
+        var topBar = this.topBar = new _topBar2.default(pivot);
+        var pointer = this.pointer = this.addPointer(pivot);
       } else if (_const.TEST_ENABLED) {
-        this.addTestController(scene);
+        var _controllers = this.controllers = new _controllers2.default(renderer, scene, pivot);
 
-        var _menu = this.menu = new _menu2.Menu(pivot);
+        var _topBar = this.topBar = new _topBar2.default(pivot);
 
-        var _text = this.text = this.addText(pivot);
+        var _pointer = this.pointer = this.addPointer(pivot);
 
         camera.target.z = _const.ROOM_RADIUS;
         camera.lookAt(camera.target);
-        var dragListener = this.dragListener = this.addDragListener();
+        var orbit = this.orbit = new _orbit2.default();
+        var dragListener = this.dragListener = orbit.setDragListener(container);
       } else {
         camera.target.z = _const.ROOM_RADIUS;
         camera.lookAt(camera.target);
 
-        var _dragListener = this.dragListener = this.addDragListener();
+        var _orbit = this.orbit = new _orbit2.default();
+
+        var _dragListener = this.dragListener = _orbit.setDragListener(container);
       } // raycaster
 
 
@@ -10027,206 +11130,6 @@ function () {
       this.debugSave.addEventListener('click', this.onSave, false);
       this.section.classList.add('init');
       this.onWindowResize();
-    }
-  }, {
-    key: "addIO",
-    value: function addIO() {
-      var _this2 = this;
-
-      var rr = function rr() {
-        return -20 + Math.random() * 40;
-      };
-
-      var ims = this.ims = new Array(10).fill(null).map(function (x) {
-        var im = new _interactive.InteractiveMesh();
-        im.position.set(rr(), 0, rr());
-        im.on('over', function (item) {
-          item.material.color.setHex(0xff0000);
-        });
-        im.on('out', function (item) {
-          item.material.color.setHex(0xff00ff);
-        });
-        im.on('down', function (item) {
-          item.material.color.setHex(0x00ff00);
-        });
-        im.on('up', function (item) {
-          item.material.color.setHex(0xff00ff);
-        });
-
-        _this2.pivot.add(im);
-
-        return im;
-      });
-    }
-  }, {
-    key: "addTestController",
-    value: function addTestController(scene) {
-      var _this3 = this;
-
-      var controller = this.right = new THREE.Group();
-      controller.position.set(0, 0, 0);
-      this.addControllerCylinder(controller, 0);
-      this.scene.add(controller); // this.controller = controller;
-
-      var pointer = this.pointer = this.addPointer(this.pivot);
-      this.container.addEventListener('mousedown', function () {
-        _this3.onRightSelectStart();
-      });
-      this.container.addEventListener('mouseup', function () {
-        _this3.onRightSelectEnd();
-      });
-    }
-  }, {
-    key: "testController",
-    value: function testController() {
-      if (_const.TEST_ENABLED) {
-        if (this.controller) {
-          this.controller.position.x = this.mouse.x * 50;
-          this.controller.position.y = this.mouse.y * 50;
-        }
-
-        this.updateController();
-      }
-    }
-  }, {
-    key: "addScene",
-    value: function addScene() {
-      var scene = new THREE.Scene(); // scene.background = new THREE.Color(0x00000000);
-      // scene.background = new THREE.Color(0x404040);
-      // scene.fog = new THREE.Fog(scene.background, 10, 700);
-
-      return scene;
-    }
-  }, {
-    key: "addCamera",
-    value: function addCamera() {
-      var camera = new THREE.PerspectiveCamera(70, window.innerWidth / window.innerHeight, 0.01, _const.ROOM_RADIUS * 2);
-      camera.target = new THREE.Vector3();
-      return camera;
-    }
-  }, {
-    key: "addText",
-    value: function addText(parent) {
-      var _this4 = this;
-
-      var loader = new THREE.FontLoader();
-      loader.load('fonts/helvetiker_regular.typeface.json', function (font) {
-        _this4.font = font;
-        var material = new THREE.MeshBasicMaterial({
-          color: 0x33c5f6,
-          transparent: true,
-          opacity: 1,
-          side: THREE.DoubleSide
-        });
-        _this4.fontMaterial = material;
-        /*
-        const shapes = font.generateShapes('0', 10);
-        const geometry = new THREE.ShapeBufferGeometry(shapes);
-        geometry.dynamic = true;
-        geometry.computeBoundingBox();
-        const x = -0.5 * (geometry.boundingBox.max.x - geometry.boundingBox.min.x);
-        geometry.translate(x, 5, -80);
-        // make shape ( N.B. edge view not visible )
-        const text = new THREE.Mesh(geometry, material);
-        // text.position.set(-10000, -10000, -10000);
-        this.text = text;
-        parent.add(text);
-        */
-
-        /*
-        // make line shape ( N.B. edge view remains visible )
-        const matDark = new THREE.LineBasicMaterial({
-        	color: color,
-        	side: THREE.DoubleSide
-        });
-        const holeShapes = [];
-        for (let i = 0; i < shapes.length; i++) {
-        	const shape = shapes[i];
-        	if (shape.holes && shape.holes.length > 0) {
-        		for (let j = 0; j < shape.holes.length; j++) {
-        			const hole = shape.holes[j];
-        			holeShapes.push(hole);
-        		}
-        	}
-        }
-        shapes.push.apply(shapes, holeShapes);
-        const lineText = new THREE.Object3D();
-        for (let i = 0; i < shapes.length; i++) {
-        	const shape = shapes[i];
-        	const points = shape.getPoints();
-        	const geometry = new THREE.BufferGeometry().setFromPoints(points);
-        	geometry.translate(xMid, 0, 0);
-        	const lineMesh = new THREE.Line(geometry, matDark);
-        	lineText.add(lineMesh);
-        }
-        parent.add(lineText);
-        */
-      });
-    }
-  }, {
-    key: "setText",
-    value: function setText(message) {
-      message = message || '1';
-
-      if (this.text) {
-        this.text.parent.remove(this.text);
-        this.text.geometry.dispose();
-      }
-
-      var shapes = this.font.generateShapes(message, 5);
-      var geometry = new THREE.ShapeBufferGeometry(shapes); // geometry.dynamic = true;
-
-      geometry.computeBoundingBox();
-      var x = -0.5 * (geometry.boundingBox.max.x - geometry.boundingBox.min.x);
-      geometry.translate(x, 0, 0); // make shape ( N.B. edge view not visible )
-
-      var text = new THREE.Mesh(geometry, this.fontMaterial);
-      text.position.set(0, 0, -_const.POINTER_RADIUS);
-      this.text = text;
-      this.pivot.add(text);
-      /*
-      const shapes = this.font.generateShapes(message, 10);
-      const geometry = new THREE.ShapeBufferGeometry(shapes);
-      geometry.computeBoundingBox();
-      const x = -0.5 * (geometry.boundingBox.max.x - geometry.boundingBox.min.x);
-      const text = this.text;
-      text.geometry.copy(geometry);
-      text.geometry.translate(x, 0, 0);
-      // text.geometry.position.needsUpdate = true;
-      geometry.dispose();
-      */
-    }
-  }, {
-    key: "copyGeometry",
-    value: function copyGeometry() {
-      var MAX_POINTS = 500; // geometry
-
-      var geometry = new THREE.BufferGeometry(); // attributes
-
-      var positions = new Float32Array(MAX_POINTS * 3); // 3 vertices per point
-
-      geometry.addAttribute('position', new THREE.BufferAttribute(positions, 3)); // draw range
-
-      var drawCount = 2; // draw the first 2 points, only
-
-      geometry.setDrawRange(0, drawCount); // material
-
-      var material = new THREE.LineBasicMaterial({
-        color: 0xff0000,
-        linewidth: 2
-      }); // line
-
-      var line = new THREE.Line(geometry, material);
-      scene.add(line); // And then to later update after adding new point information:
-
-      line.geometry.setDrawRange(0, newValue);
-    }
-  }, {
-    key: "addPivot",
-    value: function addPivot(parent) {
-      var group = new THREE.Group();
-      parent.add(group);
-      return group;
     }
   }, {
     key: "addRenderer",
@@ -10248,107 +11151,33 @@ function () {
       return renderer;
     }
   }, {
+    key: "addScene",
+    value: function addScene() {
+      var scene = new THREE.Scene(); // scene.background = new THREE.Color(0x00000000);
+      // scene.background = new THREE.Color(0x404040);
+      // scene.fog = new THREE.Fog(scene.background, 10, 700);
+
+      return scene;
+    }
+  }, {
+    key: "addCamera",
+    value: function addCamera() {
+      var camera = new THREE.PerspectiveCamera(70, window.innerWidth / window.innerHeight, 0.01, _const.ROOM_RADIUS * 2);
+      camera.target = new THREE.Vector3();
+      return camera;
+    }
+  }, {
     key: "addVR",
     value: function addVR(renderer, container) {
-      var _this5 = this;
+      var _this3 = this;
 
       var vr = new _vr.VR(renderer, {
         referenceSpaceType: 'local'
       }, function (error) {
-        _this5.debugInfo.innerHTML = error;
+        _this3.debugInfo.innerHTML = error;
       });
       container.appendChild(vr.element);
       return vr;
-    }
-  }, {
-    key: "addRoom",
-    value: function addRoom(parent) {
-      var group = new THREE.Group();
-      var geometry = new THREE.SphereBufferGeometry(_const.ROOM_RADIUS, 72, 72); // const geometry = new THREE.IcosahedronBufferGeometry(ROOM_RADIUS, 4);
-      // console.log(geometry);
-      // invert the geometry on the x-axis so that all of the faces point inward
-
-      geometry.scale(-1, 1, 1);
-      var material = new THREE.MeshBasicMaterial({
-        color: 0x000000,
-        depthTest: false,
-        transparent: true,
-        opacity: 0.0 // wireframe: true
-
-      });
-      /*
-      const material = new THREE.MeshStandardMaterial({
-      	color: '#fefefe',
-      	roughness: 0.9,
-      	metalness: 0.1,
-      	roughnessMap: texture,
-      	map: texture,
-      	transparent: true,
-      	opacity: 0,
-      	// premultipliedAlpha: true,
-      });
-      */
-
-      var sphere = new THREE.Mesh(geometry, material); // sphere.castShadow = false;
-      // sphere.receiveShadow = true;
-
-      group.renderOrder = -1;
-      group.add(sphere);
-      group.sphere = sphere; //
-
-      /*
-      const rotation = new THREE.Euler(0.0, 0.0, 0.0, 'XYZ');
-      group.rotation.set(rotation.x, rotation.y, rotation.z);
-      */
-
-      parent.add(group);
-      return group;
-    }
-  }, {
-    key: "addFloor",
-    value: function addFloor(parent) {
-      var geometry = new THREE.PlaneGeometry(_const.ROOM_RADIUS / 5 * 3, _const.ROOM_RADIUS / 5 * 3, 3, 3);
-      var loader = new THREE.TextureLoader();
-      var texture = loader.load('img/floor.jpg');
-      var textureAlpha = loader.load('img/floor-alpha.jpg');
-      var material = new THREE.MeshBasicMaterial({
-        map: texture,
-        alphaMap: textureAlpha,
-        // alphaTest: 0.5,
-        // blending: THREE.AdditiveBlending,
-        // depthTest: true,
-        transparent: true
-      });
-      /*
-      material.blending = THREE.AdditiveBlending;
-      */
-
-      var mesh = new THREE.Mesh(geometry, material);
-      mesh.position.y = -_const.ROOM_RADIUS / 5 * 3;
-      mesh.rotation.x = -Math.PI / 2;
-      parent.add(mesh);
-      return mesh;
-    }
-  }, {
-    key: "addCeil",
-    value: function addCeil(parent) {
-      var geometry = new THREE.PlaneGeometry(_const.ROOM_RADIUS / 5 * 2, _const.ROOM_RADIUS / 5 * 2, 3, 3);
-      var loader = new THREE.TextureLoader();
-      var texture = loader.load('img/ceil.jpg');
-      var textureAlpha = loader.load('img/ceil-alpha.jpg');
-      var material = new THREE.MeshBasicMaterial({
-        map: texture,
-        alphaMap: textureAlpha,
-        // alphaTest: 0.5,
-        // blending: THREE.AdditiveBlending,
-        // depthTest: true,
-        transparent: true
-      });
-      var mesh = new THREE.Mesh(geometry, material);
-      mesh.position.y = _const.ROOM_RADIUS / 5 * 4;
-      mesh.rotation.x = Math.PI / 2;
-      parent.add(mesh);
-      return mesh;
     }
   }, {
     key: "addPointer",
@@ -10402,521 +11231,36 @@ function () {
       return mesh;
     }
   }, {
-    key: "addPanel",
-    value: function addPanel(parent) {
-      var geometry = new THREE.PlaneBufferGeometry(_const.PANEL_RADIUS / 2.5, _const.PANEL_RADIUS / 2.5, 3, 3);
-      var material = new THREE.MeshBasicMaterial({
-        transparent: true,
-        opacity: 1 // side: THREE.DoubleSide,
+    key: "addIO",
+    value: function addIO() {
+      var _this4 = this;
 
-      });
-      var mesh = new THREE.Mesh(geometry, material);
-      mesh.position.set(100000, 100000, 100000); // parent.add(mesh);
-
-      return mesh;
-    }
-  }, {
-    key: "removePoints",
-    value: function removePoints() {
-      /*
-      if (this.points) {
-      	this.points.remove();
-      	delete this.points;
-      }
-      */
-    }
-  }, {
-    key: "addPoints",
-    value: function addPoints(parent) {
-      var points = new THREE.Group();
-      parent.add(points);
-      return points;
-    }
-  }, {
-    key: "addPoint",
-    value: function addPoint(parent, position, i) {
-      // console.log('addPoint', parent, position, i);
-      // size 2 about 20 cm radius
-      var geometry = new THREE.PlaneBufferGeometry(2, 2, 2, 2);
-      var loader = new THREE.TextureLoader();
-      var texture = loader.load('img/pin.jpg');
-      var material = new THREE.MeshBasicMaterial({
-        alphaMap: texture,
-        transparent: true,
-        opacity: 0
-      });
-      var point = new THREE.Mesh(geometry, material);
-      position = position.normalize().multiplyScalar(_const.POINT_RADIUS);
-      point.position.set(position.x, position.y, position.z);
-      point.lookAt(this.origin);
-      parent.add(point);
-      var from = {
-        opacity: 0
+      var rr = function rr() {
+        return -20 + Math.random() * 40;
       };
-      TweenMax.to(from, 0.5, {
-        opacity: 1,
-        delay: 0.1 * i,
-        onUpdate: function onUpdate() {
-          // console.log(index, from.opacity);
-          point.material.opacity = from.opacity;
-          point.material.needsUpdate = true;
-        },
-        onCompleted: function onCompleted() {// console.log(index, 'completed');
-        }
-      });
-      return point; // console.log(index, 'start');
-    }
-  }, {
-    key: "removePoint",
-    value: function removePoint(i) {
-      var _this6 = this;
 
-      return new Promise(function (resolve, reject) {
-        var point = _this6.points.children[i];
-        var from = {
-          opacity: 1
-        };
-        TweenMax.to(from, 0.5, {
-          opacity: 0,
-          delay: 0.0 * i,
-          onUpdate: function onUpdate() {
-            // console.log(index, from.opacity);
-            point.material.opacity = from.opacity;
-            point.material.needsUpdate = true;
-          },
-          onCompleted: function onCompleted() {
-            _this6.points.remove(point);
-
-            resolve();
-          }
+      var ims = this.ims = new Array(10).fill(null).map(function (x) {
+        var im = new _interactive.default();
+        im.position.set(rr(), 0, rr());
+        im.on('over', function (item) {
+          item.material.color.setHex(0xff0000);
         });
-      });
-    }
-  }, {
-    key: "createPoint",
-    value: function createPoint(intersection) {
-      var position = intersection.point.clone();
-      this.addPoint(this.points, position, 0);
-      this.view.points.push({
-        id: 2,
-        position: position.toArray(),
-        type: 1,
-        name: 'Point 2',
-        key: 'POINT2'
-      });
-    }
-  }, {
-    key: "addControllerLeft",
-    value: function addControllerLeft(renderer, parent) {
-      var controller = renderer.vr.getController(0);
-      var cylinder = controller.cylinder = this.addControllerCylinder(controller, 0); // controller.addEventListener('selectstart', this.onLeftSelectStart);
-      // controller.addEventListener('selectend', this.onLeftSelectEnd);
-
-      parent.add(controller);
-      return controller;
-    }
-  }, {
-    key: "addControllerRight",
-    value: function addControllerRight(renderer, parent) {
-      var controller = renderer.vr.getController(1);
-      var cylinder = controller.cylinder = this.addControllerCylinder(controller, 1);
-      /*
-      controller.addEventListener('selectstart', this.onRightSelectStart);
-      controller.addEventListener('selectend', this.onRightSelectEnd);
-      */
-
-      parent.add(controller);
-      return controller;
-    }
-  }, {
-    key: "addControllerCylinder",
-    value: function addControllerCylinder(controller, i) {
-      var geometry = new THREE.CylinderBufferGeometry((0, _const.cm)(2), (0, _const.cm)(2), (0, _const.cm)(12), 24);
-      var texture = new THREE.TextureLoader().load('img/matcap.jpg');
-      var material = new THREE.MeshMatcapMaterial({
-        color: i === 0 ? 0xff0000 : 0x0000ff,
-        matcap: texture,
-        transparent: true,
-        opacity: 1
-      });
-      /*
-      const material = new THREE.MeshBasicMaterial({
-      	color: i === 0 ? 0x0000ff : 0xff0000,
-      	// roughness: 0.2,
-      	// metalness: 0.1,
-      });
-      */
-
-      /*
-      const modifier = new THREE.SubdivisionModifier(2);
-      const smoothGeometry = modifier.modify(geometry);
-      const smoothBufferGeometry = new THREE.BufferGeometry().fromGeometry(smoothGeometry);
-      const mesh = new THREE.Mesh(smoothBufferGeometry, material);
-      */
-
-      var mesh = new THREE.Mesh(geometry, material);
-      mesh.geometry.rotateX(Math.PI / 2);
-      controller.add(mesh); //
-
-      var geometryIndicator = new THREE.CylinderBufferGeometry((0, _const.cm)(0.5), (0, _const.cm)(0.1), 10, 12);
-      var materialIndicator = new THREE.MeshBasicMaterial({
-        color: 0xffffff,
-        // matcap: texture,
-        transparent: true,
-        opacity: 0.5
-      });
-      var indicator = new THREE.Mesh(geometryIndicator, materialIndicator);
-      controller.indicator = indicator;
-      indicator.geometry.rotateX(Math.PI / 2);
-      indicator.position.set(0, 0, -5); // controller.add(indicator);
-      //
-    }
-  }, {
-    key: "addHands",
-    value: function addHands() {
-      var hands = [];
-      var left = this.left;
-      var right = this.right;
-      var file = 'https://cdn.glitch.com/7ae766be-18fb-4945-ad9d-8cc3be027694%2Fhand.obj?1558677422910';
-      var loader = new THREE.OBJLoader();
-      loader.load(file, function (group) {
-        var texture = new THREE.TextureLoader().load('https://cdn.glitch.com/7ae766be-18fb-4945-ad9d-8cc3be027694%2FBazC_SkinMat.jpg?1558678160164');
-        var hand = group.children[0];
-        hand.geometry.rotateZ(-Math.PI / 2);
-        hand.geometry.rotateY(Math.PI);
-        hand.geometry.translate(1, -0.2, 0.25);
-        hand.geometry.scale(0.1, 0.1, 0.1);
-        hand.material = new THREE.MeshMatcapMaterial({
-          matcap: texture
+        im.on('out', function (item) {
+          item.material.color.setHex(0xff00ff);
         });
-        hand.scale.x = -1;
-        var leftHand = hand.clone();
-        right.add(leftHand);
-        hands.push(leftHand);
-        hand.scale.x = 1; // const bills = this.addBillsToHand(hand);
-
-        var rightHand = hand.clone();
-        left.add(rightHand);
-        hands.push(rightHand);
-      });
-      return hands;
-    }
-  }, {
-    key: "addDragListener",
-    value: function addDragListener() {
-      var _this7 = this;
-
-      var longitude, latitude;
-      var dragListener = new _drag.default(this.container, function (event) {
-        longitude = _this7.longitude;
-        latitude = _this7.latitude;
-      }, function (event) {
-        _this7.longitude = -event.distance.x * 0.1 + longitude;
-        _this7.latitude = event.distance.y * 0.1 + latitude;
-        _this7.direction = event.distance.x ? event.distance.x / Math.abs(event.distance.x) * -1 : 1; // console.log('longitude', this.longitude, 'latitude', this.latitude, 'direction', this.direction);
-      }, function (event) {
-        _this7.speed = Math.abs(event.strength.x) * 100; // console.log('speed', this.speed);
-      });
-
-      dragListener.move = function () {};
-
-      return dragListener;
-    }
-  }, {
-    key: "addVRDragListener",
-    value: function addVRDragListener() {
-      var _this8 = this;
-
-      /*
-      let longitude, latitude;
-      const dragListener = new DragListener(this.container, (event) => {
-      	longitude = this.longitude;
-      	latitude = this.latitude;
-      }, (event) => {
-      	this.longitude = -event.distance.x * 0.1 + longitude;
-      	this.latitude = event.distance.y * 0.1 + latitude;
-      	this.direction = event.distance.x ? (event.distance.x / Math.abs(event.distance.x) * -1) : 1;
-      	// console.log('longitude', this.longitude, 'latitude', this.latitude, 'direction', this.direction);
-      }, (event) => {
-      	this.speed = Math.abs(event.strength.x) * 100;
-      	// console.log('speed', this.speed);
-      });
-      */
-      var raycaster = this.raycaster; // const position = this.pivot.worldToLocal(controller.position);
-      // const rotation = this.pivot.worldToLocal(controller.getWorldDirection(new THREE.Vector3()).multiplyScalar(-1));
-
-      var dragListener = {
-        start: function start() {
-          var dragListener = _this8.dragListener;
-          dragListener.qd = _this8.controller.quaternion.clone();
-          dragListener.qp = _this8.pivot.quaternion.clone();
-          /*
-          dragListener.down = this.controller.getWorldDirection(new THREE.Vector3());
-          dragListener.rotation = this.pivot.rotation.toVector3();
-          */
-
-          dragListener.dragging = true;
-        },
-        move: function move() {
-          var dragListener = _this8.dragListener;
-
-          if (dragListener.dragging) {
-            var qd = dragListener.qd.clone();
-
-            var qm = _this8.controller.quaternion.clone();
-
-            var diff = qm.multiply(qd.inverse());
-            var qp = dragListener.qp.clone();
-
-            _this8.pivot.setRotationFromQuaternion(qp.multiply(diff));
-            /*
-            const down = dragListener.down;
-            const move = this.controller.getWorldDirection(new THREE.Vector3());
-            const rotation = dragListener.rotation.clone();
-            rotation.add(move);
-            rotation.sub(down);
-            this.pivot.rotation.set(-rotation.y, rotation.x, rotation.z);
-            */
-
-          }
-        },
-        end: function end() {
-          var dragListener = _this8.dragListener;
-          dragListener.dragging = false;
-        }
-      };
-      return dragListener;
-    }
-  }, {
-    key: "onInitView",
-    value: function onInitView(previous, current) {
-      var _this9 = this;
-
-      // console.log(previous, current);
-      this.onExitPanel();
-      this.onExitPoints(previous).then(function () {
-        // console.log(this.points.vertices);
-        _this9.onExitView(previous).then(function () {
-          // if (!previous) {
-          _this9.onEnterView(current).then(function () {
-            _this9.onEnterPoints(current); // console.log(this.points.vertices);
-
-          }); // }
-
+        im.on('down', function (item) {
+          item.material.color.setHex(0x00ff00);
         });
+        im.on('up', function (item) {
+          item.material.color.setHex(0xff00ff);
+        });
+
+        _this4.pivot.add(im);
+
+        return im;
       });
-    }
-  }, {
-    key: "onExitView",
-    value: function onExitView(view) {
-      var _this10 = this;
-
-      return new Promise(function (resolve, reject) {
-        if (view) {
-          TweenMax.to(_this10.room.sphere.material, 0.4, {
-            opacity: 0,
-            delay: 0.0,
-            onCompleted: function onCompleted() {
-              setTimeout(function () {
-                resolve(view);
-              }, 250);
-            }
-          });
-        } else {
-          resolve(view);
-        }
-      });
-    }
-  }, {
-    key: "onEnterView",
-    value: function onEnterView(view) {
-      var _this11 = this;
-
-      return new Promise(function (resolve, reject) {
-        if (view) {
-          setTimeout(function () {
-            // const tourTextureSrc = container.getAttribute('texture');
-            var loader = new THREE.TextureLoader();
-            loader.crossOrigin = '';
-            loader.load(view.image, function (texture) {
-              /*
-              // texture.wrapS = texture.wrapT = THREE.RepeatWrapping;
-              // texture.repeat.set(2, 2);
-              this.tourTexture = texture;
-              this.createScene();
-              */
-
-              /*
-              if (this.room.sphere.material.map) {
-              	this.room.sphere.material.map.dispose();
-              }
-              */
-              if (view.orientation) {
-                _this11.latitude = view.orientation.latitude;
-                _this11.longitude = view.orientation.longitude;
-              }
-
-              var material = _this11.room.sphere.material;
-              material.opacity = 0;
-              material.color.setHex(0xffffff); // texture.minFilter = THREE.NearestMipMapNearestFilter;
-              // texture.magFilter = THREE.LinearMipMapLinearFilter;
-
-              material.map = texture;
-              material.map.needsUpdate = true;
-              material.needsUpdate = true;
-              TweenMax.to(material, 0.6, {
-                opacity: _const.TEST_ENABLED ? 0.5 : 1,
-                delay: 0.1,
-                onCompleted: function onCompleted() {
-                  resolve(view);
-                }
-              });
-            });
-          }, 100);
-        } else {
-          reject(view);
-        }
-      });
-    }
-  }, {
-    key: "onEnterPoints",
-    value: function onEnterPoints(view) {
-      var _this12 = this;
-
-      view.points.forEach(function (point, i) {
-        return _this12.addPoint(_this12.points, _construct(THREE.Vector3, _toConsumableArray(point.position)), i);
-      });
-    }
-  }, {
-    key: "onExitPoints",
-    value: function onExitPoints(view) {
-      var _this13 = this;
-
-      if (view) {
-        return Promise.all(view.points.map(function (point, i) {
-          return _this13.removePoint(i);
-        }));
-      } else {
-        return Promise.resolve();
-      }
-    }
-  }, {
-    key: "onEnterPanel",
-    value: function onEnterPanel(point) {
-      var _this14 = this;
-
-      this.getPanelInfoById('#panel').then(function (info) {
-        if (info) {
-          var panel = _this14.panel;
-          panel.material.map = info.map;
-          panel.material.opacity = 0; // panel.material.alphaMap = info.alphaMap;
-
-          panel.material.needsUpdate = true; // const scale = info.width / 256;
-          // panel.geometry.scale(scale, scale, scale);
-          // panel.geometry.verticesNeedUpdate = true;
-
-          var position = point.normalize().multiplyScalar(_const.PANEL_RADIUS);
-          panel.position.set(position.x, position.y + 30 + 30, position.z);
-          panel.lookAt(_this14.origin);
-
-          _this14.pivot.add(panel);
-
-          var from = {
-            value: 1
-          };
-          TweenMax.to(from, 0.2, {
-            value: 0,
-            delay: 0.2,
-            onUpdate: function onUpdate() {
-              panel.position.set(position.x, position.y + 30 + 30 * from.value, position.z);
-              panel.lookAt(_this14.origin);
-              panel.material.opacity = 1 - from.value;
-              panel.material.needsUpdate = true;
-            }
-          }); // console.log('getPanelInfoById', panel.position);
-        }
-      });
-    }
-  }, {
-    key: "onExitPanel",
-    value: function onExitPanel() {
-      var panel = this.panel;
-
-      if (panel && panel.parent) {
-        panel.parent.remove(panel);
-      }
     } // events
 
-  }, {
-    key: "onLeftSelectStart",
-    value: function onLeftSelectStart(id) {
-      try {
-        // 1 front, 2 side, 3 Y, 4 X, 5?
-        this.setText(String(id));
-
-        if (this.controller !== this.left) {
-          if (this.controller) {
-            this.controller.remove(this.controller.indicator);
-          }
-
-          this.controller = this.left;
-          this.controller.add(this.controller.indicator);
-        }
-
-        this.isControllerSelecting = true;
-        this.isControllerSelectionDirty = true; // this.dragListener.start();
-      } catch (error) {
-        this.debugInfo.innerHTML = error;
-      }
-    }
-  }, {
-    key: "onLeftSelectEnd",
-    value: function onLeftSelectEnd() {
-      try {
-        if (this.controller === this.left) {
-          this.isControllerSelecting = false;
-          this.isControllerSelectionDirty = false;
-        } // this.dragListener.end();
-
-      } catch (error) {
-        this.debugInfo.innerHTML = error;
-      }
-    }
-  }, {
-    key: "onRightSelectStart",
-    value: function onRightSelectStart(id) {
-      try {
-        // 1 front, 2 side, 3 A, 4 B, 5?
-        this.setText(String(id));
-
-        if (this.controller !== this.right) {
-          if (this.controller) {
-            this.controller.remove(this.controller.indicator);
-          }
-
-          this.controller = this.right;
-          this.controller.add(this.controller.indicator);
-        }
-
-        this.isControllerSelecting = true;
-        this.isControllerSelectionDirty = true; // this.dragListener.start();
-      } catch (error) {
-        this.debugInfo.innerHTML = error;
-      }
-    }
-  }, {
-    key: "onRightSelectEnd",
-    value: function onRightSelectEnd() {
-      try {
-        if (this.controller === this.right) {
-          this.isControllerSelecting = false;
-          this.isControllerSelectionDirty = false;
-        } // this.dragListener.end();
-
-      } catch (error) {
-        this.debugInfo.innerHTML = error;
-      }
-    }
   }, {
     key: "onWindowResize",
     value: function onWindowResize() {
@@ -10946,7 +11290,7 @@ function () {
     value: function onMouseDown(event) {
       if (_const.TEST_ENABLED) {
         // this.dragListener.start();
-        this.setText('down');
+        this.controllers.setText('down');
         return;
       }
 
@@ -10956,7 +11300,7 @@ function () {
         raycaster.setFromCamera(this.mouse, this.camera); // calculate objects intersecting the picking ray
 
         if (event.shiftKey) {
-          var intersections = raycaster.intersectObjects(this.room.children);
+          var intersections = raycaster.intersectObjects(this.pivot.room.children);
 
           if (intersections) {
             var intersection = intersections.find(function (x) {
@@ -11007,55 +11351,13 @@ function () {
           y: -(event.clientY - h2) / h2
         };
 
-        if (_const.TEST_ENABLED && this.controller) {
-          this.controller.rotation.y = -this.mouse.x * Math.PI;
-          this.controller.rotation.x = this.mouse.y * Math.PI / 2;
-          return;
+        if (_const.TEST_ENABLED) {
+          return this.controllers.updateTest(this.mouse);
         }
 
         var raycaster = this.raycaster;
         raycaster.setFromCamera(this.mouse, this.camera);
         this.updateHoverPoint(raycaster);
-        /*
-        if (TEST_ENABLED) {
-        	const controller = this.controller;
-        	const raycaster = this.raycaster;
-        	const rotation = controller.getWorldDirection(new THREE.Vector3()).multiplyScalar(-1);
-        	raycaster.set(controller.position, rotation);
-        	let intersections = raycaster.intersectObjects([this.room.sphere]);
-        	if (intersections) {
-        		const intersection = intersections.find(x => x !== undefined);
-        		if (intersection) {
-        			const position = intersection.point.normalize();
-        			console.log('s', position.x, position.y, position.z);
-        		}
-        	}
-        	if (this.points && this.points.children.length) {
-        		const point = this.points.children[0];
-        		const position = point.position.clone().normalize();
-        		console.log('p', position.x, position.y, position.z);
-        	}
-        }
-        */
-        // console.log('onMouseMove', this.mouse);
-
-        /*
-        var attributes = geometry.attributes;
-        raycaster.setFromCamera( mouse, camera );
-        intersects = raycaster.intersectObject( points );
-        if ( intersects.length > 0 ) {
-        	if ( INTERSECTED != intersects[ 0 ].index ) {
-        		attributes.size.array[ INTERSECTED ] = PARTICLE_SIZE;
-        		INTERSECTED = intersects[ 0 ].index;
-        		attributes.size.array[ INTERSECTED ] = PARTICLE_SIZE * 1.25;
-        		attributes.size.needsUpdate = true;
-        	}
-        } else if ( INTERSECTED !== null ) {
-        	attributes.size.array[ INTERSECTED ] = PARTICLE_SIZE;
-        	attributes.size.needsUpdate = true;
-        	INTERSECTED = null;
-        }
-        */
       } catch (error) {
         this.debugInfo.innerHTML = error;
       }
@@ -11065,7 +11367,7 @@ function () {
     value: function onMouseUp(event) {
       if (_const.TEST_ENABLED) {
         // this.dragListener.end();
-        this.setText('up');
+        this.controllers.setText('up');
         return;
       }
     }
@@ -11085,10 +11387,7 @@ function () {
     key: "onSave",
     value: function onSave(event) {
       try {
-        this.view.orientation = {
-          latitude: this.latitude,
-          longitude: this.longitude
-        };
+        this.view.orientation = this.orbit.getOrientation();
         this.saveData({
           views: this.views
         }, 'vr.json');
@@ -11098,65 +11397,13 @@ function () {
     } // animation
 
   }, {
-    key: "findGamepad",
-    value: function findGamepad(id) {
-      var gamepads = navigator.getGamepads && navigator.getGamepads();
-
-      if (!gamepads) {
-        return undefined;
-      }
-
-      for (var i = 0, j = 0, l = gamepads.length; i < l; i++) {
-        var gamepad = gamepads[i];
-
-        if (gamepad && (gamepad.id === 'Daydream Controller' || gamepad.id === 'Gear VR Controller' || gamepad.id === 'Oculus Go Controller' || gamepad.id === 'OpenVR Gamepad' || gamepad.id.startsWith('Oculus Touch') || gamepad.id.startsWith('Spatial Controller'))) {
-          if (j === id) {
-            return gamepad;
-          }
-
-          j++;
-        }
-      }
-    }
-  }, {
-    key: "updateTriggers",
-    value: function updateTriggers() {
-      var gamePadLeft = this.findGamepad(0);
-
-      if (gamePadLeft) {
-        var triggerLeft = gamePadLeft ? gamePadLeft.buttons.reduce(function (p, b, i) {
-          return b.pressed ? i : p;
-        }, -1) : -1;
-
-        if (triggerLeft !== -1) {
-          this.onLeftSelectStart(triggerLeft);
-        } else {
-          this.onLeftSelectEnd();
-        }
-      }
-
-      var gamePadRight = this.findGamepad(1);
-
-      if (gamePadRight) {
-        var triggerRight = gamePadRight ? gamePadRight.buttons.reduce(function (p, b, i) {
-          return b.pressed ? i : p;
-        }, -1) : -1;
-
-        if (triggerRight !== -1) {
-          this.onRightSelectStart(triggerRight);
-        } else {
-          this.onRightSelectEnd();
-        }
-      }
-    }
-  }, {
     key: "animate",
     value: function animate() {
-      var _this15 = this;
+      var _this5 = this;
 
       var renderer = this.renderer;
       renderer.setAnimationLoop(function () {
-        _this15.render();
+        _this5.render();
       });
     }
   }, {
@@ -11166,59 +11413,27 @@ function () {
 
       if (this.vr.mode !== _vr.VR_MODE.NONE) {
         // this.dragListener.move();
-        this.updateTriggers();
-        this.menu.active = this.controller && this.pointer.position.y > 15;
-        this.menu.update(cameraDirection); // this.updateMenu();
-
+        this.controllers.update();
         this.updateController();
+        this.topBar.active = this.controllers.controller && this.pointer.position.y > 15;
+        this.topBar.update(cameraDirection);
       } else if (_const.TEST_ENABLED) {
         // this.dragListener.move();
-        // this.updatePivot();
-        this.updateCamera(); // this.updateTriggers();
-
-        this.menu.active = this.controller && this.pointer.position.y > 15;
-        this.menu.update(cameraDirection); // this.updateMenu();
-
+        this.updateCamera();
         this.updateController();
+        this.topBar.active = this.controllers.controller && this.pointer.position.y > 15;
+        this.topBar.update(cameraDirection);
       } else {
-        // this.updatePivot();
-        // this.testController();
         this.updateCamera();
       }
 
       var renderer = this.renderer;
-      renderer.render(this.scene, this.camera); // this.doParallax();
-    }
-  }, {
-    key: "updateMenu",
-    value: function updateMenu() {
-      var menu = this.menu.mesh;
-      var arc = this.menu.arc;
-      var controller = this.controller;
-      var pointer = this.pointer;
-      var active = controller && pointer.position.y > 15;
-      var vector = this.camera.getWorldDirection(this.cameraDirection);
-      var endTheta = Math.atan2(vector.x, vector.z) - this.pivot.rotation.y + Math.PI - this.menu.ry; // const t = this.t ? this.t++ : 0;
-      // const theta = menu.rotation.y + (endTheta - menu.rotation.y) / 10;
-
-      menu.rotation.set(0, endTheta, 0);
-      var endY = active ? 20 : this.menu.py;
-      var y = menu.position.y + (endY - menu.position.y) / 10;
-      menu.position.set(0, y, 0);
-      var endOpacity = active ? 1 : 0;
-      var opacity = arc.material.opacity + (endOpacity - arc.material.opacity) / 10; // console.log(endTheta, active, y, opacity);
-
-      arc.material.opacity = opacity;
-      arc.material.needsUpdate = true;
+      renderer.render(this.scene, this.camera);
     }
   }, {
     key: "updatePointer",
     value: function updatePointer(raycaster) {
-      /*
-      this.room.sphere.geometry.computeBoundingBox();
-      this.room.sphere.geometry.computeBoundingSphere();
-      */
-      var intersections = raycaster.intersectObjects(this.room.children);
+      var intersections = raycaster.intersectObjects(this.pivot.room.children);
 
       if (intersections.length) {
         var intersection = intersections[0]; // const intersection = intersections.find(x => x !== undefined);
@@ -11237,8 +11452,8 @@ function () {
         }
       }
 
-      this.pointer.material.color.setHex(this.isControllerSelecting ? 0x0000ff : 0xffffff);
-      this.pointer.material.opacity = this.isControllerSelecting ? 1.0 : 0.5;
+      this.pointer.material.color.setHex(this.controllers.isControllerSelecting ? 0x0000ff : 0xffffff);
+      this.pointer.material.opacity = this.controllers.isControllerSelecting ? 1.0 : 0.5;
       this.pointer.scale.setScalar(this.pivot.busy ? 0 : 1); // this.pivot.rotation.y = (this.pivot.ery || 0);
       // this.pivot.rotation.y += ((this.pivot.ery || 0) - this.pivot.rotation.y) / 10;
     }
@@ -11247,7 +11462,7 @@ function () {
     value: function updateHoverPoint(raycaster) {
       var point; // raycaster.params.Points.threshold = 10.0;
 
-      var intersections = raycaster.intersectObjects(this.points.children);
+      var intersections = raycaster.intersectObjects(this.pivot.points.children);
       /*
       if (intersections.length) {
       	const intersection = intersections[0];
@@ -11262,104 +11477,42 @@ function () {
       this.selectedPoint = intersection;
     }
   }, {
-    key: "updateController",
-    value: function updateController() {
-      try {
-        var controller = this.controller;
-
-        if (controller) {
-          var raycaster = this.raycaster;
-          /*
-          if (TEST_ENABLED) {
-          	raycaster.setFromCamera(this.mouse, this.camera);
-          	controller.position.copy(this.camera.position);
-          	controller.rotation.copy(this.camera.rotation);
-          } else {
-          	const position = controller.position; // this.pivot.worldToLocal(controller.position);
-          	const rotation = controller.getWorldDirection(this.controllerDirection).multiplyScalar(-1); // this.pivot.worldToLocal(controller.getWorldDirection(this.controllerDirection).multiplyScalar(-1));
-          	raycaster.set(position, rotation);
-          }
-          */
-
-          var position = controller.position; // this.pivot.worldToLocal(controller.position);
-
-          var rotation = controller.getWorldDirection(this.controllerDirection).multiplyScalar(-1); // this.pivot.worldToLocal(controller.getWorldDirection(this.controllerDirection).multiplyScalar(-1));
-          // new THREE.Vector3(controller.rotation.x, controller.rotation.y, controller.rotation.z).normalize();
-
-          raycaster.set(position, rotation);
-
-          _interactive.InteractiveMesh.hittest(raycaster, this.isControllerSelecting);
-
-          this.updatePointer(raycaster);
-          this.updateHoverPoint(raycaster);
-        }
-      } catch (error) {
-        this.debugInfo.innerHTML = error;
-      }
-    }
-  }, {
-    key: "updatePivot",
-    value: function updatePivot() {
-      var pivot = this.pivot;
-      var direction = this.direction;
-      var inertia = this.inertia;
-      var speed = this.speed;
-      var latitude = this.latitude;
-      var longitude = this.longitude;
-
-      if (this.dragListener && this.dragListener.dragging === false) {
-        // longitude += 0.01 * direction * speed;
-        speed = Math.max(1, speed * 0.98);
-        inertia.multiplyScalar(0.98);
-      }
-
-      latitude = Math.max(-85, Math.min(85, latitude));
-      var phi = THREE.Math.degToRad(90 - latitude);
-      var theta = THREE.Math.degToRad(longitude);
-      pivot.rotation.set(phi - Math.PI / 2, theta + Math.PI / 2, 0);
-      /*
-      pivot.target.x = ROOM_RADIUS * Math.sin(phi) * Math.cos(theta);
-      pivot.target.y = ROOM_RADIUS * Math.cos(phi);
-      pivot.target.z = ROOM_RADIUS * Math.sin(phi) * Math.sin(theta);
-      pivot.lookAt(pivot.target);
-      */
-
-      this.latitude = latitude;
-      this.longitude = longitude;
-      this.speed = speed;
-      this.inertia = inertia;
-    }
-  }, {
     key: "updateCamera",
     value: function updateCamera() {
+      var orbit = this.orbit;
       var camera = this.camera;
-      var direction = this.direction;
-      var inertia = this.inertia;
-      var speed = this.speed;
-      var latitude = this.latitude;
-      var longitude = this.longitude;
-
-      if (this.dragListener && this.dragListener.dragging === false) {
-        // longitude += 0.01 * direction * speed;
-        speed = Math.max(1, speed * 0.98);
-        inertia.multiplyScalar(0.98);
-      }
-
-      latitude = Math.max(-85, Math.min(85, latitude));
-      var phi = THREE.Math.degToRad(90 - latitude);
-      var theta = THREE.Math.degToRad(longitude);
-      camera.target.x = _const.ROOM_RADIUS * Math.sin(phi) * Math.cos(theta);
-      camera.target.y = _const.ROOM_RADIUS * Math.cos(phi);
-      camera.target.z = _const.ROOM_RADIUS * Math.sin(phi) * Math.sin(theta);
+      orbit.update();
+      camera.target.x = _const.ROOM_RADIUS * Math.sin(orbit.phi) * Math.cos(orbit.theta);
+      camera.target.y = _const.ROOM_RADIUS * Math.cos(orbit.phi);
+      camera.target.z = _const.ROOM_RADIUS * Math.sin(orbit.phi) * Math.sin(orbit.theta);
       camera.lookAt(camera.target);
-      this.latitude = latitude;
-      this.longitude = longitude;
-      this.speed = speed;
-      this.inertia = inertia;
       /*
       // distortion
       camera.position.copy( camera.target ).negate();
       */
+    }
+  }, {
+    key: "updateController",
+    value: function updateController() {
+      try {
+        var controllers = this.controllers;
+        var controller = controllers.controller;
+
+        if (controller) {
+          var raycaster = this.raycaster;
+          var position = controller.position;
+          var rotation = controller.getWorldDirection(controllers.controllerDirection).multiplyScalar(-1);
+          raycaster.set(position, rotation);
+
+          _interactive.default.hittest(raycaster, controllers.isControllerSelecting); // this.pivot.hittest(raycaster); // !!!
+
+
+          this.updateHoverPoint(raycaster);
+          this.updatePointer(raycaster);
+        }
+      } catch (error) {
+        this.debugInfo.innerHTML = error;
+      }
     } // utils
 
   }, {
@@ -11439,24 +11592,6 @@ function () {
       return target;
     }
   }, {
-    key: "index",
-    get: function get() {
-      return this.index_;
-    },
-    set: function set(index) {
-      this.index_ = index;
-      this.view = this.views[index];
-    }
-  }, {
-    key: "view",
-    get: function get() {
-      return this.view_;
-    },
-    set: function set(view) {
-      this.onInitView(this.view_, view);
-      this.view_ = view;
-    }
-  }, {
     key: "hoverPoint",
     get: function get() {
       return this.hoverPoint_;
@@ -11468,12 +11603,12 @@ function () {
         this.hoverPoint_ = object;
 
         if (object !== null) {
-          this.onEnterPanel(object.position.clone());
+          this.pivot.onEnterPanel(object.position.clone());
         } else {
-          this.onExitPanel();
+          this.pivot.onExitPanel();
         }
 
-        var tweens = this.points.children.map(function (x, index) {
+        var tweens = this.pivot.points.children.map(function (x, index) {
           var from = {
             scale: x.scale.x
           };
@@ -11495,7 +11630,7 @@ function () {
       return this.selectedPoint_;
     },
     set: function set(intersection) {
-      var object = intersection && this.isControllerSelecting ? intersection.object : null;
+      var object = intersection && this.controllers.isControllerSelecting ? intersection.object : null;
 
       if (this.selectedPoint_ !== object) {
         this.selectedPoint_ = object;
@@ -11505,7 +11640,7 @@ function () {
           var debugInfo = "selectedPoint => {".concat(position.x, ", ").concat(position.y, ", ").concat(position.z, "}");
           this.debugInfo.innerHTML = debugInfo; // console.log(this.views.length);
 
-          this.index = (this.index + 1) % this.views.length; // console.log(index, point, debugInfo);
+          this.pivot.index = (this.pivot.index + 1) % this.pivot.views.length; // console.log(index, point, debugInfo);
         }
       }
     }
@@ -11518,6 +11653,25 @@ var tour = new VRTour();
 tour.animate();
 tour.load('data/vr.json');
 /*
+
+copyGeometry() {
+	var MAX_POINTS = 500;
+	// geometry
+	var geometry = new THREE.BufferGeometry();
+	// attributes
+	var positions = new Float32Array(MAX_POINTS * 3); // 3 vertices per point
+	geometry.addAttribute('position', new THREE.BufferAttribute(positions, 3));
+	// draw range
+	var drawCount = 2; // draw the first 2 points, only
+	geometry.setDrawRange(0, drawCount);
+	// material
+	var material = new THREE.LineBasicMaterial({ color: 0xff0000, linewidth: 2 });
+	// line
+	var line = new THREE.Line(geometry, material);
+	scene.add(line);
+	// And then to later update after adding new point information:
+	line.geometry.setDrawRange(0, newValue);
+}
 
 doParallax() {
 	// parallax
@@ -11739,5 +11893,5 @@ if (SHOW_HELPERS) {
 }
 */
 
-},{"./shared/drag.listener":2,"./three/const":4,"./three/interactive.mesh":5,"./three/menu":6,"./three/vr":7,"html2canvas":1}]},{},[8]);
+},{"./three/const":4,"./three/controllers":5,"./three/interactive.mesh":8,"./three/orbit":9,"./three/top-bar":10,"./three/views":11,"./three/vr":12,"html2canvas":1}]},{},[13]);
 //# sourceMappingURL=vrtour.js.map
