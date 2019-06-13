@@ -10141,6 +10141,8 @@ Object.defineProperty(exports, "__esModule", {
 });
 exports.default = void 0;
 
+var _html2canvas = _interopRequireDefault(require("html2canvas"));
+
 var _const = require("./const");
 
 var _emittable = _interopRequireDefault(require("./emittable.group"));
@@ -10568,6 +10570,56 @@ function (_EmittableGroup) {
       });
     }
   }, {
+    key: "getPanelInfoById",
+    value: function getPanelInfoById(id) {
+      return new Promise(function (resolve, reject) {
+        var node = document.querySelector(id);
+
+        if (node) {
+          (0, _html2canvas.default)(node, {
+            backgroundColor: '#ffffff00'
+          }).then(function (canvas) {
+            // !!!
+            // document.body.appendChild(canvas);
+            // const alpha = this.getAlphaFromCanvas(canvas);
+            // document.body.appendChild(alpha);
+            var map = new THREE.CanvasTexture(canvas); // const alphaMap = new THREE.CanvasTexture(alpha);
+
+            resolve({
+              map: map,
+              // alphaMap: alphaMap,
+              width: canvas.width,
+              height: canvas.height
+            });
+          });
+        } else {
+          reject('node not found');
+        }
+      });
+    }
+    /*
+    getAlphaFromCanvas(source) {
+    	const sourceCtx = source.getContext('2d');
+    	const imageData = sourceCtx.getImageData(0, 0, source.width, source.height);
+    	const data = imageData.data;
+    	for (let i = 0; i < data.length; i += 4) {
+    		const alpha = data[i + 3];
+    		data[i] = alpha;
+    		data[i + 1] = alpha;
+    		data[i + 2] = alpha;
+    		data[i + 3] = 254;
+    	}
+    	const target = document.createElement('canvas');
+    	target.width = source.width;
+    	target.height = source.height;
+    	const targetCtx = target.getContext('2d');
+    	targetCtx.putImageData(imageData, target.width, target.height);
+    	// targetCtx.drawImage(imageData, 0, 0);
+    	return target;
+    }
+    */
+
+  }, {
     key: "views",
     get: function get() {
       return this.views_;
@@ -10655,7 +10707,7 @@ function (_EmittableGroup) {
 
 exports.default = Views;
 
-},{"./const":4,"./emittable.group":6}],12:[function(require,module,exports){
+},{"./const":4,"./emittable.group":6,"html2canvas":1}],12:[function(require,module,exports){
 "use strict";
 
 Object.defineProperty(exports, "__esModule", {
@@ -10999,8 +11051,6 @@ exports.VR = VR;
 },{"../shared/event-emitter":3}],13:[function(require,module,exports){
 "use strict";
 
-var _html2canvas = _interopRequireDefault(require("html2canvas"));
-
 var _const = require("./three/const");
 
 var _controllers2 = _interopRequireDefault(require("./three/controllers"));
@@ -11058,7 +11108,6 @@ function () {
         fetch(jsonUrl).then(function (response) {
           return response.json();
         }).then(function (response) {
-          _this.views = response.views;
           _this.pivot.views = response.views;
         });
       } catch (error) {
@@ -11316,7 +11365,7 @@ function () {
           }
           */
 
-        } else if (this.points) {
+        } else if (this.pivot.points) {
           raycaster.params.Points.threshold = 10.0;
 
           var _intersections = raycaster.intersectObjects(this.points.children);
@@ -11332,7 +11381,7 @@ function () {
               var debugInfo = "".concat(index, " => {").concat(point.x, ", ").concat(point.y, ", ").concat(point.z, "}"); // console.log(index, point, debugInfo);
 
               this.debugInfo.innerHTML = debugInfo;
-              this.index = (this.index + 1) % this.views.length;
+              this.pivot.index = (this.pivot.index + 1) % this.pivot.views.length;
             }
           }
         }
@@ -11389,7 +11438,7 @@ function () {
       try {
         this.view.orientation = this.orbit.getOrientation();
         this.saveData({
-          views: this.views
+          views: this.pivot.views
         }, 'vr.json');
       } catch (error) {
         this.debugInfo.innerHTML = error;
@@ -11541,57 +11590,6 @@ function () {
       anchor.dispatchEvent(event);
     }
   }, {
-    key: "getPanelInfoById",
-    value: function getPanelInfoById(id) {
-      return new Promise(function (resolve, reject) {
-        var node = document.querySelector(id);
-
-        if (node) {
-          (0, _html2canvas.default)(node, {
-            backgroundColor: '#ffffff00'
-          }).then(function (canvas) {
-            // !!!
-            // document.body.appendChild(canvas);
-            // const alpha = this.getAlphaFromCanvas(canvas);
-            // document.body.appendChild(alpha);
-            var map = new THREE.CanvasTexture(canvas); // const alphaMap = new THREE.CanvasTexture(alpha);
-
-            resolve({
-              map: map,
-              // alphaMap: alphaMap,
-              width: canvas.width,
-              height: canvas.height
-            });
-          });
-        } else {
-          reject('node not found');
-        }
-      });
-    }
-  }, {
-    key: "getAlphaFromCanvas",
-    value: function getAlphaFromCanvas(source) {
-      var sourceCtx = source.getContext('2d');
-      var imageData = sourceCtx.getImageData(0, 0, source.width, source.height);
-      var data = imageData.data;
-
-      for (var i = 0; i < data.length; i += 4) {
-        var alpha = data[i + 3];
-        data[i] = alpha;
-        data[i + 1] = alpha;
-        data[i + 2] = alpha;
-        data[i + 3] = 254;
-      }
-
-      var target = document.createElement('canvas');
-      target.width = source.width;
-      target.height = source.height;
-      var targetCtx = target.getContext('2d');
-      targetCtx.putImageData(imageData, target.width, target.height); // targetCtx.drawImage(imageData, 0, 0);
-
-      return target;
-    }
-  }, {
     key: "hoverPoint",
     get: function get() {
       return this.hoverPoint_;
@@ -11638,7 +11636,7 @@ function () {
         if (object !== null) {
           var position = object.position;
           var debugInfo = "selectedPoint => {".concat(position.x, ", ").concat(position.y, ", ").concat(position.z, "}");
-          this.debugInfo.innerHTML = debugInfo; // console.log(this.views.length);
+          this.debugInfo.innerHTML = debugInfo; // console.log(this.pivot.views.length);
 
           this.pivot.index = (this.pivot.index + 1) % this.pivot.views.length; // console.log(index, point, debugInfo);
         }
@@ -11893,5 +11891,5 @@ if (SHOW_HELPERS) {
 }
 */
 
-},{"./three/const":4,"./three/controllers":5,"./three/interactive.mesh":8,"./three/orbit":9,"./three/top-bar":10,"./three/views":11,"./three/vr":12,"html2canvas":1}]},{},[13]);
+},{"./three/const":4,"./three/controllers":5,"./three/interactive.mesh":8,"./three/orbit":9,"./three/top-bar":10,"./three/views":11,"./three/vr":12}]},{},[13]);
 //# sourceMappingURL=vrtour.js.map

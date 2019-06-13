@@ -1,6 +1,7 @@
 /* jshint esversion: 6 */
 /* global window, document */
 
+import html2canvas from 'html2canvas';
 import { PANEL_RADIUS, POINT_RADIUS, ROOM_RADIUS, TEST_ENABLED } from './const';
 import EmittableGroup from './emittable.group';
 
@@ -406,5 +407,53 @@ export default class Views extends EmittableGroup {
 			key: 'POINT2',
 		});
 	}
+
+	getPanelInfoById(id) {
+		return new Promise((resolve, reject) => {
+			const node = document.querySelector(id);
+			if (node) {
+				html2canvas(node, {
+					backgroundColor: '#ffffff00',
+				}).then(canvas => {
+					// !!!
+					// document.body.appendChild(canvas);
+					// const alpha = this.getAlphaFromCanvas(canvas);
+					// document.body.appendChild(alpha);
+					const map = new THREE.CanvasTexture(canvas);
+					// const alphaMap = new THREE.CanvasTexture(alpha);
+					resolve({
+						map: map,
+						// alphaMap: alphaMap,
+						width: canvas.width,
+						height: canvas.height,
+					});
+				});
+			} else {
+				reject('node not found');
+			}
+		})
+	}
+
+	/*
+	getAlphaFromCanvas(source) {
+		const sourceCtx = source.getContext('2d');
+		const imageData = sourceCtx.getImageData(0, 0, source.width, source.height);
+		const data = imageData.data;
+		for (let i = 0; i < data.length; i += 4) {
+			const alpha = data[i + 3];
+			data[i] = alpha;
+			data[i + 1] = alpha;
+			data[i + 2] = alpha;
+			data[i + 3] = 254;
+		}
+		const target = document.createElement('canvas');
+		target.width = source.width;
+		target.height = source.height;
+		const targetCtx = target.getContext('2d');
+		targetCtx.putImageData(imageData, target.width, target.height);
+		// targetCtx.drawImage(imageData, 0, 0);
+		return target;
+	}
+	*/
 
 }
