@@ -1,7 +1,6 @@
 /* jshint esversion: 6 */
 /* global window, document, TweenMax, THREE, WEBVR */
 
-import html2canvas from 'html2canvas';
 import { ORIGIN, POINTER_RADIUS, ROOM_RADIUS, TEST_ENABLED } from './three/const';
 import Controllers from './three/controllers';
 import InteractiveMesh from './three/interactive.mesh';
@@ -23,7 +22,6 @@ class VRTour {
 	load(jsonUrl) {
 		try {
 			fetch(jsonUrl).then(response => response.json()).then(response => {
-				this.views = response.views;
 				this.pivot.views = response.views;
 			});
 		} catch (error) {
@@ -265,7 +263,7 @@ class VRTour {
 						const debugInfo = `${index} => {${point.x}, ${point.y}, ${point.z}}`;
 						// console.log(index, point, debugInfo);
 						this.debugInfo.innerHTML = debugInfo;
-						this.index = (this.index + 1) % this.views.length;
+						this.pivot.index = (this.pivot.index + 1) % this.pivot.views.length;
 					}
 				}
 			} */
@@ -316,7 +314,7 @@ class VRTour {
 	onSave(event) {
 		try {
 			this.view.orientation = this.orbit.getOrientation();
-			this.saveData({ views: this.views }, 'vr.json');
+			this.saveData({ views: this.pivot.views }, 'vr.json');
 		} catch (error) {
 			this.debugInfo.innerHTML = error;
 		}
@@ -429,52 +427,6 @@ class VRTour {
 		anchor.dataset.downloadurl = ['text/json', anchor.download, anchor.href].join(':');
 		event.initMouseEvent('click', true, false, window, 0, 0, 0, 0, 0, false, false, false, false, 0, null);
 		anchor.dispatchEvent(event);
-	}
-
-	getPanelInfoById(id) {
-		return new Promise((resolve, reject) => {
-			const node = document.querySelector(id);
-			if (node) {
-				html2canvas(node, {
-					backgroundColor: '#ffffff00',
-				}).then(canvas => {
-					// !!!
-					// document.body.appendChild(canvas);
-					// const alpha = this.getAlphaFromCanvas(canvas);
-					// document.body.appendChild(alpha);
-					const map = new THREE.CanvasTexture(canvas);
-					// const alphaMap = new THREE.CanvasTexture(alpha);
-					resolve({
-						map: map,
-						// alphaMap: alphaMap,
-						width: canvas.width,
-						height: canvas.height,
-					});
-				});
-			} else {
-				reject('node not found');
-			}
-		})
-	}
-
-	getAlphaFromCanvas(source) {
-		const sourceCtx = source.getContext('2d');
-		const imageData = sourceCtx.getImageData(0, 0, source.width, source.height);
-		const data = imageData.data;
-		for (let i = 0; i < data.length; i += 4) {
-			const alpha = data[i + 3];
-			data[i] = alpha;
-			data[i + 1] = alpha;
-			data[i + 2] = alpha;
-			data[i + 3] = 254;
-		}
-		const target = document.createElement('canvas');
-		target.width = source.width;
-		target.height = source.height;
-		const targetCtx = target.getContext('2d');
-		targetCtx.putImageData(imageData, target.width, target.height);
-		// targetCtx.drawImage(imageData, 0, 0);
-		return target;
 	}
 
 }

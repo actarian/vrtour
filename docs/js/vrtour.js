@@ -9099,11 +9099,13 @@ Object.defineProperty(exports, "__esModule", {
 });
 exports.cm = cm;
 exports.addCube = addCube;
-exports.ORIGIN = exports.TEST_ENABLED = exports.POINTER_RADIUS = exports.POINT_RADIUS = exports.PANEL_RADIUS = exports.ROOM_RADIUS = void 0;
+exports.ORIGIN = exports.POINTER_RADIUS = exports.POINT_RADIUS = exports.PANEL_RADIUS = exports.ROOM_RADIUS = exports.TEST_ENABLED = void 0;
 
 /* jshint esversion: 6 */
 
 /* global window, document */
+var TEST_ENABLED = false;
+exports.TEST_ENABLED = TEST_ENABLED;
 var ROOM_RADIUS = 200;
 exports.ROOM_RADIUS = ROOM_RADIUS;
 var PANEL_RADIUS = 100;
@@ -9112,8 +9114,6 @@ var POINT_RADIUS = 99;
 exports.POINT_RADIUS = POINT_RADIUS;
 var POINTER_RADIUS = 98;
 exports.POINTER_RADIUS = POINTER_RADIUS;
-var TEST_ENABLED = false;
-exports.TEST_ENABLED = TEST_ENABLED;
 var ORIGIN = new THREE.Vector3();
 exports.ORIGIN = ORIGIN;
 
@@ -10143,6 +10143,8 @@ Object.defineProperty(exports, "__esModule", {
 });
 exports.NavPoint = exports.default = void 0;
 
+var _html2canvas = _interopRequireDefault(require("html2canvas"));
+
 var _const = require("./const");
 
 var _emittable = _interopRequireDefault(require("./emittable.group"));
@@ -10537,11 +10539,6 @@ function (_EmittableGroup) {
       var _this9 = this;
 
       point.on('over', function () {
-        /*
-        point.material.color.setHex(0xffffff);
-        point.material.opacity = 0.8;
-        point.material.needsUpdate = true;
-        */
         var from = {
           scale: point.scale.x
         };
@@ -10558,11 +10555,6 @@ function (_EmittableGroup) {
         _this9.emit('pointOver', point);
       });
       point.on('out', function () {
-        /*
-        point.material.color.setHex(0xffffff);
-        point.material.opacity = 0.5;
-        point.material.needsUpdate = true;
-        */
         var from = {
           scale: point.scale.x
         };
@@ -10574,7 +10566,7 @@ function (_EmittableGroup) {
           }
         });
 
-        _this9.pivot.onExitPanel();
+        _this9.onExitPanel();
 
         _this9.emit('pointOut', point);
       });
@@ -10584,6 +10576,56 @@ function (_EmittableGroup) {
         _this9.index = (_this9.index + 1) % _this9.views.length;
       });
     }
+  }, {
+    key: "getPanelInfoById",
+    value: function getPanelInfoById(id) {
+      return new Promise(function (resolve, reject) {
+        var node = document.querySelector(id);
+
+        if (node) {
+          (0, _html2canvas.default)(node, {
+            backgroundColor: '#ffffff00'
+          }).then(function (canvas) {
+            // !!!
+            // document.body.appendChild(canvas);
+            // const alpha = this.getAlphaFromCanvas(canvas);
+            // document.body.appendChild(alpha);
+            var map = new THREE.CanvasTexture(canvas); // const alphaMap = new THREE.CanvasTexture(alpha);
+
+            resolve({
+              map: map,
+              // alphaMap: alphaMap,
+              width: canvas.width,
+              height: canvas.height
+            });
+          });
+        } else {
+          reject('node not found');
+        }
+      });
+    }
+    /*
+    getAlphaFromCanvas(source) {
+    	const sourceCtx = source.getContext('2d');
+    	const imageData = sourceCtx.getImageData(0, 0, source.width, source.height);
+    	const data = imageData.data;
+    	for (let i = 0; i < data.length; i += 4) {
+    		const alpha = data[i + 3];
+    		data[i] = alpha;
+    		data[i + 1] = alpha;
+    		data[i + 2] = alpha;
+    		data[i + 3] = 254;
+    	}
+    	const target = document.createElement('canvas');
+    	target.width = source.width;
+    	target.height = source.height;
+    	const targetCtx = target.getContext('2d');
+    	targetCtx.putImageData(imageData, target.width, target.height);
+    	// targetCtx.drawImage(imageData, 0, 0);
+    	return target;
+    }
+    */
+
   }, {
     key: "views",
     get: function get() {
@@ -10656,8 +10698,6 @@ function (_InteractiveMesh) {
         // console.log(index, from.opacity);
         material.opacity = from.opacity;
         material.needsUpdate = true;
-      },
-      onCompleted: function onCompleted() {// console.log(index, 'completed');
       }
     });
     return _this10;
@@ -10668,7 +10708,7 @@ function (_InteractiveMesh) {
 
 exports.NavPoint = NavPoint;
 
-},{"./const":4,"./emittable.group":6,"./interactive.mesh":8}],12:[function(require,module,exports){
+},{"./const":4,"./emittable.group":6,"./interactive.mesh":8,"html2canvas":1}],12:[function(require,module,exports){
 "use strict";
 
 Object.defineProperty(exports, "__esModule", {
@@ -11012,8 +11052,6 @@ exports.VR = VR;
 },{"../shared/event-emitter":3}],13:[function(require,module,exports){
 "use strict";
 
-var _html2canvas = _interopRequireDefault(require("html2canvas"));
-
 var _const = require("./three/const");
 
 var _controllers2 = _interopRequireDefault(require("./three/controllers"));
@@ -11070,7 +11108,6 @@ function () {
         fetch(jsonUrl).then(function (response) {
           return response.json();
         }).then(function (response) {
-          _this.views = response.views;
           _this.pivot.views = response.views;
         });
       } catch (error) {
@@ -11346,7 +11383,7 @@ function () {
         			const debugInfo = `${index} => {${point.x}, ${point.y}, ${point.z}}`;
         			// console.log(index, point, debugInfo);
         			this.debugInfo.innerHTML = debugInfo;
-        			this.index = (this.index + 1) % this.views.length;
+        			this.pivot.index = (this.pivot.index + 1) % this.pivot.views.length;
         		}
         	}
         } */
@@ -11407,7 +11444,7 @@ function () {
       try {
         this.view.orientation = this.orbit.getOrientation();
         this.saveData({
-          views: this.views
+          views: this.pivot.views
         }, 'vr.json');
       } catch (error) {
         this.debugInfo.innerHTML = error;
@@ -11538,57 +11575,6 @@ function () {
       anchor.dataset.downloadurl = ['text/json', anchor.download, anchor.href].join(':');
       event.initMouseEvent('click', true, false, window, 0, 0, 0, 0, 0, false, false, false, false, 0, null);
       anchor.dispatchEvent(event);
-    }
-  }, {
-    key: "getPanelInfoById",
-    value: function getPanelInfoById(id) {
-      return new Promise(function (resolve, reject) {
-        var node = document.querySelector(id);
-
-        if (node) {
-          (0, _html2canvas.default)(node, {
-            backgroundColor: '#ffffff00'
-          }).then(function (canvas) {
-            // !!!
-            // document.body.appendChild(canvas);
-            // const alpha = this.getAlphaFromCanvas(canvas);
-            // document.body.appendChild(alpha);
-            var map = new THREE.CanvasTexture(canvas); // const alphaMap = new THREE.CanvasTexture(alpha);
-
-            resolve({
-              map: map,
-              // alphaMap: alphaMap,
-              width: canvas.width,
-              height: canvas.height
-            });
-          });
-        } else {
-          reject('node not found');
-        }
-      });
-    }
-  }, {
-    key: "getAlphaFromCanvas",
-    value: function getAlphaFromCanvas(source) {
-      var sourceCtx = source.getContext('2d');
-      var imageData = sourceCtx.getImageData(0, 0, source.width, source.height);
-      var data = imageData.data;
-
-      for (var i = 0; i < data.length; i += 4) {
-        var alpha = data[i + 3];
-        data[i] = alpha;
-        data[i + 1] = alpha;
-        data[i + 2] = alpha;
-        data[i + 3] = 254;
-      }
-
-      var target = document.createElement('canvas');
-      target.width = source.width;
-      target.height = source.height;
-      var targetCtx = target.getContext('2d');
-      targetCtx.putImageData(imageData, target.width, target.height); // targetCtx.drawImage(imageData, 0, 0);
-
-      return target;
     }
   }]);
 
@@ -11839,5 +11825,5 @@ if (SHOW_HELPERS) {
 }
 */
 
-},{"./three/const":4,"./three/controllers":5,"./three/interactive.mesh":8,"./three/orbit":9,"./three/top-bar":10,"./three/views":11,"./three/vr":12,"html2canvas":1}]},{},[13]);
+},{"./three/const":4,"./three/controllers":5,"./three/interactive.mesh":8,"./three/orbit":9,"./three/top-bar":10,"./three/views":11,"./three/vr":12}]},{},[13]);
 //# sourceMappingURL=vrtour.js.map
