@@ -1,11 +1,11 @@
 /* jshint esversion: 6 */
 /* global window, document */
 
+export const TEST_ENABLED = false;
 export const ROOM_RADIUS = 200;
 export const PANEL_RADIUS = 100;
 export const POINT_RADIUS = 99;
 export const POINTER_RADIUS = 98;
-export const TEST_ENABLED = false;
 export const ORIGIN = new THREE.Vector3();
 
 export function cm(value) {

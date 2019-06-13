@@ -324,11 +324,6 @@ export default class Views extends EmittableGroup {
 
 	addPointListeners(point) {
 		point.on('over', () => {
-			/*
-			point.material.color.setHex(0xffffff);
-			point.material.opacity = 0.8;
-			point.material.needsUpdate = true;
-			*/
 			const from = { scale: point.scale.x };
 			TweenMax.to(from, 0.25, {
 				scale: 3,
@@ -341,11 +336,6 @@ export default class Views extends EmittableGroup {
 			this.emit('pointOver', point);
 		});
 		point.on('out', () => {
-			/*
-			point.material.color.setHex(0xffffff);
-			point.material.opacity = 0.5;
-			point.material.needsUpdate = true;
-			*/
 			const from = { scale: point.scale.x };
 			TweenMax.to(from, 0.25, {
 				scale: 1,
@@ -354,7 +344,7 @@ export default class Views extends EmittableGroup {
 					point.scale.set(from.scale, from.scale, from.scale);
 				}
 			});
-			this.pivot.onExitPanel();
+			this.onExitPanel();
 			this.emit('pointOut', point);
 		});
 		point.on('down', () => {
@@ -438,9 +428,6 @@ export class NavPoint extends InteractiveMesh {
 				// console.log(index, from.opacity);
 				material.opacity = from.opacity;
 				material.needsUpdate = true;
-			},
-			onCompleted: () => {
-				// console.log(index, 'completed');
 			}
 		});
 	}
