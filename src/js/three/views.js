@@ -1,15 +1,15 @@
 /* jshint esversion: 6 */
 /* global window, document */
 
-import { PANEL_RADIUS, POINT_RADIUS, ROOM_RADIUS, TEST_ENABLED } from './const';
+import { ORIGIN, PANEL_RADIUS, POINT_RADIUS, ROOM_RADIUS, TEST_ENABLED } from './const';
 import EmittableGroup from './emittable.group';
+import InteractiveMesh from './interactive.mesh';
 
 export default class Views extends EmittableGroup {
 
 	constructor(parent) {
 		super();
 		this.views_ = [];
-		this.origin = new THREE.Vector3();
 		const room = this.room = this.addRoom(this);
 		const floor = this.floor = this.addFloor(this);
 		const ceil = this.ceil = this.addCeil(this);
@@ -41,65 +41,6 @@ export default class Views extends EmittableGroup {
 		this.index_ = index;
 		this.view = this.views[index];
 	}
-
-	// !!!
-
-	get over() {
-		return this.over_;
-	}
-	set over(intersection) {
-		const object = intersection ? intersection.object : null;
-		if (this.over_ !== object) {
-			this.over_ = object;
-			if (object !== null) {
-				this.onEnterPanel(object.position.clone());
-			} else {
-				this.onExitPanel();
-			}
-			const tweens = this.points.children.map((x, index) => {
-				const from = { scale: x.scale.x };
-				return TweenMax.to(from, 0.25, {
-					scale: x === object ? 3 : 1,
-					delay: 0,
-					onUpdate: () => {
-						x.scale.set(from.scale, from.scale, from.scale);
-					},
-					onCompleted: () => {
-						// console.log(index, 'completed');
-					}
-				});
-			});
-		}
-	}
-
-	get down() {
-		return this.down_;
-	}
-	set down(intersection) {
-		const object = intersection && this.controllers.isControllerSelecting ? intersection.object : null;
-		if (this.down_ !== object) {
-			this.down_ = object;
-			if (object !== null) {
-				const position = object.position;
-				// const debugInfo = `down => {${position.x}, ${position.y}, ${position.z}}`;
-				// this.debugInfo.innerHTML = debugInfo;
-				// console.log(this.views.length);
-				// this.pivot.index = (this.pivot.index + 1) % this.pivot.views.length;
-				// console.log(index, point, debugInfo);
-			}
-		}
-	}
-
-	hittest(raycaster) {
-		let point;
-		// raycaster.params.Points.threshold = 10.0;
-		const intersections = raycaster.intersectObjects(this.points.children);
-		const intersection = intersections.length ? intersections[0] : null;
-		this.over = intersection;
-		this.down = intersection;
-	}
-
-	// !!!
 
 	onInitView(previous, current) {
 		// console.log(previous, current);
@@ -179,7 +120,11 @@ export default class Views extends EmittableGroup {
 	}
 
 	onEnterPoints(view) {
-		view.points.forEach((point, i) => this.addPoint(this.points, new THREE.Vector3(...point.position), i));
+		view.points.forEach((p, i) => {
+			const point = new NavPoint(this.points, i, new THREE.Vector3(...p.position));
+			this.addPointListeners(point);
+			return point;
+		});
 	}
 
 	onExitPoints(view) {
@@ -203,7 +148,7 @@ export default class Views extends EmittableGroup {
 				// panel.geometry.verticesNeedUpdate = true;
 				const position = point.normalize().multiplyScalar(PANEL_RADIUS);
 				panel.position.set(position.x, position.y + 30 + 30, position.z);
-				panel.lookAt(this.origin);
+				panel.lookAt(ORIGIN);
 				this.add(panel);
 				const from = { value: 1 };
 				TweenMax.to(from, 0.2, {
@@ -211,7 +156,7 @@ export default class Views extends EmittableGroup {
 					delay: 0.2,
 					onUpdate: () => {
 						panel.position.set(position.x, position.y + 30 + 30 * from.value, position.z);
-						panel.lookAt(this.origin);
+						panel.lookAt(ORIGIN);
 						panel.material.opacity = 1 - from.value;
 						panel.material.needsUpdate = true;
 					}
@@ -342,39 +287,6 @@ export default class Views extends EmittableGroup {
 		*/
 	}
 
-	addPoint(parent, position, i) {
-		// console.log('addPoint', parent, position, i);
-		// size 2 about 20 cm radius
-		const geometry = new THREE.PlaneBufferGeometry(2, 2, 2, 2);
-		const loader = new THREE.TextureLoader();
-		const texture = loader.load('img/pin.jpg');
-		const material = new THREE.MeshBasicMaterial({
-			alphaMap: texture,
-			transparent: true,
-			opacity: 0,
-		});
-		const point = new THREE.Mesh(geometry, material);
-		position = position.normalize().multiplyScalar(POINT_RADIUS);
-		point.position.set(position.x, position.y, position.z);
-		point.lookAt(this.origin);
-		parent.add(point);
-		const from = { opacity: 0 };
-		TweenMax.to(from, 0.5, {
-			opacity: 1,
-			delay: 0.1 * i,
-			onUpdate: () => {
-				// console.log(index, from.opacity);
-				point.material.opacity = from.opacity;
-				point.material.needsUpdate = true;
-			},
-			onCompleted: () => {
-				// console.log(index, 'completed');
-			}
-		});
-		return point;
-		// console.log(index, 'start');
-	}
-
 	removePoint(i) {
 		return new Promise((resolve, reject) => {
 			const point = this.points.children[i];
@@ -397,13 +309,91 @@ export default class Views extends EmittableGroup {
 
 	createPoint(intersection) {
 		const position = intersection.point.clone();
-		this.addPoint(this.points, position, 0);
+		const points = this.points;
+		const point = new NavPoint(points, 0, position);
+		this.addPointListeners(point);
 		this.view.points.push({
 			id: 2,
 			position: position.toArray(),
 			type: 1,
 			name: 'Point 2',
 			key: 'POINT2',
+		});
+	}
+
+	addPointListeners(point) {
+		point.on('over', () => {
+			/*
+			point.material.color.setHex(0xffffff);
+			point.material.opacity = 0.8;
+			point.material.needsUpdate = true;
+			*/
+			const from = { scale: point.scale.x };
+			TweenMax.to(from, 0.25, {
+				scale: 3,
+				delay: 0,
+				onUpdate: () => {
+					point.scale.set(from.scale, from.scale, from.scale);
+				}
+			});
+			this.onEnterPanel(point.position.clone());
+			this.emit('pointOver', point);
+		});
+		point.on('out', () => {
+			/*
+			point.material.color.setHex(0xffffff);
+			point.material.opacity = 0.5;
+			point.material.needsUpdate = true;
+			*/
+			const from = { scale: point.scale.x };
+			TweenMax.to(from, 0.25, {
+				scale: 1,
+				delay: 0,
+				onUpdate: () => {
+					point.scale.set(from.scale, from.scale, from.scale);
+				}
+			});
+			this.pivot.onExitPanel();
+			this.emit('pointOut', point);
+		});
+		point.on('down', () => {
+			this.emit('pointDown', point);
+			this.index = (this.index + 1) % this.views.length;
+		});
+	}
+
+}
+
+export class NavPoint extends InteractiveMesh {
+
+	constructor(parent, index, position) {
+		// console.log('NavPoint', parent, position, i);
+		// size 2 about 20 cm radius
+		const geometry = new THREE.PlaneBufferGeometry(2, 2, 2, 2);
+		const loader = new THREE.TextureLoader();
+		const texture = loader.load('img/pin.jpg');
+		const material = new THREE.MeshBasicMaterial({
+			alphaMap: texture,
+			transparent: true,
+			opacity: 0,
+		});
+		super(geometry, material);
+		position = position.normalize().multiplyScalar(POINT_RADIUS);
+		this.position.set(position.x, position.y, position.z);
+		this.lookAt(ORIGIN);
+		parent.add(this);
+		const from = { opacity: 0 };
+		TweenMax.to(from, 0.5, {
+			opacity: 1,
+			delay: 0.1 * index,
+			onUpdate: () => {
+				// console.log(index, from.opacity);
+				material.opacity = from.opacity;
+				material.needsUpdate = true;
+			},
+			onCompleted: () => {
+				// console.log(index, 'completed');
+			}
 		});
 	}
 

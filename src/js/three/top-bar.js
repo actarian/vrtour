@@ -77,7 +77,7 @@ export default class TopBar {
 		const arc = new THREE.Mesh(geometry, material);
 		// arc.renderOrder = 100;
 		// arc.position.set(0, 20, 0);
-		// arc.lookAt(this.origin);
+		// arc.lookAt(ORIGIN);
 		parent.add(arc);
 		return arc;
 	}
@@ -150,7 +150,7 @@ export class TopBarItem extends InteractiveMesh {
 		// this.renderOrder = 100;
 		// this.rotation.set(0, -0.5, 0);
 		// this.position.set(0, 0, 0);
-		// this.lookAt(this.origin);
+		// this.lookAt(ORIGIN);
 		parent.add(this);
 	}
 

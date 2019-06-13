@@ -9099,7 +9099,7 @@ Object.defineProperty(exports, "__esModule", {
 });
 exports.cm = cm;
 exports.addCube = addCube;
-exports.TEST_ENABLED = exports.POINTER_RADIUS = exports.POINT_RADIUS = exports.PANEL_RADIUS = exports.ROOM_RADIUS = void 0;
+exports.ORIGIN = exports.TEST_ENABLED = exports.POINTER_RADIUS = exports.POINT_RADIUS = exports.PANEL_RADIUS = exports.ROOM_RADIUS = void 0;
 
 /* jshint esversion: 6 */
 
@@ -9114,6 +9114,8 @@ var POINTER_RADIUS = 98;
 exports.POINTER_RADIUS = POINTER_RADIUS;
 var TEST_ENABLED = false;
 exports.TEST_ENABLED = TEST_ENABLED;
+var ORIGIN = new THREE.Vector3();
+exports.ORIGIN = ORIGIN;
 
 function cm(value) {
   return value / 100;
@@ -10028,7 +10030,7 @@ function () {
       });
       var arc = new THREE.Mesh(geometry, material); // arc.renderOrder = 100;
       // arc.position.set(0, 20, 0);
-      // arc.lookAt(this.origin);
+      // arc.lookAt(ORIGIN);
 
       parent.add(arc);
       return arc;
@@ -10122,7 +10124,7 @@ function (_InteractiveMesh) {
     _this3 = _possibleConstructorReturn(this, _getPrototypeOf(TopBarItem).call(this, geometry, material)); // this.renderOrder = 100;
     // this.rotation.set(0, -0.5, 0);
     // this.position.set(0, 0, 0);
-    // this.lookAt(this.origin);
+    // this.lookAt(ORIGIN);
 
     parent.add(_assertThisInitialized(_this3));
     return _this3;
@@ -10139,11 +10141,13 @@ exports.TopBarItem = TopBarItem;
 Object.defineProperty(exports, "__esModule", {
   value: true
 });
-exports.default = void 0;
+exports.NavPoint = exports.default = void 0;
 
 var _const = require("./const");
 
 var _emittable = _interopRequireDefault(require("./emittable.group"));
+
+var _interactive = _interopRequireDefault(require("./interactive.mesh"));
 
 function _interopRequireDefault(obj) { return obj && obj.__esModule ? obj : { default: obj }; }
 
@@ -10189,7 +10193,6 @@ function (_EmittableGroup) {
 
     _this = _possibleConstructorReturn(this, _getPrototypeOf(Views).call(this));
     _this.views_ = [];
-    _this.origin = new THREE.Vector3();
 
     var room = _this.room = _this.addRoom(_assertThisInitialized(_this));
 
@@ -10206,17 +10209,6 @@ function (_EmittableGroup) {
   }
 
   _createClass(Views, [{
-    key: "hittest",
-    value: function hittest(raycaster) {
-      var point; // raycaster.params.Points.threshold = 10.0;
-
-      var intersections = raycaster.intersectObjects(this.points.children);
-      var intersection = intersections.length ? intersections[0] : null;
-      this.over = intersection;
-      this.down = intersection;
-    } // !!!
-
-  }, {
     key: "onInitView",
     value: function onInitView(previous, current) {
       var _this2 = this;
@@ -10309,8 +10301,12 @@ function (_EmittableGroup) {
     value: function onEnterPoints(view) {
       var _this5 = this;
 
-      view.points.forEach(function (point, i) {
-        return _this5.addPoint(_this5.points, _construct(THREE.Vector3, _toConsumableArray(point.position)), i);
+      view.points.forEach(function (p, i) {
+        var point = new NavPoint(_this5.points, i, _construct(THREE.Vector3, _toConsumableArray(p.position)));
+
+        _this5.addPointListeners(point);
+
+        return point;
       });
     }
   }, {
@@ -10343,7 +10339,7 @@ function (_EmittableGroup) {
 
           var position = point.normalize().multiplyScalar(_const.PANEL_RADIUS);
           panel.position.set(position.x, position.y + 30 + 30, position.z);
-          panel.lookAt(_this7.origin);
+          panel.lookAt(_const.ORIGIN);
 
           _this7.add(panel);
 
@@ -10355,7 +10351,7 @@ function (_EmittableGroup) {
             delay: 0.2,
             onUpdate: function onUpdate() {
               panel.position.set(position.x, position.y + 30 + 30 * from.value, position.z);
-              panel.lookAt(_this7.origin);
+              panel.lookAt(_const.ORIGIN);
               panel.material.opacity = 1 - from.value;
               panel.material.needsUpdate = true;
             }
@@ -10495,40 +10491,6 @@ function (_EmittableGroup) {
       */
     }
   }, {
-    key: "addPoint",
-    value: function addPoint(parent, position, i) {
-      // console.log('addPoint', parent, position, i);
-      // size 2 about 20 cm radius
-      var geometry = new THREE.PlaneBufferGeometry(2, 2, 2, 2);
-      var loader = new THREE.TextureLoader();
-      var texture = loader.load('img/pin.jpg');
-      var material = new THREE.MeshBasicMaterial({
-        alphaMap: texture,
-        transparent: true,
-        opacity: 0
-      });
-      var point = new THREE.Mesh(geometry, material);
-      position = position.normalize().multiplyScalar(_const.POINT_RADIUS);
-      point.position.set(position.x, position.y, position.z);
-      point.lookAt(this.origin);
-      parent.add(point);
-      var from = {
-        opacity: 0
-      };
-      TweenMax.to(from, 0.5, {
-        opacity: 1,
-        delay: 0.1 * i,
-        onUpdate: function onUpdate() {
-          // console.log(index, from.opacity);
-          point.material.opacity = from.opacity;
-          point.material.needsUpdate = true;
-        },
-        onCompleted: function onCompleted() {// console.log(index, 'completed');
-        }
-      });
-      return point; // console.log(index, 'start');
-    }
-  }, {
     key: "removePoint",
     value: function removePoint(i) {
       var _this8 = this;
@@ -10558,13 +10520,68 @@ function (_EmittableGroup) {
     key: "createPoint",
     value: function createPoint(intersection) {
       var position = intersection.point.clone();
-      this.addPoint(this.points, position, 0);
+      var points = this.points;
+      var point = new NavPoint(points, 0, position);
+      this.addPointListeners(point);
       this.view.points.push({
         id: 2,
         position: position.toArray(),
         type: 1,
         name: 'Point 2',
         key: 'POINT2'
+      });
+    }
+  }, {
+    key: "addPointListeners",
+    value: function addPointListeners(point) {
+      var _this9 = this;
+
+      point.on('over', function () {
+        /*
+        point.material.color.setHex(0xffffff);
+        point.material.opacity = 0.8;
+        point.material.needsUpdate = true;
+        */
+        var from = {
+          scale: point.scale.x
+        };
+        TweenMax.to(from, 0.25, {
+          scale: 3,
+          delay: 0,
+          onUpdate: function onUpdate() {
+            point.scale.set(from.scale, from.scale, from.scale);
+          }
+        });
+
+        _this9.onEnterPanel(point.position.clone());
+
+        _this9.emit('pointOver', point);
+      });
+      point.on('out', function () {
+        /*
+        point.material.color.setHex(0xffffff);
+        point.material.opacity = 0.5;
+        point.material.needsUpdate = true;
+        */
+        var from = {
+          scale: point.scale.x
+        };
+        TweenMax.to(from, 0.25, {
+          scale: 1,
+          delay: 0,
+          onUpdate: function onUpdate() {
+            point.scale.set(from.scale, from.scale, from.scale);
+          }
+        });
+
+        _this9.pivot.onExitPanel();
+
+        _this9.emit('pointOut', point);
+      });
+      point.on('down', function () {
+        _this9.emit('pointDown', point);
+
+        _this9.index = (_this9.index + 1) % _this9.views.length;
       });
     }
   }, {
@@ -10593,60 +10610,6 @@ function (_EmittableGroup) {
     set: function set(index) {
       this.index_ = index;
       this.view = this.views[index];
-    } // !!!
-
-  }, {
-    key: "over",
-    get: function get() {
-      return this.over_;
-    },
-    set: function set(intersection) {
-      var object = intersection ? intersection.object : null;
-
-      if (this.over_ !== object) {
-        this.over_ = object;
-
-        if (object !== null) {
-          this.onEnterPanel(object.position.clone());
-        } else {
-          this.onExitPanel();
-        }
-
-        var tweens = this.points.children.map(function (x, index) {
-          var from = {
-            scale: x.scale.x
-          };
-          return TweenMax.to(from, 0.25, {
-            scale: x === object ? 3 : 1,
-            delay: 0,
-            onUpdate: function onUpdate() {
-              x.scale.set(from.scale, from.scale, from.scale);
-            },
-            onCompleted: function onCompleted() {// console.log(index, 'completed');
-            }
-          });
-        });
-      }
-    }
-  }, {
-    key: "down",
-    get: function get() {
-      return this.down_;
-    },
-    set: function set(intersection) {
-      var object = intersection && this.controllers.isControllerSelecting ? intersection.object : null;
-
-      if (this.down_ !== object) {
-        this.down_ = object;
-
-        if (object !== null) {
-          var position = object.position; // const debugInfo = `down => {${position.x}, ${position.y}, ${position.z}}`;
-          // this.debugInfo.innerHTML = debugInfo;
-          // console.log(this.views.length);
-          // this.pivot.index = (this.pivot.index + 1) % this.pivot.views.length;
-          // console.log(index, point, debugInfo);
-        }
-      }
     }
   }]);
 
@@ -10655,7 +10618,57 @@ function (_EmittableGroup) {
 
 exports.default = Views;
 
-},{"./const":4,"./emittable.group":6}],12:[function(require,module,exports){
+var NavPoint =
+/*#__PURE__*/
+function (_InteractiveMesh) {
+  _inherits(NavPoint, _InteractiveMesh);
+
+  function NavPoint(parent, index, position) {
+    var _this10;
+
+    _classCallCheck(this, NavPoint);
+
+    // console.log('NavPoint', parent, position, i);
+    // size 2 about 20 cm radius
+    var geometry = new THREE.PlaneBufferGeometry(2, 2, 2, 2);
+    var loader = new THREE.TextureLoader();
+    var texture = loader.load('img/pin.jpg');
+    var material = new THREE.MeshBasicMaterial({
+      alphaMap: texture,
+      transparent: true,
+      opacity: 0
+    });
+    _this10 = _possibleConstructorReturn(this, _getPrototypeOf(NavPoint).call(this, geometry, material));
+    position = position.normalize().multiplyScalar(_const.POINT_RADIUS);
+
+    _this10.position.set(position.x, position.y, position.z);
+
+    _this10.lookAt(_const.ORIGIN);
+
+    parent.add(_assertThisInitialized(_this10));
+    var from = {
+      opacity: 0
+    };
+    TweenMax.to(from, 0.5, {
+      opacity: 1,
+      delay: 0.1 * index,
+      onUpdate: function onUpdate() {
+        // console.log(index, from.opacity);
+        material.opacity = from.opacity;
+        material.needsUpdate = true;
+      },
+      onCompleted: function onCompleted() {// console.log(index, 'completed');
+      }
+    });
+    return _this10;
+  }
+
+  return NavPoint;
+}(_interactive.default);
+
+exports.NavPoint = NavPoint;
+
+},{"./const":4,"./emittable.group":6,"./interactive.mesh":8}],12:[function(require,module,exports){
 "use strict";
 
 Object.defineProperty(exports, "__esModule", {
@@ -11044,7 +11057,6 @@ function () {
       height: 0,
       aspect: 0
     };
-    this.origin = new THREE.Vector3();
     this.cameraDirection = new THREE.Vector3();
     this.init();
   }
@@ -11089,6 +11101,11 @@ function () {
       var pivot = this.pivot = new _views.default(scene);
       pivot.on('onEnterView', function (view) {
         _this2.orbit.setOrientation(view.orientation);
+      });
+      pivot.on('pointDown', function (point) {
+        var position = point.position;
+        var debugInfo = "down => {".concat(position.x, ", ").concat(position.y, ", ").concat(position.z, "}");
+        _this2.debugInfo.innerHTML = debugInfo;
       });
       var renderer = this.renderer = this.addRenderer(); // container.appendChild(WEBVR.createButton(renderer, { referenceSpaceType: 'local' }));
 
@@ -11224,7 +11241,7 @@ function () {
       var mesh = new THREE.Mesh(geometry, material); // mesh.position.x = 100000;
 
       mesh.position.set(-100000, -100000, -100000); // mesh.geometry.rotateX(Math.PI);
-      // mesh.lookAt(this.origin);
+      // mesh.lookAt(ORIGIN);
       // mesh.lookAt(this.camera.position);
 
       parent.add(mesh);
@@ -11295,6 +11312,7 @@ function () {
       }
 
       try {
+        this.mousedown = true;
         var raycaster = this.raycaster; // update the picking ray with the camera and mouse position
 
         raycaster.setFromCamera(this.mouse, this.camera); // calculate objects intersecting the picking ray
@@ -11316,26 +11334,23 @@ function () {
           }
           */
 
-        } else if (this.points) {
-          raycaster.params.Points.threshold = 10.0;
-
-          var _intersections = raycaster.intersectObjects(this.points.children);
-
-          if (_intersections) {
-            var _intersection = _intersections.find(function (x) {
-              return x !== undefined;
-            });
-
-            if (_intersection) {
-              var index = _intersection.index;
-              var point = _intersection.point;
-              var debugInfo = "".concat(index, " => {").concat(point.x, ", ").concat(point.y, ", ").concat(point.z, "}"); // console.log(index, point, debugInfo);
-
-              this.debugInfo.innerHTML = debugInfo;
-              this.index = (this.index + 1) % this.views.length;
-            }
-          }
         }
+        /* else if (this.points) {
+        	raycaster.params.Points.threshold = 10.0;
+        	const intersections = raycaster.intersectObjects(this.points.children);
+        	if (intersections) {
+        		const intersection = intersections.find(x => x !== undefined);
+        		if (intersection) {
+        			const index = intersection.index;
+        			const point = intersection.point;
+        			const debugInfo = `${index} => {${point.x}, ${point.y}, ${point.z}}`;
+        			// console.log(index, point, debugInfo);
+        			this.debugInfo.innerHTML = debugInfo;
+        			this.index = (this.index + 1) % this.views.length;
+        		}
+        	}
+        } */
+
       } catch (error) {
         this.debugInfo.innerHTML = error;
       }
@@ -11357,7 +11372,8 @@ function () {
 
         var raycaster = this.raycaster;
         raycaster.setFromCamera(this.mouse, this.camera);
-        this.updateHoverPoint(raycaster);
+
+        _interactive.default.hittest(raycaster, this.mousedown);
       } catch (error) {
         this.debugInfo.innerHTML = error;
       }
@@ -11370,6 +11386,8 @@ function () {
         this.controllers.setText('up');
         return;
       }
+
+      this.mousedown = false;
     }
   }, {
     key: "onMouseWheel",
@@ -11448,7 +11466,7 @@ function () {
           var position = intersection.point.normalize().multiplyScalar(_const.POINTER_RADIUS);
           position = this.pivot.worldToLocal(position);
           this.pointer.position.set(position.x, position.y, position.z);
-          this.pointer.lookAt(this.origin); // console.log(position.x, position.y, position.z);
+          this.pointer.lookAt(_const.ORIGIN); // console.log(position.x, position.y, position.z);
         }
       }
 
@@ -11456,25 +11474,6 @@ function () {
       this.pointer.material.opacity = this.controllers.isControllerSelecting ? 1.0 : 0.5;
       this.pointer.scale.setScalar(this.pivot.busy ? 0 : 1); // this.pivot.rotation.y = (this.pivot.ery || 0);
       // this.pivot.rotation.y += ((this.pivot.ery || 0) - this.pivot.rotation.y) / 10;
-    }
-  }, {
-    key: "updateHoverPoint",
-    value: function updateHoverPoint(raycaster) {
-      var point; // raycaster.params.Points.threshold = 10.0;
-
-      var intersections = raycaster.intersectObjects(this.pivot.points.children);
-      /*
-      if (intersections.length) {
-      	const intersection = intersections[0];
-      	point = intersection.object;
-      	point = this.points.children.find(x => x === point);
-      }
-      */
-      // console.log(intersections);
-
-      var intersection = intersections.length ? intersections[0] : null;
-      this.hoverPoint = intersection;
-      this.selectedPoint = intersection;
     }
   }, {
     key: "updateCamera",
@@ -11507,7 +11506,7 @@ function () {
           _interactive.default.hittest(raycaster, controllers.isControllerSelecting); // this.pivot.hittest(raycaster); // !!!
 
 
-          this.updateHoverPoint(raycaster);
+          this.updateOverPoint(raycaster);
           this.updatePointer(raycaster);
         }
       } catch (error) {
@@ -11590,59 +11589,6 @@ function () {
       targetCtx.putImageData(imageData, target.width, target.height); // targetCtx.drawImage(imageData, 0, 0);
 
       return target;
-    }
-  }, {
-    key: "hoverPoint",
-    get: function get() {
-      return this.hoverPoint_;
-    },
-    set: function set(intersection) {
-      var object = intersection ? intersection.object : null;
-
-      if (this.hoverPoint_ !== object) {
-        this.hoverPoint_ = object;
-
-        if (object !== null) {
-          this.pivot.onEnterPanel(object.position.clone());
-        } else {
-          this.pivot.onExitPanel();
-        }
-
-        var tweens = this.pivot.points.children.map(function (x, index) {
-          var from = {
-            scale: x.scale.x
-          };
-          return TweenMax.to(from, 0.25, {
-            scale: x === object ? 3 : 1,
-            delay: 0,
-            onUpdate: function onUpdate() {
-              x.scale.set(from.scale, from.scale, from.scale);
-            },
-            onCompleted: function onCompleted() {// console.log(index, 'completed');
-            }
-          });
-        });
-      }
-    }
-  }, {
-    key: "selectedPoint",
-    get: function get() {
-      return this.selectedPoint_;
-    },
-    set: function set(intersection) {
-      var object = intersection && this.controllers.isControllerSelecting ? intersection.object : null;
-
-      if (this.selectedPoint_ !== object) {
-        this.selectedPoint_ = object;
-
-        if (object !== null) {
-          var position = object.position;
-          var debugInfo = "selectedPoint => {".concat(position.x, ", ").concat(position.y, ", ").concat(position.z, "}");
-          this.debugInfo.innerHTML = debugInfo; // console.log(this.views.length);
-
-          this.pivot.index = (this.pivot.index + 1) % this.pivot.views.length; // console.log(index, point, debugInfo);
-        }
-      }
     }
   }]);
 

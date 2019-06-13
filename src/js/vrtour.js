@@ -2,7 +2,7 @@
 /* global window, document, TweenMax, THREE, WEBVR */
 
 import html2canvas from 'html2canvas';
-import { POINTER_RADIUS, ROOM_RADIUS, TEST_ENABLED } from './three/const';
+import { ORIGIN, POINTER_RADIUS, ROOM_RADIUS, TEST_ENABLED } from './three/const';
 import Controllers from './three/controllers';
 import InteractiveMesh from './three/interactive.mesh';
 import Orbit from './three/orbit';
@@ -16,55 +16,8 @@ class VRTour {
 		this.mouse = { x: 0, y: 0 };
 		this.parallax = { x: 0, y: 0 };
 		this.size = { width: 0, height: 0, aspect: 0 };
-		this.origin = new THREE.Vector3();
 		this.cameraDirection = new THREE.Vector3();
 		this.init();
-	}
-
-	get hoverPoint() {
-		return this.hoverPoint_;
-	}
-	set hoverPoint(intersection) {
-		const object = intersection ? intersection.object : null;
-		if (this.hoverPoint_ !== object) {
-			this.hoverPoint_ = object;
-			if (object !== null) {
-				this.pivot.onEnterPanel(object.position.clone());
-			} else {
-				this.pivot.onExitPanel();
-			}
-			const tweens = this.pivot.points.children.map((x, index) => {
-				const from = { scale: x.scale.x };
-				return TweenMax.to(from, 0.25, {
-					scale: x === object ? 3 : 1,
-					delay: 0,
-					onUpdate: () => {
-						x.scale.set(from.scale, from.scale, from.scale);
-					},
-					onCompleted: () => {
-						// console.log(index, 'completed');
-					}
-				});
-			});
-		}
-	}
-
-	get selectedPoint() {
-		return this.selectedPoint_;
-	}
-	set selectedPoint(intersection) {
-		const object = intersection && this.controllers.isControllerSelecting ? intersection.object : null;
-		if (this.selectedPoint_ !== object) {
-			this.selectedPoint_ = object;
-			if (object !== null) {
-				const position = object.position;
-				const debugInfo = `selectedPoint => {${position.x}, ${position.y}, ${position.z}}`;
-				this.debugInfo.innerHTML = debugInfo;
-				// console.log(this.views.length);
-				this.pivot.index = (this.pivot.index + 1) % this.pivot.views.length;
-				// console.log(index, point, debugInfo);
-			}
-		}
 	}
 
 	load(jsonUrl) {
@@ -98,6 +51,11 @@ class VRTour {
 		const pivot = this.pivot = new Views(scene);
 		pivot.on('onEnterView', (view) => {
 			this.orbit.setOrientation(view.orientation);
+		});
+		pivot.on('pointDown', (point) => {
+			const position = point.position;
+			const debugInfo = `down => {${position.x}, ${position.y}, ${position.z}}`;
+			this.debugInfo.innerHTML = debugInfo;
 		});
 		const renderer = this.renderer = this.addRenderer();
 		// container.appendChild(WEBVR.createButton(renderer, { referenceSpaceType: 'local' }));
@@ -217,7 +175,7 @@ class VRTour {
 		// mesh.position.x = 100000;
 		mesh.position.set(-100000, -100000, -100000);
 		// mesh.geometry.rotateX(Math.PI);
-		// mesh.lookAt(this.origin);
+		// mesh.lookAt(ORIGIN);
 		// mesh.lookAt(this.camera.position);
 		parent.add(mesh);
 		return mesh;
@@ -277,6 +235,7 @@ class VRTour {
 			return;
 		}
 		try {
+			this.mousedown = true;
 			const raycaster = this.raycaster;
 			// update the picking ray with the camera and mouse position
 			raycaster.setFromCamera(this.mouse, this.camera);
@@ -294,7 +253,8 @@ class VRTour {
 					intersects[i].object.material.color.set( 0xff0000 );
 				}
 				*/
-			} else if (this.points) {
+			}
+			/* else if (this.points) {
 				raycaster.params.Points.threshold = 10.0;
 				const intersections = raycaster.intersectObjects(this.points.children);
 				if (intersections) {
@@ -308,7 +268,7 @@ class VRTour {
 						this.index = (this.index + 1) % this.views.length;
 					}
 				}
-			}
+			} */
 		} catch (error) {
 			this.debugInfo.innerHTML = error;
 		}
@@ -327,7 +287,7 @@ class VRTour {
 			}
 			const raycaster = this.raycaster;
 			raycaster.setFromCamera(this.mouse, this.camera);
-			this.updateHoverPoint(raycaster);
+			InteractiveMesh.hittest(raycaster, this.mousedown);
 		} catch (error) {
 			this.debugInfo.innerHTML = error;
 		}
@@ -339,6 +299,7 @@ class VRTour {
 			this.controllers.setText('up');
 			return;
 		}
+		this.mousedown = false;
 	}
 
 	onMouseWheel(event) {
@@ -406,7 +367,7 @@ class VRTour {
 				let position = intersection.point.normalize().multiplyScalar(POINTER_RADIUS);
 				position = this.pivot.worldToLocal(position);
 				this.pointer.position.set(position.x, position.y, position.z);
-				this.pointer.lookAt(this.origin);
+				this.pointer.lookAt(ORIGIN);
 				// console.log(position.x, position.y, position.z);
 			}
 		}
@@ -415,23 +376,6 @@ class VRTour {
 		this.pointer.scale.setScalar(this.pivot.busy ? 0 : 1);
 		// this.pivot.rotation.y = (this.pivot.ery || 0);
 		// this.pivot.rotation.y += ((this.pivot.ery || 0) - this.pivot.rotation.y) / 10;
-	}
-
-	updateHoverPoint(raycaster) {
-		let point;
-		// raycaster.params.Points.threshold = 10.0;
-		const intersections = raycaster.intersectObjects(this.pivot.points.children);
-		/*
-		if (intersections.length) {
-			const intersection = intersections[0];
-			point = intersection.object;
-			point = this.points.children.find(x => x === point);
-		}
-		*/
-		// console.log(intersections);
-		const intersection = intersections.length ? intersections[0] : null;
-		this.hoverPoint = intersection;
-		this.selectedPoint = intersection;
 	}
 
 	updateCamera() {
@@ -459,7 +403,7 @@ class VRTour {
 				raycaster.set(position, rotation);
 				InteractiveMesh.hittest(raycaster, controllers.isControllerSelecting);
 				// this.pivot.hittest(raycaster); // !!!
-				this.updateHoverPoint(raycaster);
+				this.updateOverPoint(raycaster);
 				this.updatePointer(raycaster);
 			}
 		} catch (error) {
