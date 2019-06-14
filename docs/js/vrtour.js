@@ -9816,11 +9816,12 @@ function (_EmittableMesh) {
     key: "hittest",
     value: function hittest(raycaster, down) {
       var intersections = raycaster.intersectObjects(InteractiveMesh.items);
-      var intersection = intersections.length ? intersections[0] : null;
-      var object = intersection && intersection.object;
       InteractiveMesh.items.forEach(function (x) {
+        var intersection = intersections.find(function (i) {
+          return i.object === x;
+        });
         x.intersection = intersection;
-        x.over = x === object;
+        x.over = intersection !== undefined;
         x.down = down;
       });
     }
@@ -9939,12 +9940,12 @@ function (_EmittableGroup) {
 
     var panel = _this.panel = _this.addPanel(_assertThisInitialized(_this));
 
-    var count = 12;
+    var count = 15;
     var items = _this.items = new Array(count).fill(null).map(function (x, i) {
       var item = new MenuItem(panel, {}, i, count);
       item.on('over', function () {
         item.material.color.setHex(0xff0000);
-        item.material.opacity = 0.1;
+        item.material.opacity = 1.0;
         item.material.needsUpdate = true;
       });
       item.on('out', function () {
@@ -9966,115 +9967,21 @@ function (_EmittableGroup) {
     value: function addPanel(parent) {
       var loader = new THREE.TextureLoader();
       var texture = loader.load('img/menu.png');
-      var geometry = new THREE.PlaneGeometry(10, 20, 1, 2); // geometry.rotateY(Math.PI);
+      var geometry = new THREE.PlaneGeometry(8, 16, 1, 2); // geometry.rotateY(Math.PI);
 
       var material = new THREE.MeshBasicMaterial({
-        color: 0xffffff,
+        // color: 0xffffff,
         map: texture,
-        transparent: true,
-        opacity: 0.8 // side: THREE.DoubleSide
+        transparent: true // opacity: 0.8,
+        // side: THREE.DoubleSide,
+        // blending: THREE.AdditiveBlending,
 
       });
       var plane = new THREE.Mesh(geometry, material);
-      plane.renderOrder = 1;
+      plane.renderOrder = 90;
       plane.position.set(0, 0, -20);
       parent.add(plane);
       return plane;
-    }
-  }, {
-    key: "temp",
-    value: function temp() {
-      var _this2 = this;
-
-      this.py = PY;
-      this.ry = RY;
-      var arc = this.arc = this.addArc(this);
-      this.items = [new MenuItem(this, 0), new MenuItem(this, 1)];
-      this.items.forEach(function (x, index) {
-        x.on('over', function () {
-          x.material.color.setHex(0xffffff);
-          x.material.opacity = 0.8;
-          x.material.needsUpdate = true;
-        });
-        x.on('out', function () {
-          x.material.color.setHex(0xffffff);
-          x.material.opacity = 0.5;
-          x.material.needsUpdate = true;
-        });
-        x.on('down', function () {
-          x.material.color.setHex(0x33c5f5);
-          x.material.opacity = 1;
-          x.material.needsUpdate = true;
-          var direction = index === 1 ? 1 : -1;
-          var y = _this2.parent.rotation.y + Math.PI / 2 * direction; // this.parent.ery = y;
-
-          _this2.parent.busy = true;
-          TweenMax.to(_this2.parent.rotation, 0.6, {
-            y: y,
-            onComplete: function onComplete() {
-              _this2.parent.busy = false;
-            }
-          });
-        });
-      });
-      this.materials = this.items.map(function (x) {
-        return x.material;
-      });
-      this.materials.unshift(arc.material);
-    }
-  }, {
-    key: "addArc",
-    value: function addArc(parent) {
-      var loader = new THREE.TextureLoader();
-      var texture = loader.load('img/menu.png');
-      var geometry = new THREE.CylinderGeometry(_const.POINT_RADIUS, _const.POINT_RADIUS, 8, 32, 1, true, FROM, TO);
-      geometry.scale(-1, 1, 1); // geometry.rotateY(Math.PI);
-
-      var material = new THREE.MeshBasicMaterial({
-        color: 0xffffff,
-        map: texture,
-        transparent: true,
-        opacity: 0
-      });
-      var arc = new THREE.Mesh(geometry, material); // arc.renderOrder = 100;
-      // arc.position.set(0, 20, 0);
-      // arc.lookAt(ORIGIN);
-
-      parent.add(arc);
-      return arc;
-    }
-  }, {
-    key: "update",
-    value: function update(cameraDirection) {
-      var y = Math.atan2(cameraDirection.x, cameraDirection.z) - this.parent.rotation.y + Math.PI - this.ry;
-      this.rotation.set(0, y, 0);
-    }
-  }, {
-    key: "active",
-    get: function get() {
-      return this.active_;
-    },
-    set: function set(active) {
-      var _this3 = this;
-
-      if (this.active_ !== active) {
-        this.active_ = active;
-        var materials = this.materials; // console.log(materials);
-
-        var from = {
-          value: materials[0].opacity
-        };
-        TweenMax.to(from, 0.3, {
-          value: active ? 1 : 0,
-          onUpdate: function onUpdate() {
-            _this3.position.y = _this3.py - 30 * from.value;
-            materials.forEach(function (x, i) {
-              x.opacity = i === 0 ? from.value * 0.8 : from.value * 0.5;
-              x.needsUpdate = true;
-            });
-          }
-        });
-      }
     }
   }]);
 
@@ -10113,41 +10020,42 @@ function (_InteractiveMesh) {
   }]);
 
   function MenuItem(parent, item, index, total) {
-    var _this4;
+    var _this2;
 
     _classCallCheck(this, MenuItem);
 
     var size = 2;
-    var gutter = 0.2;
+    var gutter = 0.4;
     var loader = new THREE.TextureLoader();
     var texture = loader.load('img/menu-item.png');
     var geometry = new THREE.PlaneGeometry(size, size, 1, 1);
     var material = new THREE.MeshBasicMaterial({
-      color: 0xffffff,
+      // color: 0xffffff,
       map: texture,
-      transparent: true,
-      opacity: 0.8 // side: THREE.DoubleSide
+      transparent: true // opacity: 0.8,
+      // blending: THREE.AdditiveBlending,
+      // side: THREE.DoubleSide
 
     });
-    _this4 = _possibleConstructorReturn(this, _getPrototypeOf(MenuItem).call(this, geometry, material));
-    _this4.item = item;
-    _this4.index = index; // this.renderOrder = 100;
-    // this.rotation.set(0, -0.5, 0);
+    _this2 = _possibleConstructorReturn(this, _getPrototypeOf(MenuItem).call(this, geometry, material));
+    _this2.item = item;
+    _this2.index = index;
+    _this2.renderOrder = 100; // this.rotation.set(0, -0.5, 0);
     // this.position.set(0, 0, 0);
     // this.lookAt(ORIGIN);
 
     var d = size + gutter;
     var cols = 3;
     var rows = Math.ceil(total / cols);
-    var sx = -cols * d / 2;
-    var sy = -rows * d / 2;
+    var sx = size / 2 - (cols * d - gutter) / 2;
+    var sy = size / 2 - (rows * d - gutter) / 2;
     var r = Math.floor(index / cols);
     var c = index - r * cols;
 
-    _this4.position.set(sx + d * c, sy + d * r, 1);
+    _this2.position.set(sx + d * c, sy + d * r, 2);
 
-    parent.add(_assertThisInitialized(_this4));
-    return _this4;
+    parent.add(_assertThisInitialized(_this2));
+    return _this2;
   }
 
   return MenuItem;
@@ -10737,10 +10645,11 @@ function (_EmittableGroup) {
       });
       */
 
-      var sphere = new _interactive.default(geometry, material); // sphere.castShadow = false;
+      var sphere = new _interactive.default(geometry, material);
+      sphere.renderOrder = -1; // sphere.castShadow = false;
       // sphere.receiveShadow = true;
+      // group.renderOrder = -1;
 
-      group.renderOrder = -1;
       group.add(sphere);
       group.sphere = sphere; //
 
@@ -11528,7 +11437,8 @@ function () {
     key: "addRenderer",
     value: function addRenderer() {
       var renderer = new THREE.WebGLRenderer({
-        antialias: true // logarithmicDepthBuffer: true,
+        antialias: true,
+        localClippingEnabled: true // logarithmicDepthBuffer: true,
         // premultipliedAlpha: true,
         // alpha: true,
 
@@ -11614,7 +11524,8 @@ function () {
             material.blendDst = THREE.OneFactor; // THREE.OneMinusSrcAlphaFactor; //default
             */
 
-      var mesh = new THREE.Mesh(geometry, material); // mesh.position.x = 100000;
+      var mesh = new THREE.Mesh(geometry, material);
+      mesh.renderOrder = 1000; // mesh.position.x = 100000;
 
       mesh.position.set(-100000, -100000, -100000); // mesh.geometry.rotateX(Math.PI);
       // mesh.lookAt(ORIGIN);

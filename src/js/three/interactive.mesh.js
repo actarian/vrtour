@@ -7,11 +7,10 @@ export default class InteractiveMesh extends EmittableMesh {
 
 	static hittest(raycaster, down) {
 		const intersections = raycaster.intersectObjects(InteractiveMesh.items);
-		const intersection = intersections.length ? intersections[0] : null;
-		const object = intersection && intersection.object;
 		InteractiveMesh.items.forEach(x => {
+			const intersection = intersections.find(i => i.object === x);
 			x.intersection = intersection;
-			x.over = x === object;
+			x.over = intersection !== undefined;
 			x.down = down;
 		});
 	}

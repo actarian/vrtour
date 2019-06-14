@@ -203,9 +203,10 @@ export default class Views extends EmittableGroup {
 		});
 		*/
 		const sphere = new InteractiveMesh(geometry, material);
+		sphere.renderOrder = -1;
 		// sphere.castShadow = false;
 		// sphere.receiveShadow = true;
-		group.renderOrder = -1;
+		// group.renderOrder = -1;
 		group.add(sphere);
 		group.sphere = sphere;
 		//

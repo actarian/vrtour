@@ -95,6 +95,7 @@ class VRTour {
 	addRenderer() {
 		const renderer = new THREE.WebGLRenderer({
 			antialias: true,
+			localClippingEnabled: true,
 			// logarithmicDepthBuffer: true,
 			// premultipliedAlpha: true,
 			// alpha: true,
@@ -172,6 +173,7 @@ class VRTour {
         material.blendDst = THREE.OneFactor; // THREE.OneMinusSrcAlphaFactor; //default
         */
 		const mesh = new THREE.Mesh(geometry, material);
+		mesh.renderOrder = 1000;
 		// mesh.position.x = 100000;
 		mesh.position.set(-100000, -100000, -100000);
 		// mesh.geometry.rotateX(Math.PI);
