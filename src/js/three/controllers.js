@@ -2,11 +2,13 @@
 /* global window, document */
 
 import { cm, POINTER_RADIUS, TEST_ENABLED } from './const';
+import Emittable from './emittable';
+import Menu from './menu';
 
-export default class Controllers {
+export default class Controllers extends Emittable {
 
 	constructor(renderer, scene, pivot) {
-		this.events = {};
+		super();
 		this.gamepads = {};
 		this.renderer = renderer;
 		this.scene = scene;
@@ -20,36 +22,13 @@ export default class Controllers {
 			const right = this.right = this.addControllerTest(scene);
 			document.addEventListener('mousedown', this.onRightSelectStart);
 			document.addEventListener('mouseup', this.onRightSelectEnd);
+			const menu = this.menu = new Menu(pivot);
 		} else {
 			const left = this.left = this.addControllerLeft(renderer, scene);
 			const right = this.right = this.addControllerRight(renderer, scene);
+			const menu = this.menu = new Menu(left);
 		}
 		const text = this.text = this.addText(pivot);
-	}
-
-	on(type, callback) {
-		const event = this.events[type] = this.events[type] || [];
-		event.push(callback);
-		return () => {
-			this.events[type] = event.filter(x => x !== callback);
-		};
-	}
-
-	off(type, callback) {
-		const event = this.events[type];
-		if (event) {
-			this.events[type] = event.filter(x => x !== callback);
-		}
-	}
-
-	emit(type, data) {
-		const event = this.events[type];
-		if (event) {
-			event.forEach(callback => {
-				// callback.call(this, data);
-				callback(data);
-			});
-		}
 	}
 
 	update() {
