@@ -1,17 +1,9 @@
 /* jshint esversion: 6 */
 /* global window, document */
 
-import { ORIGIN, POINT_RADIUS } from './const';
+import { cm, ORIGIN } from './const';
 import EmittableGroup from './emittable.group';
 import InteractiveMesh from './interactive.mesh';
-
-const SIZE = 8;
-const RADIUS = POINT_RADIUS - 0.1;
-const ARC = SIZE / RADIUS;
-const PY = 50;
-const RY = Math.PI - 0.5;
-const FROM = 0;
-const TO = 1;
 
 export default class Menu extends EmittableGroup {
 
@@ -40,7 +32,7 @@ export default class Menu extends EmittableGroup {
 	addPanel(parent) {
 		const loader = new THREE.TextureLoader();
 		const texture = loader.load('img/menu.png');
-		const geometry = new THREE.PlaneGeometry(8, 16, 1, 2);
+		const geometry = new THREE.PlaneGeometry(cm(8), cm(16), 1, 2);
 		// geometry.rotateY(Math.PI);
 		const material = new THREE.MeshBasicMaterial({
 			// color: 0xffffff,
@@ -52,7 +44,9 @@ export default class Menu extends EmittableGroup {
 		});
 		const plane = new THREE.Mesh(geometry, material);
 		plane.renderOrder = 90;
-		plane.position.set(0, 0, -20);
+		// plane.position.set(0, 0, -20);
+		plane.position.set(0, cm(5), -cm(14));
+		plane.rotation.set(-Math.PI / 2, 0, 0);
 		parent.add(plane);
 		return plane;
 	}
@@ -82,8 +76,8 @@ export class MenuItem extends InteractiveMesh {
 	}
 
 	constructor(parent, item, index, total) {
-		const size = 2;
-		const gutter = 0.4;
+		const size = cm(2);
+		const gutter = cm(0.4);
 		const loader = new THREE.TextureLoader();
 		const texture = loader.load('img/menu-item.png');
 		const geometry = new THREE.PlaneGeometry(size, size, 1, 1);

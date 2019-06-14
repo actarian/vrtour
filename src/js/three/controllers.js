@@ -22,7 +22,7 @@ export default class Controllers extends Emittable {
 			const right = this.right = this.addControllerTest(scene);
 			document.addEventListener('mousedown', this.onRightSelectStart);
 			document.addEventListener('mouseup', this.onRightSelectEnd);
-			const menu = this.menu = new Menu(pivot);
+			const menu = this.menu = new Menu(right);
 		} else {
 			const left = this.left = this.addControllerLeft(renderer, scene);
 			const right = this.right = this.addControllerRight(renderer, scene);
@@ -125,20 +125,21 @@ export default class Controllers extends Emittable {
 		const controller = new THREE.Group();
 		controller.position.set(0, 0, 0);
 		const cylinder = controller.cylinder = this.addControllerCylinder(controller, 0);
+		controller.scale.set(5, 5, 5);
 		scene.add(controller);
 		return controller;
 	}
 
 	addControllerLeft(renderer, scene) {
-		const controller = renderer.vr.getController(0);
-		const cylinder = controller.cylinder = this.addControllerCylinder(controller, 0);
+		const controller = renderer.vr.getController(1);
+		const cylinder = controller.cylinder = this.addControllerCylinder(controller, 1);
 		scene.add(controller);
 		return controller;
 	}
 
 	addControllerRight(renderer, scene) {
-		const controller = renderer.vr.getController(1);
-		const cylinder = controller.cylinder = this.addControllerCylinder(controller, 1);
+		const controller = renderer.vr.getController(0);
+		const cylinder = controller.cylinder = this.addControllerCylinder(controller, 0);
 		scene.add(controller);
 		return controller;
 	}
@@ -147,7 +148,7 @@ export default class Controllers extends Emittable {
 		const geometry = new THREE.CylinderBufferGeometry(cm(2), cm(2), cm(12), 24);
 		const texture = new THREE.TextureLoader().load('img/matcap.jpg');
 		const material = new THREE.MeshMatcapMaterial({
-			color: i === 0 ? 0xff0000 : 0x0000ff,
+			color: i === 0 ? 0x0000ff : 0xff0000,
 			matcap: texture,
 			transparent: true,
 			opacity: 1,
@@ -169,7 +170,7 @@ export default class Controllers extends Emittable {
 		mesh.geometry.rotateX(Math.PI / 2);
 		controller.add(mesh);
 		//
-		const geometryIndicator = new THREE.CylinderBufferGeometry(cm(0.5), cm(0.1), 10, 12);
+		const geometryIndicator = new THREE.CylinderBufferGeometry(cm(0.5), cm(0.2), cm(50), 5); // 10, 12
 		const materialIndicator = new THREE.MeshBasicMaterial({
 			color: 0xffffff,
 			// matcap: texture,
@@ -179,9 +180,10 @@ export default class Controllers extends Emittable {
 		const indicator = new THREE.Mesh(geometryIndicator, materialIndicator);
 		controller.indicator = indicator;
 		indicator.geometry.rotateX(Math.PI / 2);
-		indicator.position.set(0, 0, -5);
+		indicator.position.set(0, 0, -cm(25));
 		// controller.add(indicator);
 		//
+		return mesh;
 	}
 
 	addText(parent) {

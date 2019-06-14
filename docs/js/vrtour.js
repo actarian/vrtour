@@ -9196,7 +9196,7 @@ function (_Emittable) {
 
       document.addEventListener('mousedown', _this.onRightSelectStart);
       document.addEventListener('mouseup', _this.onRightSelectEnd);
-      var menu = _this.menu = new _menu2.default(pivot);
+      var menu = _this.menu = new _menu2.default(right);
     } else {
       var left = _this.left = _this.addControllerLeft(renderer, scene);
 
@@ -9325,22 +9325,23 @@ function (_Emittable) {
       var controller = new THREE.Group();
       controller.position.set(0, 0, 0);
       var cylinder = controller.cylinder = this.addControllerCylinder(controller, 0);
+      controller.scale.set(5, 5, 5);
       scene.add(controller);
       return controller;
     }
   }, {
     key: "addControllerLeft",
     value: function addControllerLeft(renderer, scene) {
-      var controller = renderer.vr.getController(0);
-      var cylinder = controller.cylinder = this.addControllerCylinder(controller, 0);
+      var controller = renderer.vr.getController(1);
+      var cylinder = controller.cylinder = this.addControllerCylinder(controller, 1);
       scene.add(controller);
       return controller;
     }
   }, {
     key: "addControllerRight",
     value: function addControllerRight(renderer, scene) {
-      var controller = renderer.vr.getController(1);
-      var cylinder = controller.cylinder = this.addControllerCylinder(controller, 1);
+      var controller = renderer.vr.getController(0);
+      var cylinder = controller.cylinder = this.addControllerCylinder(controller, 0);
       scene.add(controller);
       return controller;
     }
@@ -9350,7 +9351,7 @@ function (_Emittable) {
       var geometry = new THREE.CylinderBufferGeometry((0, _const.cm)(2), (0, _const.cm)(2), (0, _const.cm)(12), 24);
       var texture = new THREE.TextureLoader().load('img/matcap.jpg');
       var material = new THREE.MeshMatcapMaterial({
-        color: i === 0 ? 0xff0000 : 0x0000ff,
+        color: i === 0 ? 0x0000ff : 0xff0000,
         matcap: texture,
         transparent: true,
         opacity: 1
@@ -9374,7 +9375,8 @@ function (_Emittable) {
       mesh.geometry.rotateX(Math.PI / 2);
       controller.add(mesh); //
 
-      var geometryIndicator = new THREE.CylinderBufferGeometry((0, _const.cm)(0.5), (0, _const.cm)(0.1), 10, 12);
+      var geometryIndicator = new THREE.CylinderBufferGeometry((0, _const.cm)(0.5), (0, _const.cm)(0.2), (0, _const.cm)(50), 5); // 10, 12
+
       var materialIndicator = new THREE.MeshBasicMaterial({
         color: 0xffffff,
         // matcap: texture,
@@ -9384,8 +9386,10 @@ function (_Emittable) {
       var indicator = new THREE.Mesh(geometryIndicator, materialIndicator);
       controller.indicator = indicator;
       indicator.geometry.rotateX(Math.PI / 2);
-      indicator.position.set(0, 0, -5); // controller.add(indicator);
+      indicator.position.set(0, 0, -(0, _const.cm)(25)); // controller.add(indicator);
       //
+
+      return mesh;
     }
   }, {
     key: "addText",
@@ -9918,14 +9922,6 @@ function _inherits(subClass, superClass) { if (typeof superClass !== "function" 
 
 function _setPrototypeOf(o, p) { _setPrototypeOf = Object.setPrototypeOf || function _setPrototypeOf(o, p) { o.__proto__ = p; return o; }; return _setPrototypeOf(o, p); }
 
-var SIZE = 8;
-var RADIUS = _const.POINT_RADIUS - 0.1;
-var ARC = SIZE / RADIUS;
-var PY = 50;
-var RY = Math.PI - 0.5;
-var FROM = 0;
-var TO = 1;
-
 var Menu =
 /*#__PURE__*/
 function (_EmittableGroup) {
@@ -9967,7 +9963,7 @@ function (_EmittableGroup) {
     value: function addPanel(parent) {
       var loader = new THREE.TextureLoader();
       var texture = loader.load('img/menu.png');
-      var geometry = new THREE.PlaneGeometry(8, 16, 1, 2); // geometry.rotateY(Math.PI);
+      var geometry = new THREE.PlaneGeometry((0, _const.cm)(8), (0, _const.cm)(16), 1, 2); // geometry.rotateY(Math.PI);
 
       var material = new THREE.MeshBasicMaterial({
         // color: 0xffffff,
@@ -9978,8 +9974,10 @@ function (_EmittableGroup) {
 
       });
       var plane = new THREE.Mesh(geometry, material);
-      plane.renderOrder = 90;
-      plane.position.set(0, 0, -20);
+      plane.renderOrder = 90; // plane.position.set(0, 0, -20);
+
+      plane.position.set(0, (0, _const.cm)(5), -(0, _const.cm)(14));
+      plane.rotation.set(-Math.PI / 2, 0, 0);
       parent.add(plane);
       return plane;
     }
@@ -10024,8 +10022,8 @@ function (_InteractiveMesh) {
 
     _classCallCheck(this, MenuItem);
 
-    var size = 2;
-    var gutter = 0.4;
+    var size = (0, _const.cm)(2);
+    var gutter = (0, _const.cm)(0.4);
     var loader = new THREE.TextureLoader();
     var texture = loader.load('img/menu-item.png');
     var geometry = new THREE.PlaneGeometry(size, size, 1, 1);
