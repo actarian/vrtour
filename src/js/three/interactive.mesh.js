@@ -26,6 +26,9 @@ export default class InteractiveMesh extends EmittableMesh {
 		return this.over_;
 	}
 	set over(over) {
+		if (over) {
+			this.emit('hit', this);
+		}
 		if (this.over_ !== over) {
 			this.over_ = over;
 			if (over) {

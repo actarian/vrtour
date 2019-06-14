@@ -64,10 +64,12 @@ class VRTour {
 			const controllers = this.controllers = new Controllers(renderer, scene, pivot);
 			const topBar = this.topBar = new TopBar(pivot);
 			const pointer = this.pointer = this.addPointer(pivot);
+			this.addPointerListeners();
 		} else if (TEST_ENABLED) {
 			const controllers = this.controllers = new Controllers(renderer, scene, pivot);
 			const topBar = this.topBar = new TopBar(pivot);
 			const pointer = this.pointer = this.addPointer(pivot);
+			this.addPointerListeners();
 			camera.target.z = ROOM_RADIUS;
 			camera.lookAt(camera.target);
 			const orbit = this.orbit = new Orbit();
@@ -177,6 +179,31 @@ class VRTour {
 		// mesh.lookAt(this.camera.position);
 		parent.add(mesh);
 		return mesh;
+	}
+
+	addPointerListeners() {
+		const pivot = this.pivot;
+		const pointer = this.pointer;
+		const sphere = pivot.room.sphere;
+		sphere.on('hit', (sphere) => {
+			const intersection = sphere.intersection;
+			let position = intersection.point.normalize().multiplyScalar(POINTER_RADIUS);
+			position = pivot.worldToLocal(position);
+			pointer.position.set(position.x, position.y, position.z);
+			pointer.lookAt(ORIGIN);
+			// console.log(position.x, position.y, position.z);
+			pointer.scale.setScalar(pivot.busy ? 0 : 1);
+		});
+		sphere.on('down', (sphere) => {
+			pointer.material.color.setHex(0x0000ff);
+			pointer.material.opacity = 1.0;
+			pointer.material.needsUpdate = true;
+		});
+		sphere.on('up', (sphere) => {
+			pointer.material.color.setHex(0xffffff);
+			pointer.material.opacity = 0.5;
+			pointer.material.needsUpdate = true;
+		});
 	}
 
 	addIO() {
@@ -400,9 +427,7 @@ class VRTour {
 				const rotation = controller.getWorldDirection(controllers.controllerDirection).multiplyScalar(-1);
 				raycaster.set(position, rotation);
 				InteractiveMesh.hittest(raycaster, controllers.isControllerSelecting);
-				// this.pivot.hittest(raycaster); // !!!
-				this.updateOverPoint(raycaster);
-				this.updatePointer(raycaster);
+				// this.updatePointer(raycaster);
 			}
 		} catch (error) {
 			this.debugInfo.innerHTML = error;

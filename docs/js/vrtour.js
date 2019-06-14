@@ -9782,6 +9782,10 @@ function (_EmittableMesh) {
       return this.over_;
     },
     set: function set(over) {
+      if (over) {
+        this.emit('hit', this);
+      }
+
       if (this.over_ !== over) {
         this.over_ = over;
 
@@ -10400,7 +10404,7 @@ function (_EmittableGroup) {
       });
       */
 
-      var sphere = new THREE.Mesh(geometry, material); // sphere.castShadow = false;
+      var sphere = new _interactive.default(geometry, material); // sphere.castShadow = false;
       // sphere.receiveShadow = true;
 
       group.renderOrder = -1;
@@ -11154,6 +11158,7 @@ function () {
         var controllers = this.controllers = new _controllers2.default(renderer, scene, pivot);
         var topBar = this.topBar = new _topBar2.default(pivot);
         var pointer = this.pointer = this.addPointer(pivot);
+        this.addPointerListeners();
       } else if (_const.TEST_ENABLED) {
         var _controllers = this.controllers = new _controllers2.default(renderer, scene, pivot);
 
@@ -11161,6 +11166,7 @@ function () {
 
         var _pointer = this.pointer = this.addPointer(pivot);
 
+        this.addPointerListeners();
         camera.target.z = _const.ROOM_RADIUS;
         camera.lookAt(camera.target);
         var orbit = this.orbit = new _orbit2.default();
@@ -11283,6 +11289,32 @@ function () {
 
       parent.add(mesh);
       return mesh;
+    }
+  }, {
+    key: "addPointerListeners",
+    value: function addPointerListeners() {
+      var pivot = this.pivot;
+      var pointer = this.pointer;
+      var sphere = pivot.room.sphere;
+      sphere.on('hit', function (sphere) {
+        var intersection = sphere.intersection;
+        var position = intersection.point.normalize().multiplyScalar(_const.POINTER_RADIUS);
+        position = pivot.worldToLocal(position);
+        pointer.position.set(position.x, position.y, position.z);
+        pointer.lookAt(_const.ORIGIN); // console.log(position.x, position.y, position.z);
+
+        pointer.scale.setScalar(pivot.busy ? 0 : 1);
+      });
+      sphere.on('down', function (sphere) {
+        pointer.material.color.setHex(0x0000ff);
+        pointer.material.opacity = 1.0;
+        pointer.material.needsUpdate = true;
+      });
+      sphere.on('up', function (sphere) {
+        pointer.material.color.setHex(0xffffff);
+        pointer.material.opacity = 0.5;
+        pointer.material.needsUpdate = true;
+      });
     }
   }, {
     key: "addIO",
@@ -11540,11 +11572,8 @@ function () {
           var rotation = controller.getWorldDirection(controllers.controllerDirection).multiplyScalar(-1);
           raycaster.set(position, rotation);
 
-          _interactive.default.hittest(raycaster, controllers.isControllerSelecting); // this.pivot.hittest(raycaster); // !!!
+          _interactive.default.hittest(raycaster, controllers.isControllerSelecting); // this.updatePointer(raycaster);
 
-
-          this.updateOverPoint(raycaster);
-          this.updatePointer(raycaster);
         }
       } catch (error) {
         this.debugInfo.innerHTML = error;

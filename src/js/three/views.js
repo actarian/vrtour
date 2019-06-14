@@ -202,7 +202,7 @@ export default class Views extends EmittableGroup {
 			// premultipliedAlpha: true,
 		});
 		*/
-		const sphere = new THREE.Mesh(geometry, material);
+		const sphere = new InteractiveMesh(geometry, material);
 		// sphere.castShadow = false;
 		// sphere.receiveShadow = true;
 		group.renderOrder = -1;
