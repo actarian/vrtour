@@ -1,7 +1,7 @@
 /* jshint esversion: 6 */
 /* global window, document */
 
-import { cm, POINTER_RADIUS, TEST_ENABLED } from './const';
+import { cm, mm, POINTER_RADIUS, TEST_ENABLED } from './const';
 import Emittable from './emittable';
 import Menu from './menu';
 
@@ -34,14 +34,16 @@ export default class Controllers extends Emittable {
 	hapticFeedback() {
 		const gamepad = this.findGamepad_(this.controller.index);
 		if (gamepad) {
-			console.log('start');
+			// console.log('start');
+			/*
 			if (Tone.context.state === 'running') {
 				const feedback = this.feedback = (this.feedback || new Tone.Player('audio/feedback.mp3').toMaster());
 				feedback.start();
 			}
+			*/
 			const actuators = gamepad.hapticActuators;
 			if (actuators && actuators.length) {
-				return actuators[0].pulse(1, 300);
+				return actuators[0].pulse(0.2, 100);
 			} else {
 				return Promise.reject();
 			}
@@ -79,7 +81,10 @@ export default class Controllers extends Emittable {
 
 	onLeftSelectStart(id) {
 		try {
-			// 1 front, 2 side, 3 Y, 4 X, 5?
+			// 0 trigger, 1 front, 2 side, 3 Y, 4 X
+			if (id === 3) {
+				this.menu.next();
+			}
 			this.setText(String(id));
 			if (this.controller !== this.left) {
 				if (this.controller) {
@@ -184,7 +189,7 @@ export default class Controllers extends Emittable {
 		mesh.geometry.rotateX(Math.PI / 2);
 		controller.add(mesh);
 		//
-		const geometryIndicator = new THREE.CylinderBufferGeometry(cm(0.5), cm(0.2), cm(50), 5); // 10, 12
+		const geometryIndicator = new THREE.CylinderBufferGeometry(mm(5), mm(1), cm(30), 5); // 10, 12
 		const materialIndicator = new THREE.MeshBasicMaterial({
 			color: 0xffffff,
 			// matcap: texture,
@@ -194,7 +199,7 @@ export default class Controllers extends Emittable {
 		const indicator = new THREE.Mesh(geometryIndicator, materialIndicator);
 		controller.indicator = indicator;
 		indicator.geometry.rotateX(Math.PI / 2);
-		indicator.position.set(0, 0, -cm(25));
+		indicator.position.set(0, 0, -cm(15));
 		// controller.add(indicator);
 		//
 		return mesh;

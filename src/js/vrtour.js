@@ -38,6 +38,7 @@ class VRTour {
 		// Dom.detect(body);
 		// body.classList.add('ready');
 		this.onWindowResize = this.onWindowResize.bind(this);
+		this.onKeyDown = this.onKeyDown.bind(this);
 		this.onMouseDown = this.onMouseDown.bind(this);
 		this.onMouseMove = this.onMouseMove.bind(this);
 		this.onMouseUp = this.onMouseUp.bind(this);
@@ -83,6 +84,7 @@ class VRTour {
 		// raycaster
 		const raycaster = this.raycaster = new THREE.Raycaster();
 		window.addEventListener('resize', this.onWindowResize, false);
+		window.addEventListener('keydown', this.onKeyDown, false);
 		document.addEventListener('mousemove', this.onMouseMove, false);
 		document.addEventListener('wheel', this.onMouseWheel, false);
 		this.container.addEventListener('mousedown', this.onMouseDown, false);
@@ -135,25 +137,25 @@ class VRTour {
 
 	addPointer(parent) {
 		// size 2 about 20 cm radius
-		const geometry = new THREE.PlaneBufferGeometry(2, 2, 2, 2);
+		const geometry = new THREE.PlaneBufferGeometry(1.2, 1.2, 2, 2);
 		// const geometry = new THREE.SphereBufferGeometry(1, 8, 8);
 		const loader = new THREE.TextureLoader();
-		const texture = loader.load('img/pin.jpg');
-		texture.magFilter = THREE.NearestFilter;
-		texture.wrapT = THREE.RepeatWrapping;
-		texture.repeat.y = 1;
+		const texture = loader.load('img/pin.png');
+		// texture.magFilter = THREE.NearestFilter;
+		// texture.wrapT = THREE.RepeatWrapping;
+		// texture.repeat.y = 1;
 		// texture.anisotropy = 0;
 		// texture.magFilter = THREE.LinearMipMapLinearFilter;
 		// texture.minFilter = THREE.NearestFilter;
 		const material = new THREE.MeshBasicMaterial({
 			// color: 0xff0000,
-			// map: texture,
-			alphaMap: texture,
+			map: texture,
+			// alphaMap: texture,
 			// alphaTest: 0.5,
 			// blending: THREE.AdditiveBlending,
 			// depthTest: false,
 			transparent: true,
-			opacity: 0.5,
+			opacity: 0.9,
 			// side: THREE.DoubleSide,
 		});
 
@@ -203,7 +205,7 @@ class VRTour {
 		});
 		sphere.on('up', (sphere) => {
 			pointer.material.color.setHex(0xffffff);
-			pointer.material.opacity = 0.5;
+			pointer.material.opacity = 0.9;
 			pointer.material.needsUpdate = true;
 		});
 	}
@@ -249,6 +251,25 @@ class VRTour {
 			if (camera) {
 				camera.aspect = size.width / size.height;
 				camera.updateProjectionMatrix();
+			}
+		} catch (error) {
+			this.debugInfo.innerHTML = error;
+		}
+	}
+
+	onKeyDown(e) {
+		try {
+			// console.log(e.which, e.key);
+			const key = `${e.which} ${e.key}`;
+			if (this.vr.mode !== VR_MODE.NONE || TEST_ENABLED) {
+				this.controllers.setText(key);
+				switch (e.keyCode) {
+					case 39: // right
+						this.controllers.menu.next();
+						break;
+				}
+			} else {
+				this.debugInfo.innerHTML = key;
 			}
 		} catch (error) {
 			this.debugInfo.innerHTML = error;
@@ -429,7 +450,7 @@ class VRTour {
 				const rotation = controller.getWorldDirection(controllers.controllerDirection).multiplyScalar(-1);
 				raycaster.set(position, rotation);
 				const hit = InteractiveMesh.hittest(raycaster, controllers.isControllerSelecting);
-				if (hit) {
+				if (hit && hit !== this.pivot.room.sphere) {
 					controllers.hapticFeedback();
 				}
 				// this.updatePointer(raycaster);

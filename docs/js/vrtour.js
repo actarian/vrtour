@@ -9221,17 +9221,18 @@ function (_Emittable) {
       var gamepad = this.findGamepad_(this.controller.index);
 
       if (gamepad) {
-        console.log('start');
+        // console.log('start');
 
+        /*
         if (Tone.context.state === 'running') {
-          var feedback = this.feedback = this.feedback || new Tone.Player('audio/feedback.mp3').toMaster();
-          feedback.start();
+        	const feedback = this.feedback = (this.feedback || new Tone.Player('audio/feedback.mp3').toMaster());
+        	feedback.start();
         }
-
+        */
         var actuators = gamepad.hapticActuators;
 
         if (actuators && actuators.length) {
-          return actuators[0].pulse(1, 300);
+          return actuators[0].pulse(0.2, 100);
         } else {
           return Promise.reject();
         }
@@ -9282,7 +9283,11 @@ function (_Emittable) {
     key: "onLeftSelectStart",
     value: function onLeftSelectStart(id) {
       try {
-        // 1 front, 2 side, 3 Y, 4 X, 5?
+        // 0 trigger, 1 front, 2 side, 3 Y, 4 X
+        if (id === 3) {
+          this.menu.next();
+        }
+
         this.setText(String(id));
 
         if (this.controller !== this.left) {
@@ -9400,7 +9405,7 @@ function (_Emittable) {
       mesh.geometry.rotateX(Math.PI / 2);
       controller.add(mesh); //
 
-      var geometryIndicator = new THREE.CylinderBufferGeometry((0, _const.cm)(0.5), (0, _const.cm)(0.2), (0, _const.cm)(50), 5); // 10, 12
+      var geometryIndicator = new THREE.CylinderBufferGeometry((0, _const.mm)(5), (0, _const.mm)(1), (0, _const.cm)(30), 5); // 10, 12
 
       var materialIndicator = new THREE.MeshBasicMaterial({
         color: 0xffffff,
@@ -9411,7 +9416,7 @@ function (_Emittable) {
       var indicator = new THREE.Mesh(geometryIndicator, materialIndicator);
       controller.indicator = indicator;
       indicator.geometry.rotateX(Math.PI / 2);
-      indicator.position.set(0, 0, -(0, _const.cm)(25)); // controller.add(indicator);
+      indicator.position.set(0, 0, -(0, _const.cm)(15)); // controller.add(indicator);
       //
 
       return mesh;
@@ -9845,15 +9850,15 @@ function (_EmittableMesh) {
     key: "hittest",
     value: function hittest(raycaster, down) {
       var intersections = raycaster.intersectObjects(InteractiveMesh.items);
-      var key,
-          hit = false;
+      var key, hit;
       var hash = {};
       intersections.forEach(function (intersection, i) {
-        key = intersection.object.id;
+        var object = intersection.object;
+        key = object.id;
 
-        if (i === 0 && InteractiveMesh.lastKey != key) {
-          InteractiveMesh.lastKey = key;
-          hit = true; // haptic feedback
+        if (i === 0 && InteractiveMesh.object != object) {
+          InteractiveMesh.object = object;
+          hit = object; // haptic feedback
         }
 
         hash[key] = intersection;
@@ -9988,9 +9993,7 @@ function (_EmittableGroup) {
         item.material.needsUpdate = true;
       });
       return item;
-    });
-
-    _this.lookAt(_const.ORIGIN);
+    }); // this.lookAt(ORIGIN);
 
     parent.add(_assertThisInitialized(_this));
     return _this;
@@ -9999,6 +10002,7 @@ function (_EmittableGroup) {
   _createClass(Menu, [{
     key: "addPanel",
     value: function addPanel(parent) {
+      var panel = new THREE.Group();
       var loader = new THREE.TextureLoader();
       var texture = loader.load('img/menu.png');
       var geometry = new THREE.PlaneGeometry((0, _const.cm)(10), (0, _const.cm)(20), 1, 2); // geometry.rotateY(Math.PI);
@@ -10007,7 +10011,7 @@ function (_EmittableGroup) {
         // color: 0xffffff,
         map: texture,
         transparent: true,
-        // opacity: 0.8,
+        opacity: 0.8,
         // blending: THREE.AdditiveBlending,
         side: THREE.DoubleSide
       });
@@ -10016,8 +10020,19 @@ function (_EmittableGroup) {
 
       plane.position.set(0, (0, _const.cm)(3), -(0, _const.cm)(17));
       plane.rotation.set(-Math.PI / 2, 0, 0);
-      parent.add(plane);
-      return plane;
+      panel.add(plane);
+      parent.add(panel);
+      return panel;
+    }
+  }, {
+    key: "next",
+    value: function next() {
+      var r = Math.PI * 2 / 3;
+      var z = Math.ceil(this.rotation.z / r) * r + r;
+      TweenMax.to(this.rotation, 0.6, {
+        z: z,
+        onComplete: function onComplete() {}
+      });
     }
   }]);
 
@@ -10088,7 +10103,7 @@ function (_InteractiveMesh) {
     var r = Math.floor(index / cols);
     var c = index - r * cols;
 
-    _this2.position.set(sx + d * c, sy + d * r, (0, _const.mm)(3));
+    _this2.position.set(sx + d * c, sy + d * r, (0, _const.mm)(4));
 
     parent.add(_assertThisInitialized(_this2));
     return _this2;
@@ -10956,9 +10971,10 @@ function (_InteractiveMesh) {
     // size 2 about 20 cm radius
     var geometry = new THREE.PlaneBufferGeometry(2, 2, 2, 2);
     var loader = new THREE.TextureLoader();
-    var texture = loader.load('img/pin.jpg');
+    var texture = loader.load('img/pin.png');
     var material = new THREE.MeshBasicMaterial({
-      alphaMap: texture,
+      // alphaMap: texture,
+      map: texture,
       transparent: true,
       opacity: 0
     });
@@ -11417,6 +11433,7 @@ function () {
       // body.classList.add('ready');
 
       this.onWindowResize = this.onWindowResize.bind(this);
+      this.onKeyDown = this.onKeyDown.bind(this);
       this.onMouseDown = this.onMouseDown.bind(this);
       this.onMouseMove = this.onMouseMove.bind(this);
       this.onMouseUp = this.onMouseUp.bind(this);
@@ -11469,6 +11486,7 @@ function () {
 
       var raycaster = this.raycaster = new THREE.Raycaster();
       window.addEventListener('resize', this.onWindowResize, false);
+      window.addEventListener('keydown', this.onKeyDown, false);
       document.addEventListener('mousemove', this.onMouseMove, false);
       document.addEventListener('wheel', this.onMouseWheel, false);
       this.container.addEventListener('mousedown', this.onMouseDown, false);
@@ -11530,25 +11548,25 @@ function () {
     key: "addPointer",
     value: function addPointer(parent) {
       // size 2 about 20 cm radius
-      var geometry = new THREE.PlaneBufferGeometry(2, 2, 2, 2); // const geometry = new THREE.SphereBufferGeometry(1, 8, 8);
+      var geometry = new THREE.PlaneBufferGeometry(1.2, 1.2, 2, 2); // const geometry = new THREE.SphereBufferGeometry(1, 8, 8);
 
       var loader = new THREE.TextureLoader();
-      var texture = loader.load('img/pin.jpg');
-      texture.magFilter = THREE.NearestFilter;
-      texture.wrapT = THREE.RepeatWrapping;
-      texture.repeat.y = 1; // texture.anisotropy = 0;
+      var texture = loader.load('img/pin.png'); // texture.magFilter = THREE.NearestFilter;
+      // texture.wrapT = THREE.RepeatWrapping;
+      // texture.repeat.y = 1;
+      // texture.anisotropy = 0;
       // texture.magFilter = THREE.LinearMipMapLinearFilter;
       // texture.minFilter = THREE.NearestFilter;
 
       var material = new THREE.MeshBasicMaterial({
         // color: 0xff0000,
-        // map: texture,
-        alphaMap: texture,
+        map: texture,
+        // alphaMap: texture,
         // alphaTest: 0.5,
         // blending: THREE.AdditiveBlending,
         // depthTest: false,
         transparent: true,
-        opacity: 0.5 // side: THREE.DoubleSide,
+        opacity: 0.9 // side: THREE.DoubleSide,
 
       });
       /*
@@ -11600,7 +11618,7 @@ function () {
       });
       sphere.on('up', function (sphere) {
         pointer.material.color.setHex(0xffffff);
-        pointer.material.opacity = 0.5;
+        pointer.material.opacity = 0.9;
         pointer.material.needsUpdate = true;
       });
     }
@@ -11654,6 +11672,29 @@ function () {
         if (camera) {
           camera.aspect = size.width / size.height;
           camera.updateProjectionMatrix();
+        }
+      } catch (error) {
+        this.debugInfo.innerHTML = error;
+      }
+    }
+  }, {
+    key: "onKeyDown",
+    value: function onKeyDown(e) {
+      try {
+        // console.log(e.which, e.key);
+        var key = "".concat(e.which, " ").concat(e.key);
+
+        if (this.vr.mode !== _vr.VR_MODE.NONE || _const.TEST_ENABLED) {
+          this.controllers.setText(key);
+
+          switch (e.keyCode) {
+            case 39:
+              // right
+              this.controllers.menu.next();
+              break;
+          }
+        } else {
+          this.debugInfo.innerHTML = key;
         }
       } catch (error) {
         this.debugInfo.innerHTML = error;
@@ -11862,7 +11903,7 @@ function () {
 
           var hit = _interactive.default.hittest(raycaster, controllers.isControllerSelecting);
 
-          if (hit) {
+          if (hit && hit !== this.pivot.room.sphere) {
             controllers.hapticFeedback();
           } // this.updatePointer(raycaster);
 

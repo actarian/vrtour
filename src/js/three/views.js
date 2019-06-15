@@ -410,9 +410,10 @@ export class NavPoint extends InteractiveMesh {
 		// size 2 about 20 cm radius
 		const geometry = new THREE.PlaneBufferGeometry(2, 2, 2, 2);
 		const loader = new THREE.TextureLoader();
-		const texture = loader.load('img/pin.jpg');
+		const texture = loader.load('img/pin.png');
 		const material = new THREE.MeshBasicMaterial({
-			alphaMap: texture,
+			// alphaMap: texture,
+			map: texture,
 			transparent: true,
 			opacity: 0,
 		});

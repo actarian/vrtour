@@ -7,13 +7,14 @@ export default class InteractiveMesh extends EmittableMesh {
 
 	static hittest(raycaster, down) {
 		const intersections = raycaster.intersectObjects(InteractiveMesh.items);
-		let key, hit = false;
+		let key, hit;
 		const hash = {};
 		intersections.forEach((intersection, i) => {
-			key = intersection.object.id;
-			if (i === 0 && InteractiveMesh.lastKey != key) {
-				InteractiveMesh.lastKey = key;
-				hit = true;
+			const object = intersection.object;
+			key = object.id;
+			if (i === 0 && InteractiveMesh.object != object) {
+				InteractiveMesh.object = object;
+				hit = object;
 				// haptic feedback
 			}
 			hash[key] = intersection;

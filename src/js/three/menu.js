@@ -1,7 +1,7 @@
 /* jshint esversion: 6 */
 /* global window, document */
 
-import { cm, mm, ORIGIN } from './const';
+import { cm, mm } from './const';
 import EmittableGroup from './emittable.group';
 import InteractiveMesh from './interactive.mesh';
 
@@ -25,11 +25,12 @@ export default class Menu extends EmittableGroup {
 			});
 			return item;
 		});
-		this.lookAt(ORIGIN);
+		// this.lookAt(ORIGIN);
 		parent.add(this);
 	}
 
 	addPanel(parent) {
+		const panel = new THREE.Group();
 		const loader = new THREE.TextureLoader();
 		const texture = loader.load('img/menu.png');
 		const geometry = new THREE.PlaneGeometry(cm(10), cm(20), 1, 2);
@@ -38,7 +39,7 @@ export default class Menu extends EmittableGroup {
 			// color: 0xffffff,
 			map: texture,
 			transparent: true,
-			// opacity: 0.8,
+			opacity: 0.8,
 			// blending: THREE.AdditiveBlending,
 			side: THREE.DoubleSide,
 		});
@@ -47,8 +48,18 @@ export default class Menu extends EmittableGroup {
 		// plane.position.set(0, 0, -20);
 		plane.position.set(0, cm(3), -cm(17));
 		plane.rotation.set(-Math.PI / 2, 0, 0);
-		parent.add(plane);
-		return plane;
+		panel.add(plane);
+		parent.add(panel);
+		return panel;
+	}
+
+	next() {
+		const r = Math.PI * 2 / 3;
+		const z = Math.ceil(this.rotation.z / r) * r + r;
+		TweenMax.to(this.rotation, 0.6, {
+			z,
+			onComplete: () => {}
+		});
 	}
 
 }
@@ -103,7 +114,7 @@ export class MenuItem extends InteractiveMesh {
 		const sy = size / 2 - (rows * d - gutter) / 2;
 		const r = Math.floor(index / cols);
 		const c = index - r * cols;
-		this.position.set(sx + d * c, sy + d * r, mm(3));
+		this.position.set(sx + d * c, sy + d * r, mm(4));
 		parent.add(this);
 	}
 
