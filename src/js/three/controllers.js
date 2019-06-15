@@ -24,30 +24,47 @@ export default class Controllers extends Emittable {
 			document.addEventListener('mouseup', this.onRightSelectEnd);
 			const menu = this.menu = new Menu(right);
 		} else {
-			const left = this.left = this.addControllerLeft(renderer, scene);
-			const right = this.right = this.addControllerRight(renderer, scene);
-			const menu = this.menu = new Menu(left);
+			const right = this.right = this.addController(renderer, scene, 0);
+			const left = this.left = this.addController(renderer, scene, 1);
+			const menu = this.menu = new Menu(left || right);
 		}
 		const text = this.text = this.addText(pivot);
 	}
 
-	update() {
-		const gamePadLeft = this.findGamepad_(0);
-		if (gamePadLeft) {
-			const triggerLeft = gamePadLeft ? gamePadLeft.buttons.reduce((p, b, i) => b.pressed ? i : p, -1) : -1;
-			if (triggerLeft !== -1) {
-				this.onLeftSelectStart(triggerLeft);
+	hapticFeedback() {
+		const gamepad = this.findGamepad_(this.controller.index);
+		if (gamepad) {
+			console.log('start');
+			if (Tone.context.state === 'running') {
+				const feedback = this.feedback = (this.feedback || new Tone.Player('audio/feedback.mp3').toMaster());
+				feedback.start();
+			}
+			const actuators = gamepad.hapticActuators;
+			if (actuators && actuators.length) {
+				return actuators[0].pulse(1, 300);
 			} else {
-				this.onLeftSelectEnd();
+				return Promise.reject();
 			}
 		}
-		const gamePadRight = this.findGamepad_(1);
+	}
+
+	update() {
+		const gamePadRight = this.findGamepad_(0);
 		if (gamePadRight) {
 			const triggerRight = gamePadRight ? gamePadRight.buttons.reduce((p, b, i) => b.pressed ? i : p, -1) : -1;
 			if (triggerRight !== -1) {
 				this.onRightSelectStart(triggerRight);
 			} else {
 				this.onRightSelectEnd();
+			}
+		}
+		const gamePadLeft = this.findGamepad_(1);
+		if (gamePadLeft) {
+			const triggerLeft = gamePadLeft ? gamePadLeft.buttons.reduce((p, b, i) => b.pressed ? i : p, -1) : -1;
+			if (triggerLeft !== -1) {
+				this.onLeftSelectStart(triggerLeft);
+			} else {
+				this.onLeftSelectEnd();
 			}
 		}
 	}
@@ -124,31 +141,28 @@ export default class Controllers extends Emittable {
 	addControllerTest(scene) {
 		const controller = new THREE.Group();
 		controller.position.set(0, 0, 0);
+		controller.index = 0;
 		const cylinder = controller.cylinder = this.addControllerCylinder(controller, 0);
 		controller.scale.set(5, 5, 5);
 		scene.add(controller);
 		return controller;
 	}
 
-	addControllerLeft(renderer, scene) {
-		const controller = renderer.vr.getController(1);
-		const cylinder = controller.cylinder = this.addControllerCylinder(controller, 1);
-		scene.add(controller);
+	addController(renderer, scene, index) {
+		const controller = renderer.vr.getController(index);
+		if (controller) {
+			controller.index = index;
+			const cylinder = controller.cylinder = this.addControllerCylinder(controller, index);
+			scene.add(controller);
+		}
 		return controller;
 	}
 
-	addControllerRight(renderer, scene) {
-		const controller = renderer.vr.getController(0);
-		const cylinder = controller.cylinder = this.addControllerCylinder(controller, 0);
-		scene.add(controller);
-		return controller;
-	}
-
-	addControllerCylinder(controller, i) {
+	addControllerCylinder(controller, index) {
 		const geometry = new THREE.CylinderBufferGeometry(cm(2), cm(2), cm(12), 24);
 		const texture = new THREE.TextureLoader().load('img/matcap.jpg');
 		const material = new THREE.MeshMatcapMaterial({
-			color: i === 0 ? 0x0000ff : 0xff0000,
+			color: index === 0 ? 0x0000ff : 0xff0000,
 			matcap: texture,
 			transparent: true,
 			opacity: 1,

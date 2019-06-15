@@ -64,6 +64,8 @@ body {
 
 .panel {
   position: absolute;
+  -webkit-box-sizing: border-box;
+          box-sizing: border-box;
   top: 100%;
   display: -webkit-box;
   display: -ms-flexbox;
@@ -75,19 +77,19 @@ body {
   -webkit-box-pack: center;
       -ms-flex-pack: center;
           justify-content: center;
-  width: 256px;
-  min-height: 256px;
-  padding: 40px;
-  border-radius: 30px;
+  width: 512px;
+  min-height: 512px;
+  padding: 80px;
+  border-radius: 60px;
   text-align: center;
   background: rgba(0, 0, 0, 0.8);
   color: white; }
   .panel .title {
-    font-size: 25px;
-    font-weight: 500;
-    line-height: 1.2; }
+    font-size: 50px;
+    font-weight: 600;
+    line-height: 1.5; }
   .panel .abstract {
-    font-size: 18px;
+    font-size: 30px;
     line-height: 1.2; }
 
 /*

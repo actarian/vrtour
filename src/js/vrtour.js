@@ -428,7 +428,10 @@ class VRTour {
 				const position = controller.position;
 				const rotation = controller.getWorldDirection(controllers.controllerDirection).multiplyScalar(-1);
 				raycaster.set(position, rotation);
-				InteractiveMesh.hittest(raycaster, controllers.isControllerSelecting);
+				const hit = InteractiveMesh.hittest(raycaster, controllers.isControllerSelecting);
+				if (hit) {
+					controllers.hapticFeedback();
+				}
 				// this.updatePointer(raycaster);
 			}
 		} catch (error) {

@@ -207,6 +207,9 @@ export class VR extends EventEmitter {
 				device.requestPresent([{
 					source: this.renderer.domElement
 				}]);
+				if (Tone.context.state !== 'running') {
+					Tone.context.resume();
+				}
 			}
 		} catch (error) {
 			this.emit('error', error);
@@ -221,6 +224,9 @@ export class VR extends EventEmitter {
 					immersive: true,
 					exclusive: true /* DEPRECATED */
 				}).then(this.onXRSessionStarted);
+				if (Tone.context.state !== 'running') {
+					Tone.context.resume();
+				}
 			} else {
 				this.session.end();
 			}

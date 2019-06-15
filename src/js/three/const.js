@@ -12,6 +12,10 @@ export function cm(value) {
 	return value / 100;
 }
 
+export function mm(value) {
+	return value / 1000;
+}
+
 export function addCube(parent) {
 	const geometry = new THREE.BoxGeometry(1, 1, 1);
 	const material = new THREE.MeshBasicMaterial({ color: 0x00ff00 });

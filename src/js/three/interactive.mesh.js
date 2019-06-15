@@ -7,12 +7,24 @@ export default class InteractiveMesh extends EmittableMesh {
 
 	static hittest(raycaster, down) {
 		const intersections = raycaster.intersectObjects(InteractiveMesh.items);
+		let key, hit = false;
+		const hash = {};
+		intersections.forEach((intersection, i) => {
+			key = intersection.object.id;
+			if (i === 0 && InteractiveMesh.lastKey != key) {
+				InteractiveMesh.lastKey = key;
+				hit = true;
+				// haptic feedback
+			}
+			hash[key] = intersection;
+		});
 		InteractiveMesh.items.forEach(x => {
-			const intersection = intersections.find(i => i.object === x);
+			const intersection = hash[x.id]; // intersections.find(i => i.object === x);
 			x.intersection = intersection;
 			x.over = intersection !== undefined;
 			x.down = down;
 		});
+		return hit;
 	}
 
 	constructor(geometry, material) {

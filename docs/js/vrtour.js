@@ -9098,6 +9098,7 @@ Object.defineProperty(exports, "__esModule", {
   value: true
 });
 exports.cm = cm;
+exports.mm = mm;
 exports.addCube = addCube;
 exports.ORIGIN = exports.POINTER_RADIUS = exports.POINT_RADIUS = exports.PANEL_RADIUS = exports.ROOM_RADIUS = exports.TEST_ENABLED = void 0;
 
@@ -9119,6 +9120,10 @@ exports.ORIGIN = ORIGIN;
 
 function cm(value) {
   return value / 100;
+}
+
+function mm(value) {
+  return value / 1000;
 }
 
 function addCube(parent) {
@@ -9198,11 +9203,11 @@ function (_Emittable) {
       document.addEventListener('mouseup', _this.onRightSelectEnd);
       var menu = _this.menu = new _menu2.default(right);
     } else {
-      var left = _this.left = _this.addControllerLeft(renderer, scene);
+      var _right = _this.right = _this.addController(renderer, scene, 0);
 
-      var _right = _this.right = _this.addControllerRight(renderer, scene);
+      var left = _this.left = _this.addController(renderer, scene, 1);
 
-      var _menu = _this.menu = new _menu2.default(left);
+      var _menu = _this.menu = new _menu2.default(left || _right);
     }
 
     var text = _this.text = _this.addText(pivot);
@@ -9211,23 +9216,31 @@ function (_Emittable) {
   }
 
   _createClass(Controllers, [{
-    key: "update",
-    value: function update() {
-      var gamePadLeft = this.findGamepad_(0);
+    key: "hapticFeedback",
+    value: function hapticFeedback() {
+      var gamepad = this.findGamepad_(this.controller.index);
 
-      if (gamePadLeft) {
-        var triggerLeft = gamePadLeft ? gamePadLeft.buttons.reduce(function (p, b, i) {
-          return b.pressed ? i : p;
-        }, -1) : -1;
+      if (gamepad) {
+        console.log('start');
 
-        if (triggerLeft !== -1) {
-          this.onLeftSelectStart(triggerLeft);
+        if (Tone.context.state === 'running') {
+          var feedback = this.feedback = this.feedback || new Tone.Player('audio/feedback.mp3').toMaster();
+          feedback.start();
+        }
+
+        var actuators = gamepad.hapticActuators;
+
+        if (actuators && actuators.length) {
+          return actuators[0].pulse(1, 300);
         } else {
-          this.onLeftSelectEnd();
+          return Promise.reject();
         }
       }
-
-      var gamePadRight = this.findGamepad_(1);
+    }
+  }, {
+    key: "update",
+    value: function update() {
+      var gamePadRight = this.findGamepad_(0);
 
       if (gamePadRight) {
         var triggerRight = gamePadRight ? gamePadRight.buttons.reduce(function (p, b, i) {
@@ -9238,6 +9251,20 @@ function (_Emittable) {
           this.onRightSelectStart(triggerRight);
         } else {
           this.onRightSelectEnd();
+        }
+      }
+
+      var gamePadLeft = this.findGamepad_(1);
+
+      if (gamePadLeft) {
+        var triggerLeft = gamePadLeft ? gamePadLeft.buttons.reduce(function (p, b, i) {
+          return b.pressed ? i : p;
+        }, -1) : -1;
+
+        if (triggerLeft !== -1) {
+          this.onLeftSelectStart(triggerLeft);
+        } else {
+          this.onLeftSelectEnd();
         }
       }
     }
@@ -9324,34 +9351,32 @@ function (_Emittable) {
     value: function addControllerTest(scene) {
       var controller = new THREE.Group();
       controller.position.set(0, 0, 0);
+      controller.index = 0;
       var cylinder = controller.cylinder = this.addControllerCylinder(controller, 0);
       controller.scale.set(5, 5, 5);
       scene.add(controller);
       return controller;
     }
   }, {
-    key: "addControllerLeft",
-    value: function addControllerLeft(renderer, scene) {
-      var controller = renderer.vr.getController(1);
-      var cylinder = controller.cylinder = this.addControllerCylinder(controller, 1);
-      scene.add(controller);
-      return controller;
-    }
-  }, {
-    key: "addControllerRight",
-    value: function addControllerRight(renderer, scene) {
-      var controller = renderer.vr.getController(0);
-      var cylinder = controller.cylinder = this.addControllerCylinder(controller, 0);
-      scene.add(controller);
+    key: "addController",
+    value: function addController(renderer, scene, index) {
+      var controller = renderer.vr.getController(index);
+
+      if (controller) {
+        controller.index = index;
+        var cylinder = controller.cylinder = this.addControllerCylinder(controller, index);
+        scene.add(controller);
+      }
+
       return controller;
     }
   }, {
     key: "addControllerCylinder",
-    value: function addControllerCylinder(controller, i) {
+    value: function addControllerCylinder(controller, index) {
       var geometry = new THREE.CylinderBufferGeometry((0, _const.cm)(2), (0, _const.cm)(2), (0, _const.cm)(12), 24);
       var texture = new THREE.TextureLoader().load('img/matcap.jpg');
       var material = new THREE.MeshMatcapMaterial({
-        color: i === 0 ? 0x0000ff : 0xff0000,
+        color: index === 0 ? 0x0000ff : 0xff0000,
         matcap: texture,
         transparent: true,
         opacity: 1
@@ -9820,14 +9845,27 @@ function (_EmittableMesh) {
     key: "hittest",
     value: function hittest(raycaster, down) {
       var intersections = raycaster.intersectObjects(InteractiveMesh.items);
+      var key,
+          hit = false;
+      var hash = {};
+      intersections.forEach(function (intersection, i) {
+        key = intersection.object.id;
+
+        if (i === 0 && InteractiveMesh.lastKey != key) {
+          InteractiveMesh.lastKey = key;
+          hit = true; // haptic feedback
+        }
+
+        hash[key] = intersection;
+      });
       InteractiveMesh.items.forEach(function (x) {
-        var intersection = intersections.find(function (i) {
-          return i.object === x;
-        });
+        var intersection = hash[x.id]; // intersections.find(i => i.object === x);
+
         x.intersection = intersection;
         x.over = intersection !== undefined;
         x.down = down;
       });
+      return hit;
     }
   }]);
 
@@ -9963,20 +10001,20 @@ function (_EmittableGroup) {
     value: function addPanel(parent) {
       var loader = new THREE.TextureLoader();
       var texture = loader.load('img/menu.png');
-      var geometry = new THREE.PlaneGeometry((0, _const.cm)(8), (0, _const.cm)(16), 1, 2); // geometry.rotateY(Math.PI);
+      var geometry = new THREE.PlaneGeometry((0, _const.cm)(10), (0, _const.cm)(20), 1, 2); // geometry.rotateY(Math.PI);
 
       var material = new THREE.MeshBasicMaterial({
         // color: 0xffffff,
         map: texture,
-        transparent: true // opacity: 0.8,
-        // side: THREE.DoubleSide,
+        transparent: true,
+        // opacity: 0.8,
         // blending: THREE.AdditiveBlending,
-
+        side: THREE.DoubleSide
       });
       var plane = new THREE.Mesh(geometry, material);
       plane.renderOrder = 90; // plane.position.set(0, 0, -20);
 
-      plane.position.set(0, (0, _const.cm)(5), -(0, _const.cm)(14));
+      plane.position.set(0, (0, _const.cm)(3), -(0, _const.cm)(17));
       plane.rotation.set(-Math.PI / 2, 0, 0);
       parent.add(plane);
       return plane;
@@ -10022,18 +10060,18 @@ function (_InteractiveMesh) {
 
     _classCallCheck(this, MenuItem);
 
-    var size = (0, _const.cm)(2);
-    var gutter = (0, _const.cm)(0.4);
+    var size = (0, _const.mm)(25);
+    var gutter = (0, _const.mm)(8);
     var loader = new THREE.TextureLoader();
     var texture = loader.load('img/menu-item.png');
     var geometry = new THREE.PlaneGeometry(size, size, 1, 1);
     var material = new THREE.MeshBasicMaterial({
       // color: 0xffffff,
       map: texture,
-      transparent: true // opacity: 0.8,
+      transparent: true,
+      // opacity: 0.8,
       // blending: THREE.AdditiveBlending,
-      // side: THREE.DoubleSide
-
+      side: THREE.DoubleSide
     });
     _this2 = _possibleConstructorReturn(this, _getPrototypeOf(MenuItem).call(this, geometry, material));
     _this2.item = item;
@@ -10050,7 +10088,7 @@ function (_InteractiveMesh) {
     var r = Math.floor(index / cols);
     var c = index - r * cols;
 
-    _this2.position.set(sx + d * c, sy + d * r, 2);
+    _this2.position.set(sx + d * c, sy + d * r, (0, _const.mm)(3));
 
     parent.add(_assertThisInitialized(_this2));
     return _this2;
@@ -11237,6 +11275,10 @@ function (_EventEmitter) {
           device.requestPresent([{
             source: this.renderer.domElement
           }]);
+
+          if (Tone.context.state !== 'running') {
+            Tone.context.resume();
+          }
         }
       } catch (error) {
         this.emit('error', error);
@@ -11255,6 +11297,10 @@ function (_EventEmitter) {
             /* DEPRECATED */
 
           }).then(this.onXRSessionStarted);
+
+          if (Tone.context.state !== 'running') {
+            Tone.context.resume();
+          }
         } else {
           this.session.end();
         }
@@ -11814,7 +11860,11 @@ function () {
           var rotation = controller.getWorldDirection(controllers.controllerDirection).multiplyScalar(-1);
           raycaster.set(position, rotation);
 
-          _interactive.default.hittest(raycaster, controllers.isControllerSelecting); // this.updatePointer(raycaster);
+          var hit = _interactive.default.hittest(raycaster, controllers.isControllerSelecting);
+
+          if (hit) {
+            controllers.hapticFeedback();
+          } // this.updatePointer(raycaster);
 
         }
       } catch (error) {

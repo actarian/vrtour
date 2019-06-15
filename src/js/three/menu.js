@@ -1,7 +1,7 @@
 /* jshint esversion: 6 */
 /* global window, document */
 
-import { cm, ORIGIN } from './const';
+import { cm, mm, ORIGIN } from './const';
 import EmittableGroup from './emittable.group';
 import InteractiveMesh from './interactive.mesh';
 
@@ -32,20 +32,20 @@ export default class Menu extends EmittableGroup {
 	addPanel(parent) {
 		const loader = new THREE.TextureLoader();
 		const texture = loader.load('img/menu.png');
-		const geometry = new THREE.PlaneGeometry(cm(8), cm(16), 1, 2);
+		const geometry = new THREE.PlaneGeometry(cm(10), cm(20), 1, 2);
 		// geometry.rotateY(Math.PI);
 		const material = new THREE.MeshBasicMaterial({
 			// color: 0xffffff,
 			map: texture,
 			transparent: true,
 			// opacity: 0.8,
-			// side: THREE.DoubleSide,
 			// blending: THREE.AdditiveBlending,
+			side: THREE.DoubleSide,
 		});
 		const plane = new THREE.Mesh(geometry, material);
 		plane.renderOrder = 90;
 		// plane.position.set(0, 0, -20);
-		plane.position.set(0, cm(5), -cm(14));
+		plane.position.set(0, cm(3), -cm(17));
 		plane.rotation.set(-Math.PI / 2, 0, 0);
 		parent.add(plane);
 		return plane;
@@ -76,8 +76,8 @@ export class MenuItem extends InteractiveMesh {
 	}
 
 	constructor(parent, item, index, total) {
-		const size = cm(2);
-		const gutter = cm(0.4);
+		const size = mm(25);
+		const gutter = mm(8);
 		const loader = new THREE.TextureLoader();
 		const texture = loader.load('img/menu-item.png');
 		const geometry = new THREE.PlaneGeometry(size, size, 1, 1);
@@ -87,7 +87,7 @@ export class MenuItem extends InteractiveMesh {
 			transparent: true,
 			// opacity: 0.8,
 			// blending: THREE.AdditiveBlending,
-			// side: THREE.DoubleSide
+			side: THREE.DoubleSide
 		});
 		super(geometry, material);
 		this.item = item;
@@ -103,7 +103,7 @@ export class MenuItem extends InteractiveMesh {
 		const sy = size / 2 - (rows * d - gutter) / 2;
 		const r = Math.floor(index / cols);
 		const c = index - r * cols;
-		this.position.set(sx + d * c, sy + d * r, 2);
+		this.position.set(sx + d * c, sy + d * r, mm(3));
 		parent.add(this);
 	}
 
