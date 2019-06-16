@@ -10,9 +10,7 @@ export default class Menu extends EmittableGroup {
 	constructor(parent) {
 		super();
 		const panels = this.panels = [];
-		const count = 15;
-		const items = new Array(count).fill({});
-		const panel = this.panel = new MenuPanel(this, items);
+		this.addPanel();
 		this.position.set(0, 0, -cm(2));
 		/*
 		panel.items.forEach(x => {
@@ -33,6 +31,31 @@ export default class Menu extends EmittableGroup {
 		// parent.add(this);
 	}
 
+	addPanel() {
+		const index = this.panels.length;
+		if (index > 2) {
+			return;
+		}
+		const count = 15;
+		const items = new Array(count).fill({});
+		const panel = this.panel = new MenuPanel(this, items, index);
+		panel.on('down', (e) => {
+			if (this.addPanel()) {
+				this.next();
+				const from = { value: panel.plane.material.opacity };
+				TweenMax.to(from, 0.5, {
+					value: 1,
+					ease: Expo.easeInOut,
+					onUpdate: () => {
+						this.enterExitPanel_(panel, from.value);
+					}
+				});
+			}
+		});
+		this.panels.push(panel);
+		return panel;
+	}
+
 	toggle() {
 		if (this.active) {
 			this.exit();
@@ -47,18 +70,13 @@ export default class Menu extends EmittableGroup {
 		}
 		this.active = true;
 		this.parent_.add(this);
-		const opacity = (x, value) => {
-			x.material.opacity = value;
-			x.material.needsUpdate = true;
-		};
 		const from = { value: this.panel.plane.material.opacity };
-		TweenMax.to(from, 0.7, {
+		TweenMax.to(from, 0.5, {
 			value: 1,
 			ease: Expo.easeInOut,
 			onUpdate: () => {
 				this.position.z = -cm(2) * (1 - from.value);
-				opacity(this.panel.plane, from.value * 0.8);
-				this.panel.items.forEach(x => opacity(x, from.value));
+				this.enterExitPanel_(this.panel, from.value);
 			},
 			onComplete: () => {}
 		});
@@ -69,18 +87,13 @@ export default class Menu extends EmittableGroup {
 			return;
 		}
 		this.active = false;
-		const opacity = (x, value) => {
-			x.material.opacity = value;
-			x.material.needsUpdate = true;
-		};
 		const from = { value: this.panel.plane.material.opacity };
-		TweenMax.to(from, 0.7, {
+		TweenMax.to(from, 0.5, {
 			value: 0,
 			ease: Expo.easeInOut,
 			onUpdate: () => {
 				this.position.z = -cm(2) * (1 - from.value);
-				opacity(this.panel.plane, from.value * 0.8);
-				this.panel.items.forEach(x => opacity(x, from.value));
+				this.enterExitPanel_(this.panel, from.value);
 			},
 			onComplete: () => {
 				this.parent_.remove(this);
@@ -102,6 +115,15 @@ export default class Menu extends EmittableGroup {
 		});
 	}
 
+	enterExitPanel_(panel, value) {
+		const opacity = (x, value) => {
+			x.material.opacity = value;
+			x.material.needsUpdate = true;
+		};
+		opacity(panel.plane, value * 0.8);
+		panel.items.forEach(x => opacity(x, value * 0.1));
+	}
+
 }
 
 export class MenuPanel extends EmittableGroup {
@@ -114,8 +136,10 @@ export class MenuPanel extends EmittableGroup {
 		return this.texture || (this.texture = this.getLoader().load('img/menu.png'));
 	}
 
-	constructor(parent, items) {
+	constructor(parent, items, index) {
 		super();
+		this.index = index;
+		this.rotation.z = Math.PI * 2 / 3 * index;
 		const map = MenuPanel.getTexture();
 		const geometry = new THREE.PlaneGeometry(cm(10), cm(20), 1, 2);
 		// geometry.rotateY(Math.PI);
@@ -134,7 +158,10 @@ export class MenuPanel extends EmittableGroup {
 		plane.rotation.set(-Math.PI / 2, 0, 0);
 		this.plane = plane;
 		// this.addItems(plane, items);
-		this.items = items.map((item, index) => new MenuItem(plane, item, index, items.length));
+		items = this.items = items.map((item, index) => new MenuItem(plane, item, index, items.length));
+		items.forEach(x => x.on('down', () => {
+			this.emit('down', { panel: this, item, index });
+		}));
 		this.add(plane);
 		parent.add(this);
 	}
@@ -179,10 +206,10 @@ export class MenuItem extends InteractiveMesh {
 		const material = new THREE.MeshBasicMaterial({
 			// color: 0xffffff,
 			map: map,
-			transparent: true,
 			opacity: 0,
+			transparent: true,
 			// blending: THREE.AdditiveBlending,
-			side: THREE.DoubleSide
+			// side: THREE.DoubleSide
 		});
 		super(geometry, material);
 		this.item = item;
@@ -202,28 +229,30 @@ export class MenuItem extends InteractiveMesh {
 		// !!!
 		const from = { value: 0 };
 		this.on('over', () => {
-			TweenMax.to(from, 0.7, {
+			TweenMax.to(from, 0.4, {
 				value: 1,
 				ease: Expo.easeInOut,
 				onUpdate: () => {
-					this.position.z = mm(4) * (1 - from.value);
-					this.material.opacity = from.value;
-					this.material.needsUpdate = true;
+					this.overOutTween_(from.value);
 				},
 			});
 		});
 		this.on('out', () => {
-			TweenMax.to(from, 0.7, {
+			TweenMax.to(from, 0.4, {
 				value: 0,
 				ease: Expo.easeInOut,
 				onUpdate: () => {
-					this.position.z = mm(4) * (1 - from.value);
-					this.material.opacity = from.value;
-					this.material.needsUpdate = true;
+					this.overOutTween_(from.value);
 				},
 			});
 		});
 		parent.add(this);
+	}
+
+	overOutTween_(value) {
+		this.position.z = mm(1) + mm(4) * value;
+		this.material.opacity = 0.1 + value * 0.9;
+		this.material.needsUpdate = true;
 	}
 
 }

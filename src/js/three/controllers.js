@@ -41,6 +41,7 @@ export default class Controllers extends Emittable {
 				feedback.start();
 			}
 			*/
+			return; // !!! care for battery
 			const actuators = gamepad.hapticActuators;
 			if (actuators && actuators.length) {
 				return actuators[0].pulse(0.1, 50);
@@ -81,19 +82,24 @@ export default class Controllers extends Emittable {
 
 	onLeftSelectStart(id) {
 		try {
-			// 0 trigger, 1 front, 2 side, 3 Y, 4 X
-			switch (id) {
-				case 1:
-					this.menu.exit();
-					break;
-				case 2:
-					this.menu.enter();
-					break;
-				case 3:
-					this.menu.next();
-					break;
+			if (this.left.button !== id) {
+				this.left.button = id;
+				// 0 trigger, 1 front, 2 side, 3 Y, 4 X
+				switch (id) {
+					case 1:
+						this.menu.exit();
+						break;
+					case 2:
+						this.menu.enter();
+						break;
+					case 3:
+						this.menu.next();
+						break;
+				}
+				this.setText(String(id));
+				this.isControllerSelecting = true;
+				this.isControllerSelectionDirty = true;
 			}
-			this.setText(String(id));
 			if (this.controller !== this.left) {
 				if (this.controller) {
 					this.controller.remove(this.controller.indicator);
@@ -101,9 +107,6 @@ export default class Controllers extends Emittable {
 				this.controller = this.left;
 				this.controller.add(this.controller.indicator);
 			}
-			this.isControllerSelecting = true;
-			this.isControllerSelectionDirty = true;
-
 		} catch (error) {
 			this.emit('error', error);
 		}
@@ -111,11 +114,11 @@ export default class Controllers extends Emittable {
 
 	onLeftSelectEnd() {
 		try {
+			this.left.button = undefined;
 			if (this.controller === this.left) {
 				this.isControllerSelecting = false;
 				this.isControllerSelectionDirty = false;
 			}
-
 		} catch (error) {
 			this.emit('error', error);
 		}
@@ -123,8 +126,13 @@ export default class Controllers extends Emittable {
 
 	onRightSelectStart(id) {
 		try {
-			// 1 front, 2 side, 3 A, 4 B, 5?
-			this.setText(String(id));
+			if (this.right.button !== id) {
+				this.right.button = id;
+				// 1 front, 2 side, 3 A, 4 B, 5?
+				this.setText(String(id));
+				this.isControllerSelecting = true;
+				this.isControllerSelectionDirty = true;
+			}
 			if (this.controller !== this.right) {
 				if (this.controller) {
 					this.controller.remove(this.controller.indicator);
@@ -132,8 +140,6 @@ export default class Controllers extends Emittable {
 				this.controller = this.right;
 				this.controller.add(this.controller.indicator);
 			}
-			this.isControllerSelecting = true;
-			this.isControllerSelectionDirty = true;
 		} catch (error) {
 			this.emit('error', error);
 		}
@@ -141,11 +147,11 @@ export default class Controllers extends Emittable {
 
 	onRightSelectEnd() {
 		try {
+			this.right.button = undefined;
 			if (this.controller === this.right) {
 				this.isControllerSelecting = false;
 				this.isControllerSelectionDirty = false;
 			}
-
 		} catch (error) {
 			this.emit('error', error);
 		}

@@ -9229,6 +9229,8 @@ function (_Emittable) {
         	feedback.start();
         }
         */
+        return; // !!! care for battery
+
         var actuators = gamepad.hapticActuators;
 
         if (actuators && actuators.length) {
@@ -9283,22 +9285,27 @@ function (_Emittable) {
     key: "onLeftSelectStart",
     value: function onLeftSelectStart(id) {
       try {
-        // 0 trigger, 1 front, 2 side, 3 Y, 4 X
-        switch (id) {
-          case 1:
-            this.menu.exit();
-            break;
+        if (this.left.button !== id) {
+          this.left.button = id; // 0 trigger, 1 front, 2 side, 3 Y, 4 X
 
-          case 2:
-            this.menu.enter();
-            break;
+          switch (id) {
+            case 1:
+              this.menu.exit();
+              break;
 
-          case 3:
-            this.menu.next();
-            break;
+            case 2:
+              this.menu.enter();
+              break;
+
+            case 3:
+              this.menu.next();
+              break;
+          }
+
+          this.setText(String(id));
+          this.isControllerSelecting = true;
+          this.isControllerSelectionDirty = true;
         }
-
-        this.setText(String(id));
 
         if (this.controller !== this.left) {
           if (this.controller) {
@@ -9308,9 +9315,6 @@ function (_Emittable) {
           this.controller = this.left;
           this.controller.add(this.controller.indicator);
         }
-
-        this.isControllerSelecting = true;
-        this.isControllerSelectionDirty = true;
       } catch (error) {
         this.emit('error', error);
       }
@@ -9319,6 +9323,8 @@ function (_Emittable) {
     key: "onLeftSelectEnd",
     value: function onLeftSelectEnd() {
       try {
+        this.left.button = undefined;
+
         if (this.controller === this.left) {
           this.isControllerSelecting = false;
           this.isControllerSelectionDirty = false;
@@ -9331,8 +9337,13 @@ function (_Emittable) {
     key: "onRightSelectStart",
     value: function onRightSelectStart(id) {
       try {
-        // 1 front, 2 side, 3 A, 4 B, 5?
-        this.setText(String(id));
+        if (this.right.button !== id) {
+          this.right.button = id; // 1 front, 2 side, 3 A, 4 B, 5?
+
+          this.setText(String(id));
+          this.isControllerSelecting = true;
+          this.isControllerSelectionDirty = true;
+        }
 
         if (this.controller !== this.right) {
           if (this.controller) {
@@ -9342,9 +9353,6 @@ function (_Emittable) {
           this.controller = this.right;
           this.controller.add(this.controller.indicator);
         }
-
-        this.isControllerSelecting = true;
-        this.isControllerSelectionDirty = true;
       } catch (error) {
         this.emit('error', error);
       }
@@ -9353,6 +9361,8 @@ function (_Emittable) {
     key: "onRightSelectEnd",
     value: function onRightSelectEnd() {
       try {
+        this.right.button = undefined;
+
         if (this.controller === this.right) {
           this.isControllerSelecting = false;
           this.isControllerSelectionDirty = false;
@@ -9967,9 +9977,9 @@ function _createClass(Constructor, protoProps, staticProps) { if (protoProps) _d
 
 function _possibleConstructorReturn(self, call) { if (call && (_typeof(call) === "object" || typeof call === "function")) { return call; } return _assertThisInitialized(self); }
 
-function _getPrototypeOf(o) { _getPrototypeOf = Object.setPrototypeOf ? Object.getPrototypeOf : function _getPrototypeOf(o) { return o.__proto__ || Object.getPrototypeOf(o); }; return _getPrototypeOf(o); }
-
 function _assertThisInitialized(self) { if (self === void 0) { throw new ReferenceError("this hasn't been initialised - super() hasn't been called"); } return self; }
+
+function _getPrototypeOf(o) { _getPrototypeOf = Object.setPrototypeOf ? Object.getPrototypeOf : function _getPrototypeOf(o) { return o.__proto__ || Object.getPrototypeOf(o); }; return _getPrototypeOf(o); }
 
 function _inherits(subClass, superClass) { if (typeof superClass !== "function" && superClass !== null) { throw new TypeError("Super expression must either be null or a function"); } subClass.prototype = Object.create(superClass && superClass.prototype, { constructor: { value: subClass, writable: true, configurable: true } }); if (superClass) _setPrototypeOf(subClass, superClass); }
 
@@ -9987,9 +9997,8 @@ function (_EmittableGroup) {
 
     _this = _possibleConstructorReturn(this, _getPrototypeOf(Menu).call(this));
     var panels = _this.panels = [];
-    var count = 15;
-    var items = new Array(count).fill({});
-    var panel = _this.panel = new MenuPanel(_assertThisInitialized(_this), items);
+
+    _this.addPanel();
 
     _this.position.set(0, 0, -(0, _const.cm)(2));
     /*
@@ -10015,6 +10024,39 @@ function (_EmittableGroup) {
   }
 
   _createClass(Menu, [{
+    key: "addPanel",
+    value: function addPanel() {
+      var _this2 = this;
+
+      var index = this.panels.length;
+
+      if (index > 2) {
+        return;
+      }
+
+      var count = 15;
+      var items = new Array(count).fill({});
+      var panel = this.panel = new MenuPanel(this, items, index);
+      panel.on('down', function (e) {
+        if (_this2.addPanel()) {
+          _this2.next();
+
+          var from = {
+            value: panel.plane.material.opacity
+          };
+          TweenMax.to(from, 0.5, {
+            value: 1,
+            ease: Expo.easeInOut,
+            onUpdate: function onUpdate() {
+              _this2.enterExitPanel_(panel, from.value);
+            }
+          });
+        }
+      });
+      this.panels.push(panel);
+      return panel;
+    }
+  }, {
     key: "toggle",
     value: function toggle() {
       if (this.active) {
@@ -10026,7 +10068,7 @@ function (_EmittableGroup) {
   }, {
     key: "enter",
     value: function enter() {
-      var _this2 = this;
+      var _this3 = this;
 
       if (this.active) {
         return;
@@ -10034,25 +10076,16 @@ function (_EmittableGroup) {
 
       this.active = true;
       this.parent_.add(this);
-
-      var opacity = function opacity(x, value) {
-        x.material.opacity = value;
-        x.material.needsUpdate = true;
-      };
-
       var from = {
         value: this.panel.plane.material.opacity
       };
-      TweenMax.to(from, 0.7, {
+      TweenMax.to(from, 0.5, {
         value: 1,
         ease: Expo.easeInOut,
         onUpdate: function onUpdate() {
-          _this2.position.z = -(0, _const.cm)(2) * (1 - from.value);
-          opacity(_this2.panel.plane, from.value * 0.8);
+          _this3.position.z = -(0, _const.cm)(2) * (1 - from.value);
 
-          _this2.panel.items.forEach(function (x) {
-            return opacity(x, from.value);
-          });
+          _this3.enterExitPanel_(_this3.panel, from.value);
         },
         onComplete: function onComplete() {}
       });
@@ -10060,35 +10093,26 @@ function (_EmittableGroup) {
   }, {
     key: "exit",
     value: function exit() {
-      var _this3 = this;
+      var _this4 = this;
 
       if (!this.active) {
         return;
       }
 
       this.active = false;
-
-      var opacity = function opacity(x, value) {
-        x.material.opacity = value;
-        x.material.needsUpdate = true;
-      };
-
       var from = {
         value: this.panel.plane.material.opacity
       };
-      TweenMax.to(from, 0.7, {
+      TweenMax.to(from, 0.5, {
         value: 0,
         ease: Expo.easeInOut,
         onUpdate: function onUpdate() {
-          _this3.position.z = -(0, _const.cm)(2) * (1 - from.value);
-          opacity(_this3.panel.plane, from.value * 0.8);
+          _this4.position.z = -(0, _const.cm)(2) * (1 - from.value);
 
-          _this3.panel.items.forEach(function (x) {
-            return opacity(x, from.value);
-          });
+          _this4.enterExitPanel_(_this4.panel, from.value);
         },
         onComplete: function onComplete() {
-          _this3.parent_.remove(_this3);
+          _this4.parent_.remove(_this4);
         }
       });
     }
@@ -10104,6 +10128,19 @@ function (_EmittableGroup) {
         z: z,
         ease: Expo.easeInOut,
         onComplete: function onComplete() {}
+      });
+    }
+  }, {
+    key: "enterExitPanel_",
+    value: function enterExitPanel_(panel, value) {
+      var opacity = function opacity(x, value) {
+        x.material.opacity = value;
+        x.material.needsUpdate = true;
+      };
+
+      opacity(panel.plane, value * 0.8);
+      panel.items.forEach(function (x) {
+        return opacity(x, value * 0.1);
       });
     }
   }]);
@@ -10130,12 +10167,14 @@ function (_EmittableGroup2) {
     }
   }]);
 
-  function MenuPanel(parent, items) {
-    var _this4;
+  function MenuPanel(parent, items, index) {
+    var _this5;
 
     _classCallCheck(this, MenuPanel);
 
-    _this4 = _possibleConstructorReturn(this, _getPrototypeOf(MenuPanel).call(this));
+    _this5 = _possibleConstructorReturn(this, _getPrototypeOf(MenuPanel).call(this));
+    _this5.index = index;
+    _this5.rotation.z = Math.PI * 2 / 3 * index;
     var map = MenuPanel.getTexture();
     var geometry = new THREE.PlaneGeometry((0, _const.cm)(10), (0, _const.cm)(20), 1, 2); // geometry.rotateY(Math.PI);
 
@@ -10152,16 +10191,25 @@ function (_EmittableGroup2) {
 
     plane.position.set(0, (0, _const.cm)(3), -(0, _const.cm)(17));
     plane.rotation.set(-Math.PI / 2, 0, 0);
-    _this4.plane = plane; // this.addItems(plane, items);
+    _this5.plane = plane; // this.addItems(plane, items);
 
-    _this4.items = items.map(function (item, index) {
+    items = _this5.items = items.map(function (item, index) {
       return new MenuItem(plane, item, index, items.length);
     });
+    items.forEach(function (x) {
+      return x.on('down', function () {
+        _this5.emit('down', {
+          panel: _assertThisInitialized(_this5),
+          item: item,
+          index: index
+        });
+      });
+    });
 
-    _this4.add(plane);
+    _this5.add(plane);
 
-    parent.add(_assertThisInitialized(_this4));
-    return _this4;
+    parent.add(_assertThisInitialized(_this5));
+    return _this5;
   }
 
   return MenuPanel;
@@ -10209,7 +10257,7 @@ function (_InteractiveMesh) {
   }]);
 
   function MenuItem(parent, item, index, total) {
-    var _this5;
+    var _this6;
 
     _classCallCheck(this, MenuItem);
 
@@ -10220,15 +10268,15 @@ function (_InteractiveMesh) {
     var material = new THREE.MeshBasicMaterial({
       // color: 0xffffff,
       map: map,
-      transparent: true,
       opacity: 0,
-      // blending: THREE.AdditiveBlending,
-      side: THREE.DoubleSide
+      transparent: true // blending: THREE.AdditiveBlending,
+      // side: THREE.DoubleSide
+
     });
-    _this5 = _possibleConstructorReturn(this, _getPrototypeOf(MenuItem).call(this, geometry, material));
-    _this5.item = item;
-    _this5.index = index;
-    _this5.renderOrder = 100; // this.rotation.set(0, -0.5, 0);
+    _this6 = _possibleConstructorReturn(this, _getPrototypeOf(MenuItem).call(this, geometry, material));
+    _this6.item = item;
+    _this6.index = index;
+    _this6.renderOrder = 100; // this.rotation.set(0, -0.5, 0);
     // this.position.set(0, 0, 0);
     // this.lookAt(ORIGIN);
 
@@ -10240,40 +10288,45 @@ function (_InteractiveMesh) {
     var r = Math.floor(index / cols);
     var c = index - r * cols;
 
-    _this5.position.set(sx + d * c, sy + d * r, 0); // !!!
+    _this6.position.set(sx + d * c, sy + d * r, 0); // !!!
 
 
     var from = {
       value: 0
     };
 
-    _this5.on('over', function () {
-      TweenMax.to(from, 0.7, {
+    _this6.on('over', function () {
+      TweenMax.to(from, 0.4, {
         value: 1,
         ease: Expo.easeInOut,
         onUpdate: function onUpdate() {
-          _this5.position.z = (0, _const.mm)(4) * (1 - from.value);
-          _this5.material.opacity = from.value;
-          _this5.material.needsUpdate = true;
+          _this6.overOutTween_(from.value);
         }
       });
     });
 
-    _this5.on('out', function () {
-      TweenMax.to(from, 0.7, {
+    _this6.on('out', function () {
+      TweenMax.to(from, 0.4, {
         value: 0,
         ease: Expo.easeInOut,
         onUpdate: function onUpdate() {
-          _this5.position.z = (0, _const.mm)(4) * (1 - from.value);
-          _this5.material.opacity = from.value;
-          _this5.material.needsUpdate = true;
+          _this6.overOutTween_(from.value);
         }
       });
     });
 
-    parent.add(_assertThisInitialized(_this5));
-    return _this5;
+    parent.add(_assertThisInitialized(_this6));
+    return _this6;
   }
+
+  _createClass(MenuItem, [{
+    key: "overOutTween_",
+    value: function overOutTween_(value) {
+      this.position.z = (0, _const.mm)(1) + (0, _const.mm)(4) * value;
+      this.material.opacity = 0.1 + value * 0.9;
+      this.material.needsUpdate = true;
+    }
+  }]);
 
   return MenuItem;
 }(_interactive.default);
