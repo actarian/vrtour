@@ -62,9 +62,10 @@ export default class Views extends EmittableGroup {
 	onExitView(view) {
 		return new Promise((resolve, reject) => {
 			if (view) {
-				TweenMax.to(this.room.sphere.material, 0.4, {
+				TweenMax.to(this.room.sphere.material, 0.7, {
 					opacity: 0,
 					delay: 0.0,
+					ease: Expo.easeInOut,
 					onCompleted: () => {
 						setTimeout(() => {
 							resolve(view);
@@ -104,9 +105,10 @@ export default class Views extends EmittableGroup {
 						material.map = texture;
 						material.map.needsUpdate = true;
 						material.needsUpdate = true;
-						TweenMax.to(material, 0.6, {
+						TweenMax.to(material, 0.7, {
 							opacity: TEST_ENABLED ? 0.5 : 1,
 							delay: 0.1,
+							ease: Expo.easeInOut,
 							onCompleted: () => {
 								resolve(view);
 							}
@@ -122,7 +124,7 @@ export default class Views extends EmittableGroup {
 
 	onEnterPoints(view) {
 		view.points.forEach((p, i) => {
-			const point = new NavPoint(this.points, i, new THREE.Vector3(...p.position));
+			const point = new NavPoint(this.points, {}, i, new THREE.Vector3(...p.position));
 			this.addPointListeners(point);
 			return point;
 		});
@@ -152,9 +154,10 @@ export default class Views extends EmittableGroup {
 				panel.lookAt(ORIGIN);
 				this.add(panel);
 				const from = { value: 1 };
-				TweenMax.to(from, 0.2, {
+				TweenMax.to(from, 0.7, {
 					value: 0,
 					delay: 0.2,
+					ease: Expo.easeInOut,
 					onUpdate: () => {
 						panel.position.set(position.x, position.y + 30 + 30 * from.value, position.z);
 						panel.lookAt(ORIGIN);
@@ -293,9 +296,10 @@ export default class Views extends EmittableGroup {
 		return new Promise((resolve, reject) => {
 			const point = this.points.children[i];
 			const from = { opacity: 1 };
-			TweenMax.to(from, 0.5, {
+			TweenMax.to(from, 0.7, {
 				opacity: 0,
 				delay: 0.0 * i,
+				ease: Expo.easeInOut,
 				onUpdate: () => {
 					// console.log(index, from.opacity);
 					point.material.opacity = from.opacity;
@@ -312,7 +316,7 @@ export default class Views extends EmittableGroup {
 	createPoint(intersection) {
 		const position = intersection.point.clone();
 		const points = this.points;
-		const point = new NavPoint(points, 0, position);
+		const point = new NavPoint(points, {}, 0, position);
 		this.addPointListeners(point);
 		this.view.points.push({
 			id: 2,
@@ -326,9 +330,10 @@ export default class Views extends EmittableGroup {
 	addPointListeners(point) {
 		point.on('over', () => {
 			const from = { scale: point.scale.x };
-			TweenMax.to(from, 0.25, {
+			TweenMax.to(from, 0.4, {
 				scale: 3,
 				delay: 0,
+				ease: Expo.easeInOut,
 				onUpdate: () => {
 					point.scale.set(from.scale, from.scale, from.scale);
 				}
@@ -338,9 +343,10 @@ export default class Views extends EmittableGroup {
 		});
 		point.on('out', () => {
 			const from = { scale: point.scale.x };
-			TweenMax.to(from, 0.25, {
+			TweenMax.to(from, 0.4, {
 				scale: 1,
 				delay: 0,
+				ease: Expo.easeInOut,
 				onUpdate: () => {
 					point.scale.set(from.scale, from.scale, from.scale);
 				}
@@ -405,27 +411,38 @@ export default class Views extends EmittableGroup {
 
 export class NavPoint extends InteractiveMesh {
 
-	constructor(parent, index, position) {
+	static getLoader() {
+		return NavPoint.loader || (NavPoint.loader = new THREE.TextureLoader());
+	}
+
+	static getTexture(item, index) {
+		return NavPoint.texture || (NavPoint.texture = NavPoint.getLoader().load('img/pin.png'));
+	}
+
+	constructor(parent, item, index, position) {
 		// console.log('NavPoint', parent, position, i);
 		// size 2 about 20 cm radius
 		const geometry = new THREE.PlaneBufferGeometry(2, 2, 2, 2);
-		const loader = new THREE.TextureLoader();
-		const texture = loader.load('img/pin.png');
+		const map = NavPoint.getTexture(item, index);
 		const material = new THREE.MeshBasicMaterial({
 			// alphaMap: texture,
-			map: texture,
+			map: map,
 			transparent: true,
 			opacity: 0,
 		});
 		super(geometry, material);
+		this.item = item;
+		this.index = index;
+		// this.renderOrder = 1;
 		position = position.normalize().multiplyScalar(POINT_RADIUS);
 		this.position.set(position.x, position.y, position.z);
 		this.lookAt(ORIGIN);
 		parent.add(this);
 		const from = { opacity: 0 };
-		TweenMax.to(from, 0.5, {
+		TweenMax.to(from, 0.7, {
 			opacity: 1,
 			delay: 0.1 * index,
+			ease: Expo.easeInOut,
 			onUpdate: () => {
 				// console.log(index, from.opacity);
 				material.opacity = from.opacity;

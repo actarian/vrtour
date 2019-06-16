@@ -264,6 +264,15 @@ class VRTour {
 			if (this.vr.mode !== VR_MODE.NONE || TEST_ENABLED) {
 				this.controllers.setText(key);
 				switch (e.keyCode) {
+					case 37: // left
+						this.controllers.menu.prev();
+						break;
+					case 38: // up
+						this.controllers.menu.exit();
+						break;
+					case 40: // down
+						this.controllers.menu.enter();
+						break;
 					case 39: // right
 						this.controllers.menu.next();
 						break;
@@ -614,9 +623,10 @@ const material = new THREE.ShaderMaterial({
 		points.material.needsUpdate = true;
 		// console.log(index, 'start');
 		const from = { opacity: 0 };
-		TweenMax.to(from, 0.5, {
+		TweenMax.to(from, 0.7, {
 			opacity: 1,
 			delay: 0.1 * i,
+			ease: Expo.easeInOut,
 			onUpdate: () => {
 				// console.log(index, from.opacity);
 				colorsAttribute.setXYZ(index, from.opacity, from.opacity, from.opacity);
@@ -640,9 +650,10 @@ const material = new THREE.ShaderMaterial({
 			points.material.needsUpdate = true;
 			// console.log(index, 'start');
 			const from = { opacity: 1 };
-			TweenMax.to(from, 0.5, {
+			TweenMax.to(from, 0.7, {
 				opacity: 0,
 				delay: 0.0 * i,
+			ease: Expo.easeInOut,
 				onUpdate: () => {
 					// console.log(index, from.opacity);
 					colorsAttribute.setXYZ(index, from.opacity, from.opacity, from.opacity);

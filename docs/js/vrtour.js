@@ -9232,7 +9232,7 @@ function (_Emittable) {
         var actuators = gamepad.hapticActuators;
 
         if (actuators && actuators.length) {
-          return actuators[0].pulse(0.2, 100);
+          return actuators[0].pulse(0.1, 50);
         } else {
           return Promise.reject();
         }
@@ -9284,6 +9284,10 @@ function (_Emittable) {
     value: function onLeftSelectStart(id) {
       try {
         // 0 trigger, 1 front, 2 side, 3 Y, 4 X
+        if (id === 2) {
+          this.menu.toggle();
+        }
+
         if (id === 3) {
           this.menu.next();
         }
@@ -9937,7 +9941,7 @@ InteractiveMesh.items = [];
 Object.defineProperty(exports, "__esModule", {
   value: true
 });
-exports.MenuItem = exports.default = void 0;
+exports.MenuItem = exports.MenuPanel = exports.default = void 0;
 
 var _const = require("./const");
 
@@ -9976,61 +9980,122 @@ function (_EmittableGroup) {
     _classCallCheck(this, Menu);
 
     _this = _possibleConstructorReturn(this, _getPrototypeOf(Menu).call(this));
-
-    var panel = _this.panel = _this.addPanel(_assertThisInitialized(_this));
-
     var count = 15;
-    var items = _this.items = new Array(count).fill(null).map(function (x, i) {
-      var item = new MenuItem(panel, {}, i, count);
-      item.on('over', function () {
-        item.material.color.setHex(0xff0000);
-        item.material.opacity = 1.0;
-        item.material.needsUpdate = true;
-      });
-      item.on('out', function () {
-        item.material.color.setHex(0xffffff);
-        item.material.opacity = 1.0;
-        item.material.needsUpdate = true;
-      });
-      return item;
-    }); // this.lookAt(ORIGIN);
+    var items = new Array(count).fill({});
+    var panel = _this.panel = new MenuPanel(_assertThisInitialized(_this), items);
 
-    parent.add(_assertThisInitialized(_this));
+    _this.position.set(0, 0, -(0, _const.cm)(2));
+    /*
+    panel.items.forEach(x => {
+    	x.on('over', () => {
+    		x.material.color.setHex(0xff0000);
+    		x.material.opacity = 1.0;
+    		x.material.needsUpdate = true;
+    	});
+    	x.on('out', () => {
+    		x.material.color.setHex(0xffffff);
+    		x.material.opacity = 1.0;
+    		x.material.needsUpdate = true;
+    	});
+    });
+    */
+    // this.lookAt(ORIGIN);
+
+
+    _this.parent_ = parent; // parent.add(this);
+
     return _this;
   }
 
   _createClass(Menu, [{
-    key: "addPanel",
-    value: function addPanel(parent) {
-      var panel = new THREE.Group();
-      var loader = new THREE.TextureLoader();
-      var texture = loader.load('img/menu.png');
-      var geometry = new THREE.PlaneGeometry((0, _const.cm)(10), (0, _const.cm)(20), 1, 2); // geometry.rotateY(Math.PI);
-
-      var material = new THREE.MeshBasicMaterial({
-        // color: 0xffffff,
-        map: texture,
-        transparent: true,
-        opacity: 0.8,
-        // blending: THREE.AdditiveBlending,
-        side: THREE.DoubleSide
-      });
-      var plane = new THREE.Mesh(geometry, material);
-      plane.renderOrder = 90; // plane.position.set(0, 0, -20);
-
-      plane.position.set(0, (0, _const.cm)(3), -(0, _const.cm)(17));
-      plane.rotation.set(-Math.PI / 2, 0, 0);
-      panel.add(plane);
-      parent.add(panel);
-      return panel;
+    key: "toggle",
+    value: function toggle() {
+      if (this.active) {
+        this.exit();
+      } else {
+        this.enter();
+      }
     }
+  }, {
+    key: "enter",
+    value: function enter() {
+      var _this2 = this;
+
+      if (this.active) {
+        return;
+      }
+
+      this.active = true;
+      this.parent_.add(this);
+
+      var opacity = function opacity(x, value) {
+        x.material.opacity = value;
+        x.material.needsUpdate = true;
+      };
+
+      var from = {
+        value: this.panel.plane.material.opacity
+      };
+      TweenMax.to(from, 0.7, {
+        value: 1,
+        ease: Expo.easeInOut,
+        onUpdate: function onUpdate() {
+          _this2.position.z = -(0, _const.cm)(2) * (1 - from.value);
+          opacity(_this2.panel.plane, from.value * 0.8);
+
+          _this2.panel.items.forEach(function (x) {
+            return opacity(x, from.value);
+          });
+        },
+        onComplete: function onComplete() {}
+      });
+    }
+  }, {
+    key: "exit",
+    value: function exit() {
+      var _this3 = this;
+
+      if (!this.active) {
+        return;
+      }
+
+      this.active = false;
+
+      var opacity = function opacity(x, value) {
+        x.material.opacity = value;
+        x.material.needsUpdate = true;
+      };
+
+      var from = {
+        value: this.panel.plane.material.opacity
+      };
+      TweenMax.to(from, 0.7, {
+        value: 0,
+        ease: Expo.easeInOut,
+        onUpdate: function onUpdate() {
+          _this3.position.z = -(0, _const.cm)(2) * (1 - from.value);
+          opacity(_this3.panel.plane, from.value * 0.8);
+
+          _this3.panel.items.forEach(function (x) {
+            return opacity(x, from.value);
+          });
+        },
+        onComplete: function onComplete() {
+          _this3.parent_.remove(_this3);
+        }
+      });
+    }
+  }, {
+    key: "prev",
+    value: function prev() {}
   }, {
     key: "next",
     value: function next() {
       var r = Math.PI * 2 / 3;
       var z = Math.ceil(this.rotation.z / r) * r + r;
-      TweenMax.to(this.rotation, 0.6, {
+      TweenMax.to(this.rotation, 0.7, {
         z: z,
+        ease: Expo.easeInOut,
         onComplete: function onComplete() {}
       });
     }
@@ -10041,14 +10106,70 @@ function (_EmittableGroup) {
 
 exports.default = Menu;
 
+var MenuPanel =
+/*#__PURE__*/
+function (_EmittableGroup2) {
+  _inherits(MenuPanel, _EmittableGroup2);
+
+  _createClass(MenuPanel, null, [{
+    key: "getLoader",
+    value: function getLoader() {
+      return this.loader || (this.loader = new THREE.TextureLoader());
+    }
+  }, {
+    key: "getTexture",
+    value: function getTexture() {
+      return this.texture || (this.texture = this.getLoader().load('img/menu.png'));
+    }
+  }]);
+
+  function MenuPanel(parent, items) {
+    var _this4;
+
+    _classCallCheck(this, MenuPanel);
+
+    _this4 = _possibleConstructorReturn(this, _getPrototypeOf(MenuPanel).call(this));
+    var map = MenuPanel.getTexture();
+    var geometry = new THREE.PlaneGeometry((0, _const.cm)(10), (0, _const.cm)(20), 1, 2); // geometry.rotateY(Math.PI);
+
+    var material = new THREE.MeshBasicMaterial({
+      // color: 0xffffff,
+      map: map,
+      transparent: true,
+      opacity: 0,
+      // blending: THREE.AdditiveBlending,
+      side: THREE.DoubleSide
+    });
+    var plane = new THREE.Mesh(geometry, material);
+    plane.renderOrder = 90; // plane.position.set(0, 0, -20);
+
+    plane.position.set(0, (0, _const.cm)(3), -(0, _const.cm)(17));
+    plane.rotation.set(-Math.PI / 2, 0, 0);
+    _this4.plane = plane; // this.addItems(plane, items);
+
+    _this4.items = items.map(function (item, index) {
+      return new MenuItem(plane, item, index, items.length);
+    });
+
+    _this4.add(plane);
+
+    parent.add(_assertThisInitialized(_this4));
+    return _this4;
+  }
+
+  return MenuPanel;
+}(_emittable.default);
+
+exports.MenuPanel = MenuPanel;
+
 var MenuItem =
 /*#__PURE__*/
 function (_InteractiveMesh) {
   _inherits(MenuItem, _InteractiveMesh);
 
   _createClass(MenuItem, null, [{
-    key: "getTexture",
-    value: function getTexture(index) {
+    key: "getTexture_",
+    value: function getTexture_(index) {
       var canvas = document.createElement('canvas');
       var ctx = canvas.getContext('2d');
       canvas.width = canvas.height = 64;
@@ -10068,30 +10189,39 @@ function (_InteractiveMesh) {
 
       return texture;
     }
+  }, {
+    key: "getLoader",
+    value: function getLoader() {
+      return this.loader || (this.loader = new THREE.TextureLoader());
+    }
+  }, {
+    key: "getTexture",
+    value: function getTexture(item, index) {
+      return this.texture || (this.texture = this.getLoader().load('img/menu-item.png'));
+    }
   }]);
 
   function MenuItem(parent, item, index, total) {
-    var _this2;
+    var _this5;
 
     _classCallCheck(this, MenuItem);
 
     var size = (0, _const.mm)(25);
     var gutter = (0, _const.mm)(8);
-    var loader = new THREE.TextureLoader();
-    var texture = loader.load('img/menu-item.png');
+    var map = MenuItem.getTexture(item, index);
     var geometry = new THREE.PlaneGeometry(size, size, 1, 1);
     var material = new THREE.MeshBasicMaterial({
       // color: 0xffffff,
-      map: texture,
+      map: map,
       transparent: true,
-      // opacity: 0.8,
+      opacity: 0,
       // blending: THREE.AdditiveBlending,
       side: THREE.DoubleSide
     });
-    _this2 = _possibleConstructorReturn(this, _getPrototypeOf(MenuItem).call(this, geometry, material));
-    _this2.item = item;
-    _this2.index = index;
-    _this2.renderOrder = 100; // this.rotation.set(0, -0.5, 0);
+    _this5 = _possibleConstructorReturn(this, _getPrototypeOf(MenuItem).call(this, geometry, material));
+    _this5.item = item;
+    _this5.index = index;
+    _this5.renderOrder = 100; // this.rotation.set(0, -0.5, 0);
     // this.position.set(0, 0, 0);
     // this.lookAt(ORIGIN);
 
@@ -10103,10 +10233,25 @@ function (_InteractiveMesh) {
     var r = Math.floor(index / cols);
     var c = index - r * cols;
 
-    _this2.position.set(sx + d * c, sy + d * r, (0, _const.mm)(4));
+    _this5.position.set(sx + d * c, sy + d * r, (0, _const.mm)(4)); // !!!
 
-    parent.add(_assertThisInitialized(_this2));
-    return _this2;
+
+    _this5.on('over', function () {
+      _this5.material.color.setHex(0xff0000);
+
+      _this5.material.opacity = 1.0;
+      _this5.material.needsUpdate = true;
+    });
+
+    _this5.on('out', function () {
+      _this5.material.color.setHex(0xffffff);
+
+      _this5.material.opacity = 1.0;
+      _this5.material.needsUpdate = true;
+    });
+
+    parent.add(_assertThisInitialized(_this5));
+    return _this5;
   }
 
   return MenuItem;
@@ -10295,8 +10440,9 @@ function () {
           var y = _this.parent.rotation.y + Math.PI / 2 * direction; // this.parent.ery = y;
 
           _this.parent.busy = true;
-          TweenMax.to(_this.parent.rotation, 0.6, {
+          TweenMax.to(_this.parent.rotation, 0.7, {
             y: y,
+            ease: Expo.easeInOut,
             onComplete: function onComplete() {
               _this.parent.busy = false;
             }
@@ -10353,8 +10499,9 @@ function () {
         var from = {
           value: materials[0].opacity
         };
-        TweenMax.to(from, 0.3, {
+        TweenMax.to(from, 0.7, {
           value: active ? 1 : 0,
+          ease: Expo.easeInOut,
           onUpdate: function onUpdate() {
             mesh.position.y = _this2.py - 30 * from.value;
             materials.forEach(function (x, i) {
@@ -10532,9 +10679,10 @@ function (_EmittableGroup) {
 
       return new Promise(function (resolve, reject) {
         if (view) {
-          TweenMax.to(_this3.room.sphere.material, 0.4, {
+          TweenMax.to(_this3.room.sphere.material, 0.7, {
             opacity: 0,
             delay: 0.0,
+            ease: Expo.easeInOut,
             onCompleted: function onCompleted() {
               setTimeout(function () {
                 resolve(view);
@@ -10578,9 +10726,10 @@ function (_EmittableGroup) {
               material.map = texture;
               material.map.needsUpdate = true;
               material.needsUpdate = true;
-              TweenMax.to(material, 0.6, {
+              TweenMax.to(material, 0.7, {
                 opacity: _const.TEST_ENABLED ? 0.5 : 1,
                 delay: 0.1,
+                ease: Expo.easeInOut,
                 onCompleted: function onCompleted() {
                   resolve(view);
                 }
@@ -10600,7 +10749,7 @@ function (_EmittableGroup) {
       var _this5 = this;
 
       view.points.forEach(function (p, i) {
-        var point = new NavPoint(_this5.points, i, _construct(THREE.Vector3, _toConsumableArray(p.position)));
+        var point = new NavPoint(_this5.points, {}, i, _construct(THREE.Vector3, _toConsumableArray(p.position)));
 
         _this5.addPointListeners(point);
 
@@ -10644,9 +10793,10 @@ function (_EmittableGroup) {
           var from = {
             value: 1
           };
-          TweenMax.to(from, 0.2, {
+          TweenMax.to(from, 0.7, {
             value: 0,
             delay: 0.2,
+            ease: Expo.easeInOut,
             onUpdate: function onUpdate() {
               panel.position.set(position.x, position.y + 30 + 30 * from.value, position.z);
               panel.lookAt(_const.ORIGIN);
@@ -10799,9 +10949,10 @@ function (_EmittableGroup) {
         var from = {
           opacity: 1
         };
-        TweenMax.to(from, 0.5, {
+        TweenMax.to(from, 0.7, {
           opacity: 0,
           delay: 0.0 * i,
+          ease: Expo.easeInOut,
           onUpdate: function onUpdate() {
             // console.log(index, from.opacity);
             point.material.opacity = from.opacity;
@@ -10820,7 +10971,7 @@ function (_EmittableGroup) {
     value: function createPoint(intersection) {
       var position = intersection.point.clone();
       var points = this.points;
-      var point = new NavPoint(points, 0, position);
+      var point = new NavPoint(points, {}, 0, position);
       this.addPointListeners(point);
       this.view.points.push({
         id: 2,
@@ -10839,9 +10990,10 @@ function (_EmittableGroup) {
         var from = {
           scale: point.scale.x
         };
-        TweenMax.to(from, 0.25, {
+        TweenMax.to(from, 0.4, {
           scale: 3,
           delay: 0,
+          ease: Expo.easeInOut,
           onUpdate: function onUpdate() {
             point.scale.set(from.scale, from.scale, from.scale);
           }
@@ -10855,9 +11007,10 @@ function (_EmittableGroup) {
         var from = {
           scale: point.scale.x
         };
-        TweenMax.to(from, 0.25, {
+        TweenMax.to(from, 0.4, {
           scale: 1,
           delay: 0,
+          ease: Expo.easeInOut,
           onUpdate: function onUpdate() {
             point.scale.set(from.scale, from.scale, from.scale);
           }
@@ -10962,7 +11115,19 @@ var NavPoint =
 function (_InteractiveMesh) {
   _inherits(NavPoint, _InteractiveMesh);
 
-  function NavPoint(parent, index, position) {
+  _createClass(NavPoint, null, [{
+    key: "getLoader",
+    value: function getLoader() {
+      return NavPoint.loader || (NavPoint.loader = new THREE.TextureLoader());
+    }
+  }, {
+    key: "getTexture",
+    value: function getTexture(item, index) {
+      return NavPoint.texture || (NavPoint.texture = NavPoint.getLoader().load('img/pin.png'));
+    }
+  }]);
+
+  function NavPoint(parent, item, index, position) {
     var _this10;
 
     _classCallCheck(this, NavPoint);
@@ -10970,15 +11135,17 @@ function (_InteractiveMesh) {
     // console.log('NavPoint', parent, position, i);
     // size 2 about 20 cm radius
     var geometry = new THREE.PlaneBufferGeometry(2, 2, 2, 2);
-    var loader = new THREE.TextureLoader();
-    var texture = loader.load('img/pin.png');
+    var map = NavPoint.getTexture(item, index);
     var material = new THREE.MeshBasicMaterial({
       // alphaMap: texture,
-      map: texture,
+      map: map,
       transparent: true,
       opacity: 0
     });
     _this10 = _possibleConstructorReturn(this, _getPrototypeOf(NavPoint).call(this, geometry, material));
+    _this10.item = item;
+    _this10.index = index; // this.renderOrder = 1;
+
     position = position.normalize().multiplyScalar(_const.POINT_RADIUS);
 
     _this10.position.set(position.x, position.y, position.z);
@@ -10989,9 +11156,10 @@ function (_InteractiveMesh) {
     var from = {
       opacity: 0
     };
-    TweenMax.to(from, 0.5, {
+    TweenMax.to(from, 0.7, {
       opacity: 1,
       delay: 0.1 * index,
+      ease: Expo.easeInOut,
       onUpdate: function onUpdate() {
         // console.log(index, from.opacity);
         material.opacity = from.opacity;
@@ -11688,6 +11856,21 @@ function () {
           this.controllers.setText(key);
 
           switch (e.keyCode) {
+            case 37:
+              // left
+              this.controllers.menu.prev();
+              break;
+
+            case 38:
+              // up
+              this.controllers.menu.exit();
+              break;
+
+            case 40:
+              // down
+              this.controllers.menu.enter();
+              break;
+
             case 39:
               // right
               this.controllers.menu.next();
@@ -12076,9 +12259,10 @@ const material = new THREE.ShaderMaterial({
 		points.material.needsUpdate = true;
 		// console.log(index, 'start');
 		const from = { opacity: 0 };
-		TweenMax.to(from, 0.5, {
+		TweenMax.to(from, 0.7, {
 			opacity: 1,
 			delay: 0.1 * i,
+			ease: Expo.easeInOut,
 			onUpdate: () => {
 				// console.log(index, from.opacity);
 				colorsAttribute.setXYZ(index, from.opacity, from.opacity, from.opacity);
@@ -12102,9 +12286,10 @@ const material = new THREE.ShaderMaterial({
 			points.material.needsUpdate = true;
 			// console.log(index, 'start');
 			const from = { opacity: 1 };
-			TweenMax.to(from, 0.5, {
+			TweenMax.to(from, 0.7, {
 				opacity: 0,
 				delay: 0.0 * i,
+			ease: Expo.easeInOut,
 				onUpdate: () => {
 					// console.log(index, from.opacity);
 					colorsAttribute.setXYZ(index, from.opacity, from.opacity, from.opacity);

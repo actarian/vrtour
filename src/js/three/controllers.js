@@ -43,7 +43,7 @@ export default class Controllers extends Emittable {
 			*/
 			const actuators = gamepad.hapticActuators;
 			if (actuators && actuators.length) {
-				return actuators[0].pulse(0.2, 100);
+				return actuators[0].pulse(0.1, 50);
 			} else {
 				return Promise.reject();
 			}
@@ -82,6 +82,9 @@ export default class Controllers extends Emittable {
 	onLeftSelectStart(id) {
 		try {
 			// 0 trigger, 1 front, 2 side, 3 Y, 4 X
+			if (id === 2) {
+				this.menu.toggle();
+			}
 			if (id === 3) {
 				this.menu.next();
 			}
