@@ -9284,12 +9284,18 @@ function (_Emittable) {
     value: function onLeftSelectStart(id) {
       try {
         // 0 trigger, 1 front, 2 side, 3 Y, 4 X
-        if (id === 2) {
-          this.menu.toggle();
-        }
+        switch (id) {
+          case 1:
+            this.menu.exit();
+            break;
 
-        if (id === 3) {
-          this.menu.next();
+          case 2:
+            this.menu.enter();
+            break;
+
+          case 3:
+            this.menu.next();
+            break;
         }
 
         this.setText(String(id));
@@ -9980,6 +9986,7 @@ function (_EmittableGroup) {
     _classCallCheck(this, Menu);
 
     _this = _possibleConstructorReturn(this, _getPrototypeOf(Menu).call(this));
+    var panels = _this.panels = [];
     var count = 15;
     var items = new Array(count).fill({});
     var panel = _this.panel = new MenuPanel(_assertThisInitialized(_this), items);
@@ -10233,21 +10240,35 @@ function (_InteractiveMesh) {
     var r = Math.floor(index / cols);
     var c = index - r * cols;
 
-    _this5.position.set(sx + d * c, sy + d * r, (0, _const.mm)(4)); // !!!
+    _this5.position.set(sx + d * c, sy + d * r, 0); // !!!
 
+
+    var from = {
+      value: 0
+    };
 
     _this5.on('over', function () {
-      _this5.material.color.setHex(0xff0000);
-
-      _this5.material.opacity = 1.0;
-      _this5.material.needsUpdate = true;
+      TweenMax.to(from, 0.7, {
+        value: 1,
+        ease: Expo.easeInOut,
+        onUpdate: function onUpdate() {
+          _this5.position.z = (0, _const.mm)(4) * (1 - from.value);
+          _this5.material.opacity = from.value;
+          _this5.material.needsUpdate = true;
+        }
+      });
     });
 
     _this5.on('out', function () {
-      _this5.material.color.setHex(0xffffff);
-
-      _this5.material.opacity = 1.0;
-      _this5.material.needsUpdate = true;
+      TweenMax.to(from, 0.7, {
+        value: 0,
+        ease: Expo.easeInOut,
+        onUpdate: function onUpdate() {
+          _this5.position.z = (0, _const.mm)(4) * (1 - from.value);
+          _this5.material.opacity = from.value;
+          _this5.material.needsUpdate = true;
+        }
+      });
     });
 
     parent.add(_assertThisInitialized(_this5));

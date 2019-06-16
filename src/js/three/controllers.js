@@ -82,11 +82,16 @@ export default class Controllers extends Emittable {
 	onLeftSelectStart(id) {
 		try {
 			// 0 trigger, 1 front, 2 side, 3 Y, 4 X
-			if (id === 2) {
-				this.menu.toggle();
-			}
-			if (id === 3) {
-				this.menu.next();
+			switch (id) {
+				case 1:
+					this.menu.exit();
+					break;
+				case 2:
+					this.menu.enter();
+					break;
+				case 3:
+					this.menu.next();
+					break;
 			}
 			this.setText(String(id));
 			if (this.controller !== this.left) {

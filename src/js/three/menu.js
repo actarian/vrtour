@@ -9,6 +9,7 @@ export default class Menu extends EmittableGroup {
 
 	constructor(parent) {
 		super();
+		const panels = this.panels = [];
 		const count = 15;
 		const items = new Array(count).fill({});
 		const panel = this.panel = new MenuPanel(this, items);
@@ -197,17 +198,30 @@ export class MenuItem extends InteractiveMesh {
 		const sy = size / 2 - (rows * d - gutter) / 2;
 		const r = Math.floor(index / cols);
 		const c = index - r * cols;
-		this.position.set(sx + d * c, sy + d * r, mm(4));
+		this.position.set(sx + d * c, sy + d * r, 0);
 		// !!!
+		const from = { value: 0 };
 		this.on('over', () => {
-			this.material.color.setHex(0xff0000);
-			this.material.opacity = 1.0;
-			this.material.needsUpdate = true;
+			TweenMax.to(from, 0.7, {
+				value: 1,
+				ease: Expo.easeInOut,
+				onUpdate: () => {
+					this.position.z = mm(4) * (1 - from.value);
+					this.material.opacity = from.value;
+					this.material.needsUpdate = true;
+				},
+			});
 		});
 		this.on('out', () => {
-			this.material.color.setHex(0xffffff);
-			this.material.opacity = 1.0;
-			this.material.needsUpdate = true;
+			TweenMax.to(from, 0.7, {
+				value: 0,
+				ease: Expo.easeInOut,
+				onUpdate: () => {
+					this.position.z = mm(4) * (1 - from.value);
+					this.material.opacity = from.value;
+					this.material.needsUpdate = true;
+				},
+			});
 		});
 		parent.add(this);
 	}
