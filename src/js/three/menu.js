@@ -5,6 +5,9 @@ import { cm, mm } from './const';
 import EmittableGroup from './emittable.group';
 import InteractiveMesh from './interactive.mesh';
 
+const W = cm(10);
+const H = cm(20);
+
 export default class Menu extends EmittableGroup {
 
 	constructor(parent) {
@@ -39,18 +42,22 @@ export default class Menu extends EmittableGroup {
 		const count = 15;
 		const items = new Array(count).fill({});
 		const panel = this.panel = new MenuPanel(this, items, index);
-		panel.on('down', (e) => {
-			if (this.addPanel()) {
-				this.next();
-				const from = { value: panel.plane.material.opacity };
-				TweenMax.to(from, 0.5, {
-					value: 1,
-					ease: Expo.easeInOut,
-					onUpdate: () => {
-						this.enterExitPanel_(panel, from.value);
-					}
-				});
+		panel.on('down', (event) => {
+			const index = event.index;
+			if (index === 1) {
+				if (this.addPanel()) {
+					this.next();
+					const from = { value: panel.plane.material.opacity };
+					TweenMax.to(from, 0.5, {
+						value: 1,
+						ease: Power2.easeInOut,
+						onUpdate: () => {
+							this.enterExitPanel_(panel, from.value);
+						}
+					});
+				}
 			}
+			this.emit('down', event);
 		});
 		this.panels.push(panel);
 		return panel;
@@ -73,7 +80,7 @@ export default class Menu extends EmittableGroup {
 		const from = { value: this.panel.plane.material.opacity };
 		TweenMax.to(from, 0.5, {
 			value: 1,
-			ease: Expo.easeInOut,
+			ease: Power2.easeInOut,
 			onUpdate: () => {
 				this.position.z = -cm(2) * (1 - from.value);
 				this.enterExitPanel_(this.panel, from.value);
@@ -90,7 +97,7 @@ export default class Menu extends EmittableGroup {
 		const from = { value: this.panel.plane.material.opacity };
 		TweenMax.to(from, 0.5, {
 			value: 0,
-			ease: Expo.easeInOut,
+			ease: Power2.easeInOut,
 			onUpdate: () => {
 				this.position.z = -cm(2) * (1 - from.value);
 				this.enterExitPanel_(this.panel, from.value);
@@ -110,7 +117,7 @@ export default class Menu extends EmittableGroup {
 		const z = Math.ceil(this.rotation.z / r) * r + r;
 		TweenMax.to(this.rotation, 0.7, {
 			z,
-			ease: Expo.easeInOut,
+			ease: Power2.easeInOut,
 			onComplete: () => {}
 		});
 	}
@@ -141,7 +148,7 @@ export class MenuPanel extends EmittableGroup {
 		this.index = index;
 		this.rotation.z = Math.PI * 2 / 3 * index;
 		const map = MenuPanel.getTexture();
-		const geometry = new THREE.PlaneGeometry(cm(10), cm(20), 1, 2);
+		const geometry = new THREE.PlaneGeometry(W, H, 1, 2);
 		// geometry.rotateY(Math.PI);
 		const material = new THREE.MeshBasicMaterial({
 			// color: 0xffffff,
@@ -153,13 +160,12 @@ export class MenuPanel extends EmittableGroup {
 		});
 		const plane = new THREE.Mesh(geometry, material);
 		plane.renderOrder = 90;
-		// plane.position.set(0, 0, -20);
-		plane.position.set(0, cm(3), -cm(17));
+		plane.position.set(0, W / 2, -H);
 		plane.rotation.set(-Math.PI / 2, 0, 0);
 		this.plane = plane;
 		// this.addItems(plane, items);
 		items = this.items = items.map((item, index) => new MenuItem(plane, item, index, items.length));
-		items.forEach(x => x.on('down', () => {
+		items.forEach((item, index) => item.on('down', () => {
 			this.emit('down', { panel: this, item, index });
 		}));
 		this.add(plane);
@@ -199,8 +205,8 @@ export class MenuItem extends InteractiveMesh {
 	}
 
 	constructor(parent, item, index, total) {
-		const size = mm(25);
-		const gutter = mm(8);
+		const size = W / 16 * 4;
+		const gutter = W / 16 * 1;
 		const map = MenuItem.getTexture(item, index);
 		const geometry = new THREE.PlaneGeometry(size, size, 1, 1);
 		const material = new THREE.MeshBasicMaterial({
@@ -231,7 +237,7 @@ export class MenuItem extends InteractiveMesh {
 		this.on('over', () => {
 			TweenMax.to(from, 0.4, {
 				value: 1,
-				ease: Expo.easeInOut,
+				ease: Power2.easeInOut,
 				onUpdate: () => {
 					this.overOutTween_(from.value);
 				},
@@ -240,7 +246,7 @@ export class MenuItem extends InteractiveMesh {
 		this.on('out', () => {
 			TweenMax.to(from, 0.4, {
 				value: 0,
-				ease: Expo.easeInOut,
+				ease: Power2.easeInOut,
 				onUpdate: () => {
 					this.overOutTween_(from.value);
 				},
@@ -250,6 +256,7 @@ export class MenuItem extends InteractiveMesh {
 	}
 
 	overOutTween_(value) {
+		// const z = W / 16 * 1;
 		this.position.z = mm(1) + mm(4) * value;
 		this.material.opacity = 0.1 + value * 0.9;
 		this.material.needsUpdate = true;

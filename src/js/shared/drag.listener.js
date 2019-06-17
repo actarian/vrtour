@@ -38,7 +38,7 @@ export default class DragListener {
 	}
 
 	onDrag(position) {
-		this.dragging = true;
+		this.dragging = this.down !== undefined;
 		var target = this.target;
 		var distance = { x: position.x - this.down.x, y: position.y - this.down.y };
 		var strength = { x: distance.x / window.innerWidth * 2, y: distance.y / window.innerHeight * 2 };
@@ -57,6 +57,7 @@ export default class DragListener {
 	}
 
 	onUp() {
+		this.down = undefined;
 		this.dragging = false;
 		this.upCallback(this);
 	}
@@ -79,10 +80,12 @@ export default class DragListener {
 
 	onMouseUp(e) {
 		this.removeMouseListeners();
+		/*
 		this.onDrag({
 			x: e.clientX,
 			y: e.clientY
 		});
+		*/
 		this.onUp();
 	}
 

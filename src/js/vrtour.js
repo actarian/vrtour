@@ -5,7 +5,6 @@ import { ORIGIN, POINTER_RADIUS, ROOM_RADIUS, TEST_ENABLED } from './three/const
 import Controllers from './three/controllers';
 import InteractiveMesh from './three/interactive.mesh';
 import Orbit from './three/orbit';
-import TopBar from './three/top-bar';
 import Views from './three/views';
 import { VR, VR_MODE } from './three/vr';
 
@@ -63,12 +62,12 @@ class VRTour {
 		console.log('vr.mode', vr.mode, TEST_ENABLED);
 		if (vr.mode !== VR_MODE.NONE) {
 			const controllers = this.controllers = new Controllers(renderer, scene, pivot);
-			const topBar = this.topBar = new TopBar(pivot);
+			// const topBar = this.topBar = new TopBar(pivot);
 			const pointer = this.pointer = this.addPointer(pivot);
 			this.addPointerListeners();
 		} else if (TEST_ENABLED) {
 			const controllers = this.controllers = new Controllers(renderer, scene, pivot);
-			const topBar = this.topBar = new TopBar(pivot);
+			// const topBar = this.topBar = new TopBar(pivot);
 			const pointer = this.pointer = this.addPointer(pivot);
 			this.addPointerListeners();
 			camera.target.z = ROOM_RADIUS;
@@ -394,14 +393,18 @@ class VRTour {
 			// this.dragListener.move();
 			this.controllers.update();
 			this.updateController();
+			/*
 			this.topBar.active = this.controllers.controller && this.pointer.position.y > 15;
 			this.topBar.update(cameraDirection);
+			*/
 		} else if (TEST_ENABLED) {
 			// this.dragListener.move();
 			this.updateCamera();
 			this.updateController();
+			/*
 			this.topBar.active = this.controllers.controller && this.pointer.position.y > 15;
 			this.topBar.update(cameraDirection);
+			*/
 		} else {
 			this.updateCamera();
 		}
@@ -626,7 +629,7 @@ const material = new THREE.ShaderMaterial({
 		TweenMax.to(from, 0.7, {
 			opacity: 1,
 			delay: 0.1 * i,
-			ease: Expo.easeInOut,
+			ease: Power2.easeInOut,
 			onUpdate: () => {
 				// console.log(index, from.opacity);
 				colorsAttribute.setXYZ(index, from.opacity, from.opacity, from.opacity);
@@ -653,7 +656,7 @@ const material = new THREE.ShaderMaterial({
 			TweenMax.to(from, 0.7, {
 				opacity: 0,
 				delay: 0.0 * i,
-			ease: Expo.easeInOut,
+			ease: Power2.easeInOut,
 				onUpdate: () => {
 					// console.log(index, from.opacity);
 					colorsAttribute.setXYZ(index, from.opacity, from.opacity, from.opacity);

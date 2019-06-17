@@ -22,13 +22,42 @@ export default class Controllers extends Emittable {
 			const right = this.right = this.addControllerTest(scene);
 			document.addEventListener('mousedown', this.onRightSelectStart);
 			document.addEventListener('mouseup', this.onRightSelectEnd);
-			const menu = this.menu = new Menu(right);
+			const menu = this.menu = new Menu(pivot);
+			menu.on('down', (event) => {
+				this.onMenuDown(event);
+			});
+			menu.position.set(0, 0, 0);
+			menu.scale.set(5, 5, 5);
+			// menu.rotation.set(Math.PI / 2, 0, 0);
+
 		} else {
 			const right = this.right = this.addController(renderer, scene, 0);
 			const left = this.left = this.addController(renderer, scene, 1);
 			const menu = this.menu = new Menu(left || right);
+			menu.on('down', (event) => {
+				this.onMenuDown(event);
+			});
 		}
 		const text = this.text = this.addText(pivot);
+	}
+
+	onMenuDown(event) {
+		const item = event.item;
+		const index = event.index;
+		console.log('Controllers.onMenuDown', item, index);
+		if (index === 0 || index === 2) {
+			const direction = index === 0 ? 1 : -1;
+			const y = this.pivot.rotation.y + Math.PI / 2 * direction;
+			// this.pivot.ery = y;
+			this.pivot.busy = true;
+			TweenMax.to(this.pivot.rotation, 0.7, {
+				y,
+				ease: Power2.easeInOut,
+				onComplete: () => {
+					this.pivot.busy = false;
+				}
+			});
+		}
 	}
 
 	hapticFeedback() {

@@ -8910,7 +8910,7 @@ function () {
   }, {
     key: "onDrag",
     value: function onDrag(position) {
-      this.dragging = true;
+      this.dragging = this.down !== undefined;
       var target = this.target;
       var distance = {
         x: position.x - this.down.x,
@@ -8939,6 +8939,7 @@ function () {
   }, {
     key: "onUp",
     value: function onUp() {
+      this.down = undefined;
       this.dragging = false;
       this.upCallback(this);
     }
@@ -8964,10 +8965,13 @@ function () {
     key: "onMouseUp",
     value: function onMouseUp(e) {
       this.removeMouseListeners();
+      /*
       this.onDrag({
-        x: e.clientX,
-        y: e.clientY
+      	x: e.clientX,
+      	y: e.clientY
       });
+      */
+
       this.onUp();
     }
   }, {
@@ -9201,13 +9205,22 @@ function (_Emittable) {
 
       document.addEventListener('mousedown', _this.onRightSelectStart);
       document.addEventListener('mouseup', _this.onRightSelectEnd);
-      var menu = _this.menu = new _menu2.default(right);
+      var menu = _this.menu = new _menu2.default(pivot);
+      menu.on('down', function (event) {
+        _this.onMenuDown(event);
+      });
+      menu.position.set(0, 0, 0);
+      menu.scale.set(5, 5, 5); // menu.rotation.set(Math.PI / 2, 0, 0);
     } else {
       var _right = _this.right = _this.addController(renderer, scene, 0);
 
       var left = _this.left = _this.addController(renderer, scene, 1);
 
       var _menu = _this.menu = new _menu2.default(left || _right);
+
+      _menu.on('down', function (event) {
+        _this.onMenuDown(event);
+      });
     }
 
     var text = _this.text = _this.addText(pivot);
@@ -9216,6 +9229,29 @@ function (_Emittable) {
   }
 
   _createClass(Controllers, [{
+    key: "onMenuDown",
+    value: function onMenuDown(event) {
+      var _this2 = this;
+
+      var item = event.item;
+      var index = event.index;
+      console.log('Controllers.onMenuDown', item, index);
+
+      if (index === 0 || index === 2) {
+        var direction = index === 0 ? 1 : -1;
+        var y = this.pivot.rotation.y + Math.PI / 2 * direction; // this.pivot.ery = y;
+
+        this.pivot.busy = true;
+        TweenMax.to(this.pivot.rotation, 0.7, {
+          y: y,
+          ease: Power2.easeInOut,
+          onComplete: function onComplete() {
+            _this2.pivot.busy = false;
+          }
+        });
+      }
+    }
+  }, {
     key: "hapticFeedback",
     value: function hapticFeedback() {
       var gamepad = this.findGamepad_(this.controller.index);
@@ -9444,18 +9480,18 @@ function (_Emittable) {
   }, {
     key: "addText",
     value: function addText(parent) {
-      var _this2 = this;
+      var _this3 = this;
 
       var loader = new THREE.FontLoader();
       loader.load('fonts/helvetiker_regular.typeface.json', function (font) {
-        _this2.font = font;
+        _this3.font = font;
         var material = new THREE.MeshBasicMaterial({
           color: 0x33c5f6,
           transparent: true,
           opacity: 1,
           side: THREE.DoubleSide
         });
-        _this2.fontMaterial = material;
+        _this3.fontMaterial = material;
         /*
         const shapes = font.generateShapes('0', 10);
         const geometry = new THREE.ShapeBufferGeometry(shapes);
@@ -9985,6 +10021,9 @@ function _inherits(subClass, superClass) { if (typeof superClass !== "function" 
 
 function _setPrototypeOf(o, p) { _setPrototypeOf = Object.setPrototypeOf || function _setPrototypeOf(o, p) { o.__proto__ = p; return o; }; return _setPrototypeOf(o, p); }
 
+var W = (0, _const.cm)(10);
+var H = (0, _const.cm)(20);
+
 var Menu =
 /*#__PURE__*/
 function (_EmittableGroup) {
@@ -10037,21 +10076,27 @@ function (_EmittableGroup) {
       var count = 15;
       var items = new Array(count).fill({});
       var panel = this.panel = new MenuPanel(this, items, index);
-      panel.on('down', function (e) {
-        if (_this2.addPanel()) {
-          _this2.next();
+      panel.on('down', function (event) {
+        var index = event.index;
 
-          var from = {
-            value: panel.plane.material.opacity
-          };
-          TweenMax.to(from, 0.5, {
-            value: 1,
-            ease: Expo.easeInOut,
-            onUpdate: function onUpdate() {
-              _this2.enterExitPanel_(panel, from.value);
-            }
-          });
+        if (index === 1) {
+          if (_this2.addPanel()) {
+            _this2.next();
+
+            var from = {
+              value: panel.plane.material.opacity
+            };
+            TweenMax.to(from, 0.5, {
+              value: 1,
+              ease: Power2.easeInOut,
+              onUpdate: function onUpdate() {
+                _this2.enterExitPanel_(panel, from.value);
+              }
+            });
+          }
         }
+
+        _this2.emit('down', event);
       });
       this.panels.push(panel);
       return panel;
@@ -10081,7 +10126,7 @@ function (_EmittableGroup) {
       };
       TweenMax.to(from, 0.5, {
         value: 1,
-        ease: Expo.easeInOut,
+        ease: Power2.easeInOut,
         onUpdate: function onUpdate() {
           _this3.position.z = -(0, _const.cm)(2) * (1 - from.value);
 
@@ -10105,7 +10150,7 @@ function (_EmittableGroup) {
       };
       TweenMax.to(from, 0.5, {
         value: 0,
-        ease: Expo.easeInOut,
+        ease: Power2.easeInOut,
         onUpdate: function onUpdate() {
           _this4.position.z = -(0, _const.cm)(2) * (1 - from.value);
 
@@ -10126,7 +10171,7 @@ function (_EmittableGroup) {
       var z = Math.ceil(this.rotation.z / r) * r + r;
       TweenMax.to(this.rotation, 0.7, {
         z: z,
-        ease: Expo.easeInOut,
+        ease: Power2.easeInOut,
         onComplete: function onComplete() {}
       });
     }
@@ -10176,7 +10221,7 @@ function (_EmittableGroup2) {
     _this5.index = index;
     _this5.rotation.z = Math.PI * 2 / 3 * index;
     var map = MenuPanel.getTexture();
-    var geometry = new THREE.PlaneGeometry((0, _const.cm)(10), (0, _const.cm)(20), 1, 2); // geometry.rotateY(Math.PI);
+    var geometry = new THREE.PlaneGeometry(W, H, 1, 2); // geometry.rotateY(Math.PI);
 
     var material = new THREE.MeshBasicMaterial({
       // color: 0xffffff,
@@ -10187,17 +10232,16 @@ function (_EmittableGroup2) {
       side: THREE.DoubleSide
     });
     var plane = new THREE.Mesh(geometry, material);
-    plane.renderOrder = 90; // plane.position.set(0, 0, -20);
-
-    plane.position.set(0, (0, _const.cm)(3), -(0, _const.cm)(17));
+    plane.renderOrder = 90;
+    plane.position.set(0, W / 2, -H);
     plane.rotation.set(-Math.PI / 2, 0, 0);
     _this5.plane = plane; // this.addItems(plane, items);
 
     items = _this5.items = items.map(function (item, index) {
       return new MenuItem(plane, item, index, items.length);
     });
-    items.forEach(function (x) {
-      return x.on('down', function () {
+    items.forEach(function (item, index) {
+      return item.on('down', function () {
         _this5.emit('down', {
           panel: _assertThisInitialized(_this5),
           item: item,
@@ -10261,8 +10305,8 @@ function (_InteractiveMesh) {
 
     _classCallCheck(this, MenuItem);
 
-    var size = (0, _const.mm)(25);
-    var gutter = (0, _const.mm)(8);
+    var size = W / 16 * 4;
+    var gutter = W / 16 * 1;
     var map = MenuItem.getTexture(item, index);
     var geometry = new THREE.PlaneGeometry(size, size, 1, 1);
     var material = new THREE.MeshBasicMaterial({
@@ -10298,7 +10342,7 @@ function (_InteractiveMesh) {
     _this6.on('over', function () {
       TweenMax.to(from, 0.4, {
         value: 1,
-        ease: Expo.easeInOut,
+        ease: Power2.easeInOut,
         onUpdate: function onUpdate() {
           _this6.overOutTween_(from.value);
         }
@@ -10308,7 +10352,7 @@ function (_InteractiveMesh) {
     _this6.on('out', function () {
       TweenMax.to(from, 0.4, {
         value: 0,
-        ease: Expo.easeInOut,
+        ease: Power2.easeInOut,
         onUpdate: function onUpdate() {
           _this6.overOutTween_(from.value);
         }
@@ -10322,6 +10366,7 @@ function (_InteractiveMesh) {
   _createClass(MenuItem, [{
     key: "overOutTween_",
     value: function overOutTween_(value) {
+      // const z = W / 16 * 1;
       this.position.z = (0, _const.mm)(1) + (0, _const.mm)(4) * value;
       this.material.opacity = 0.1 + value * 0.9;
       this.material.needsUpdate = true;
@@ -10359,17 +10404,17 @@ function () {
 
     this.longitude = 0;
     this.latitude = 0;
-    this.direction = 1;
-    this.speed = 1;
-    this.inertia = new THREE.Vector3();
+    this.direction = 1; // this.speed = 1;
+
+    this.inertia = new THREE.Vector2();
+    this.set(0, 0);
   }
 
   _createClass(Orbit, [{
     key: "setOrientation",
     value: function setOrientation(orientation) {
       if (orientation) {
-        this.longitude = orientation.longitude;
-        this.latitude = orientation.latitude;
+        this.set(orientation.longitude, orientation.latitude);
       }
     }
   }, {
@@ -10390,11 +10435,17 @@ function () {
         longitude = _this.longitude;
         latitude = _this.latitude;
       }, function (event) {
-        _this.longitude = -event.distance.x * 0.1 + longitude;
-        _this.latitude = event.distance.y * 0.1 + latitude;
-        _this.direction = event.distance.x ? event.distance.x / Math.abs(event.distance.x) * -1 : 1; // console.log('longitude', this.longitude, 'latitude', this.latitude, 'direction', this.direction);
-      }, function (event) {
-        _this.speed = Math.abs(event.strength.x) * 100; // console.log('speed', this.speed);
+        var direction = event.distance.x ? event.distance.x / Math.abs(event.distance.x) * -1 : 1;
+        _this.direction = direction;
+        var lon = longitude - event.distance.x * 0.1;
+        var lat = latitude + event.distance.y * 0.1;
+
+        _this.setInertia(lon, lat);
+
+        _this.set(lon, lat); // console.log('longitude', this.longitude, 'latitude', this.latitude, 'direction', this.direction);
+
+      }, function (event) {// this.speed = Math.abs(event.strength.x) * 100;
+        // console.log('speed', this.speed);
       });
 
       dragListener.move = function () {};
@@ -10403,29 +10454,44 @@ function () {
       return dragListener;
     }
   }, {
-    key: "update",
-    value: function update() {
-      var direction = this.direction;
-      var inertia = this.inertia;
-      var speed = this.speed;
-      var latitude = this.latitude;
-      var longitude = this.longitude;
-
-      if (this.dragListener && this.dragListener.dragging === false) {
-        // longitude += 0.01 * direction * speed;
-        speed = Math.max(1, speed * 0.98);
-        inertia.multiplyScalar(0.98);
-      }
-
-      latitude = Math.max(-85, Math.min(85, latitude));
+    key: "set",
+    value: function set(longitude, latitude) {
+      latitude = Math.max(-80, Math.min(80, latitude));
       var phi = THREE.Math.degToRad(90 - latitude);
       var theta = THREE.Math.degToRad(longitude);
+      this.longitude = longitude;
+      this.latitude = latitude;
       this.phi = phi;
       this.theta = theta;
-      this.latitude = latitude;
-      this.longitude = longitude;
-      this.speed = speed;
+    }
+  }, {
+    key: "setInertia",
+    value: function setInertia(longitude, latitude) {
+      var inertia = this.inertia;
+      inertia.x = (longitude - this.longitude) * 1;
+      inertia.y = (latitude - this.latitude) * 1;
       this.inertia = inertia;
+      console.log(this.inertia);
+    }
+  }, {
+    key: "updateInertia",
+    value: function updateInertia() {
+      var inertia = this.inertia;
+      inertia.multiplyScalar(0.95);
+      this.inertia = inertia;
+      /*
+      let speed = this.speed;
+      speed = Math.max(1, speed * 0.95);
+      this.speed = speed;
+      */
+    }
+  }, {
+    key: "update",
+    value: function update() {
+      if (this.dragListener && !this.dragListener.dragging) {
+        this.set(this.longitude + this.inertia.x, this.latitude + this.inertia.y);
+        this.updateInertia();
+      }
     }
   }]);
 
@@ -10435,224 +10501,6 @@ function () {
 exports.default = Orbit;
 
 },{"../shared/drag.listener":2}],12:[function(require,module,exports){
-"use strict";
-
-Object.defineProperty(exports, "__esModule", {
-  value: true
-});
-exports.TopBarItem = exports.default = void 0;
-
-var _const = require("./const");
-
-var _interactive = _interopRequireDefault(require("./interactive.mesh"));
-
-function _interopRequireDefault(obj) { return obj && obj.__esModule ? obj : { default: obj }; }
-
-function _typeof(obj) { if (typeof Symbol === "function" && typeof Symbol.iterator === "symbol") { _typeof = function _typeof(obj) { return typeof obj; }; } else { _typeof = function _typeof(obj) { return obj && typeof Symbol === "function" && obj.constructor === Symbol && obj !== Symbol.prototype ? "symbol" : typeof obj; }; } return _typeof(obj); }
-
-function _possibleConstructorReturn(self, call) { if (call && (_typeof(call) === "object" || typeof call === "function")) { return call; } return _assertThisInitialized(self); }
-
-function _getPrototypeOf(o) { _getPrototypeOf = Object.setPrototypeOf ? Object.getPrototypeOf : function _getPrototypeOf(o) { return o.__proto__ || Object.getPrototypeOf(o); }; return _getPrototypeOf(o); }
-
-function _assertThisInitialized(self) { if (self === void 0) { throw new ReferenceError("this hasn't been initialised - super() hasn't been called"); } return self; }
-
-function _inherits(subClass, superClass) { if (typeof superClass !== "function" && superClass !== null) { throw new TypeError("Super expression must either be null or a function"); } subClass.prototype = Object.create(superClass && superClass.prototype, { constructor: { value: subClass, writable: true, configurable: true } }); if (superClass) _setPrototypeOf(subClass, superClass); }
-
-function _setPrototypeOf(o, p) { _setPrototypeOf = Object.setPrototypeOf || function _setPrototypeOf(o, p) { o.__proto__ = p; return o; }; return _setPrototypeOf(o, p); }
-
-function _classCallCheck(instance, Constructor) { if (!(instance instanceof Constructor)) { throw new TypeError("Cannot call a class as a function"); } }
-
-function _defineProperties(target, props) { for (var i = 0; i < props.length; i++) { var descriptor = props[i]; descriptor.enumerable = descriptor.enumerable || false; descriptor.configurable = true; if ("value" in descriptor) descriptor.writable = true; Object.defineProperty(target, descriptor.key, descriptor); } }
-
-function _createClass(Constructor, protoProps, staticProps) { if (protoProps) _defineProperties(Constructor.prototype, protoProps); if (staticProps) _defineProperties(Constructor, staticProps); return Constructor; }
-
-var SIZE = 8;
-var RADIUS = _const.POINT_RADIUS - 0.1;
-var ARC = SIZE / RADIUS;
-var PY = 50;
-var RY = Math.PI - 0.5;
-var FROM = 0;
-var TO = 1;
-
-var TopBar =
-/*#__PURE__*/
-function () {
-  function TopBar(parent) {
-    _classCallCheck(this, TopBar);
-
-    this.parent = parent;
-    this.py = PY;
-    this.ry = RY;
-    var mesh = this.mesh = this.addMesh(parent);
-  }
-
-  _createClass(TopBar, [{
-    key: "addMesh",
-    value: function addMesh(parent) {
-      var _this = this;
-
-      var mesh = new THREE.Group();
-      mesh.position.set(0, PY, 0);
-      var arc = this.arc = this.addArc(mesh);
-      this.items = [new TopBarItem(mesh, 0), new TopBarItem(mesh, 1)];
-      this.items.forEach(function (x, index) {
-        x.on('over', function () {
-          x.material.color.setHex(0xffffff);
-          x.material.opacity = 0.8;
-          x.material.needsUpdate = true;
-        });
-        x.on('out', function () {
-          x.material.color.setHex(0xffffff);
-          x.material.opacity = 0.5;
-          x.material.needsUpdate = true;
-        });
-        x.on('down', function () {
-          x.material.color.setHex(0x33c5f5);
-          x.material.opacity = 1;
-          x.material.needsUpdate = true;
-          var direction = index === 1 ? 1 : -1;
-          var y = _this.parent.rotation.y + Math.PI / 2 * direction; // this.parent.ery = y;
-
-          _this.parent.busy = true;
-          TweenMax.to(_this.parent.rotation, 0.7, {
-            y: y,
-            ease: Expo.easeInOut,
-            onComplete: function onComplete() {
-              _this.parent.busy = false;
-            }
-          });
-        });
-      });
-      this.materials = this.items.map(function (x) {
-        return x.material;
-      });
-      this.materials.unshift(arc.material);
-      parent.add(mesh);
-      return mesh;
-    }
-  }, {
-    key: "addArc",
-    value: function addArc(parent) {
-      var loader = new THREE.TextureLoader();
-      var texture = loader.load('img/top-bar.png');
-      var geometry = new THREE.CylinderGeometry(_const.POINT_RADIUS, _const.POINT_RADIUS, 8, 32, 1, true, FROM, TO);
-      geometry.scale(-1, 1, 1); // geometry.rotateY(Math.PI);
-
-      var material = new THREE.MeshBasicMaterial({
-        color: 0xffffff,
-        map: texture,
-        transparent: true,
-        opacity: 0
-      });
-      var arc = new THREE.Mesh(geometry, material); // arc.renderOrder = 100;
-      // arc.position.set(0, 20, 0);
-      // arc.lookAt(ORIGIN);
-
-      parent.add(arc);
-      return arc;
-    }
-  }, {
-    key: "update",
-    value: function update(cameraDirection) {
-      var y = Math.atan2(cameraDirection.x, cameraDirection.z) - this.parent.rotation.y + Math.PI - this.ry;
-      this.mesh.rotation.set(0, y, 0);
-    }
-  }, {
-    key: "active",
-    get: function get() {
-      return this.active_;
-    },
-    set: function set(active) {
-      var _this2 = this;
-
-      if (this.active_ !== active) {
-        this.active_ = active;
-        var mesh = this.mesh;
-        var materials = this.materials; // console.log(materials);
-
-        var from = {
-          value: materials[0].opacity
-        };
-        TweenMax.to(from, 0.7, {
-          value: active ? 1 : 0,
-          ease: Expo.easeInOut,
-          onUpdate: function onUpdate() {
-            mesh.position.y = _this2.py - 30 * from.value;
-            materials.forEach(function (x, i) {
-              x.opacity = i === 0 ? from.value * 0.8 : from.value * 0.5;
-              x.needsUpdate = true;
-            });
-          }
-        });
-      }
-    }
-  }]);
-
-  return TopBar;
-}();
-
-exports.default = TopBar;
-
-var TopBarItem =
-/*#__PURE__*/
-function (_InteractiveMesh) {
-  _inherits(TopBarItem, _InteractiveMesh);
-
-  _createClass(TopBarItem, null, [{
-    key: "getTexture",
-    value: function getTexture(index) {
-      var canvas = document.createElement('canvas');
-      var ctx = canvas.getContext('2d');
-      canvas.width = canvas.height = 64;
-      ctx.fillStyle = '#ffffff';
-      /*
-      ctx.textAlign = 'center';
-      ctx.font = '30px sans';
-      ctx.fillText(index ? '>' : '<', 32, 32);
-      */
-
-      ctx.beginPath();
-      ctx.moveTo(32 - 10, 32 - 10);
-      ctx.lineTo(32 + 10, 32);
-      ctx.lineTo(32 - 10, 32 - 10);
-      ctx.fill();
-      var texture = new THREE.CanvasTexture(canvas); // CanvasTexture( canvas : HTMLElement, mapping : Constant, wrapS : Constant, wrapT : Constant, magFilter : Constant, minFilter : Constant, format : Constant, type : Constant, anisotropy : Number )
-
-      return texture;
-    }
-  }]);
-
-  function TopBarItem(parent, index) {
-    var _this3;
-
-    _classCallCheck(this, TopBarItem);
-
-    // const texture = MenuItem.getTexture(index);
-    var loader = new THREE.TextureLoader();
-    var texture = loader.load(index === 1 ? 'img/right.png' : 'img/left.png');
-    var geometry = new THREE.CylinderGeometry(RADIUS, RADIUS, SIZE, 1, 1, true, index ? 1 - ARC : 0, ARC);
-    geometry.scale(-1, 1, 1);
-    var material = new THREE.MeshBasicMaterial({
-      color: 0xffffff,
-      map: texture,
-      transparent: true,
-      opacity: 0
-    });
-    _this3 = _possibleConstructorReturn(this, _getPrototypeOf(TopBarItem).call(this, geometry, material)); // this.renderOrder = 100;
-    // this.rotation.set(0, -0.5, 0);
-    // this.position.set(0, 0, 0);
-    // this.lookAt(ORIGIN);
-
-    parent.add(_assertThisInitialized(_this3));
-    return _this3;
-  }
-
-  return TopBarItem;
-}(_interactive.default);
-
-exports.TopBarItem = TopBarItem;
-
-},{"./const":4,"./interactive.mesh":9}],13:[function(require,module,exports){
 "use strict";
 
 Object.defineProperty(exports, "__esModule", {
@@ -10756,7 +10604,7 @@ function (_EmittableGroup) {
           TweenMax.to(_this3.room.sphere.material, 0.7, {
             opacity: 0,
             delay: 0.0,
-            ease: Expo.easeInOut,
+            ease: Power2.easeInOut,
             onCompleted: function onCompleted() {
               setTimeout(function () {
                 resolve(view);
@@ -10803,7 +10651,7 @@ function (_EmittableGroup) {
               TweenMax.to(material, 0.7, {
                 opacity: _const.TEST_ENABLED ? 0.5 : 1,
                 delay: 0.1,
-                ease: Expo.easeInOut,
+                ease: Power2.easeInOut,
                 onCompleted: function onCompleted() {
                   resolve(view);
                 }
@@ -10870,7 +10718,7 @@ function (_EmittableGroup) {
           TweenMax.to(from, 0.7, {
             value: 0,
             delay: 0.2,
-            ease: Expo.easeInOut,
+            ease: Power2.easeInOut,
             onUpdate: function onUpdate() {
               panel.position.set(position.x, position.y + 30 + 30 * from.value, position.z);
               panel.lookAt(_const.ORIGIN);
@@ -11026,7 +10874,7 @@ function (_EmittableGroup) {
         TweenMax.to(from, 0.7, {
           opacity: 0,
           delay: 0.0 * i,
-          ease: Expo.easeInOut,
+          ease: Power2.easeInOut,
           onUpdate: function onUpdate() {
             // console.log(index, from.opacity);
             point.material.opacity = from.opacity;
@@ -11067,7 +10915,7 @@ function (_EmittableGroup) {
         TweenMax.to(from, 0.4, {
           scale: 3,
           delay: 0,
-          ease: Expo.easeInOut,
+          ease: Power2.easeInOut,
           onUpdate: function onUpdate() {
             point.scale.set(from.scale, from.scale, from.scale);
           }
@@ -11084,7 +10932,7 @@ function (_EmittableGroup) {
         TweenMax.to(from, 0.4, {
           scale: 1,
           delay: 0,
-          ease: Expo.easeInOut,
+          ease: Power2.easeInOut,
           onUpdate: function onUpdate() {
             point.scale.set(from.scale, from.scale, from.scale);
           }
@@ -11233,7 +11081,7 @@ function (_InteractiveMesh) {
     TweenMax.to(from, 0.7, {
       opacity: 1,
       delay: 0.1 * index,
-      ease: Expo.easeInOut,
+      ease: Power2.easeInOut,
       onUpdate: function onUpdate() {
         // console.log(index, from.opacity);
         material.opacity = from.opacity;
@@ -11248,7 +11096,7 @@ function (_InteractiveMesh) {
 
 exports.NavPoint = NavPoint;
 
-},{"./const":4,"./emittable.group":6,"./interactive.mesh":9,"html2canvas":1}],14:[function(require,module,exports){
+},{"./const":4,"./emittable.group":6,"./interactive.mesh":9,"html2canvas":1}],13:[function(require,module,exports){
 "use strict";
 
 Object.defineProperty(exports, "__esModule", {
@@ -11597,7 +11445,7 @@ function (_EventEmitter) {
 
 exports.VR = VR;
 
-},{"../shared/event-emitter":3}],15:[function(require,module,exports){
+},{"../shared/event-emitter":3}],14:[function(require,module,exports){
 "use strict";
 
 var _const = require("./three/const");
@@ -11607,8 +11455,6 @@ var _controllers2 = _interopRequireDefault(require("./three/controllers"));
 var _interactive = _interopRequireDefault(require("./three/interactive.mesh"));
 
 var _orbit2 = _interopRequireDefault(require("./three/orbit"));
-
-var _topBar2 = _interopRequireDefault(require("./three/top-bar"));
 
 var _views = _interopRequireDefault(require("./three/views"));
 
@@ -11700,14 +11546,13 @@ function () {
       console.log('vr.mode', vr.mode, _const.TEST_ENABLED);
 
       if (vr.mode !== _vr.VR_MODE.NONE) {
-        var controllers = this.controllers = new _controllers2.default(renderer, scene, pivot);
-        var topBar = this.topBar = new _topBar2.default(pivot);
+        var controllers = this.controllers = new _controllers2.default(renderer, scene, pivot); // const topBar = this.topBar = new TopBar(pivot);
+
         var pointer = this.pointer = this.addPointer(pivot);
         this.addPointerListeners();
       } else if (_const.TEST_ENABLED) {
-        var _controllers = this.controllers = new _controllers2.default(renderer, scene, pivot);
+        var _controllers = this.controllers = new _controllers2.default(renderer, scene, pivot); // const topBar = this.topBar = new TopBar(pivot);
 
-        var _topBar = this.topBar = new _topBar2.default(pivot);
 
         var _pointer = this.pointer = this.addPointer(pivot);
 
@@ -12088,14 +11933,18 @@ function () {
         // this.dragListener.move();
         this.controllers.update();
         this.updateController();
+        /*
         this.topBar.active = this.controllers.controller && this.pointer.position.y > 15;
         this.topBar.update(cameraDirection);
+        */
       } else if (_const.TEST_ENABLED) {
         // this.dragListener.move();
         this.updateCamera();
         this.updateController();
+        /*
         this.topBar.active = this.controllers.controller && this.pointer.position.y > 15;
         this.topBar.update(cameraDirection);
+        */
       } else {
         this.updateCamera();
       }
@@ -12336,7 +12185,7 @@ const material = new THREE.ShaderMaterial({
 		TweenMax.to(from, 0.7, {
 			opacity: 1,
 			delay: 0.1 * i,
-			ease: Expo.easeInOut,
+			ease: Power2.easeInOut,
 			onUpdate: () => {
 				// console.log(index, from.opacity);
 				colorsAttribute.setXYZ(index, from.opacity, from.opacity, from.opacity);
@@ -12363,7 +12212,7 @@ const material = new THREE.ShaderMaterial({
 			TweenMax.to(from, 0.7, {
 				opacity: 0,
 				delay: 0.0 * i,
-			ease: Expo.easeInOut,
+			ease: Power2.easeInOut,
 				onUpdate: () => {
 					// console.log(index, from.opacity);
 					colorsAttribute.setXYZ(index, from.opacity, from.opacity, from.opacity);
@@ -12446,5 +12295,5 @@ if (SHOW_HELPERS) {
 }
 */
 
-},{"./three/const":4,"./three/controllers":5,"./three/interactive.mesh":9,"./three/orbit":11,"./three/top-bar":12,"./three/views":13,"./three/vr":14}]},{},[15]);
+},{"./three/const":4,"./three/controllers":5,"./three/interactive.mesh":9,"./three/orbit":11,"./three/views":12,"./three/vr":13}]},{},[14]);
 //# sourceMappingURL=vrtour.js.map

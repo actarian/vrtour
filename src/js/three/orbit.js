@@ -9,14 +9,14 @@ export default class Orbit {
 		this.longitude = 0;
 		this.latitude = 0;
 		this.direction = 1;
-		this.speed = 1;
-		this.inertia = new THREE.Vector3();
+		// this.speed = 1;
+		this.inertia = new THREE.Vector2();
+		this.set(0, 0);
 	}
 
 	setOrientation(orientation) {
 		if (orientation) {
-			this.longitude = orientation.longitude;
-			this.latitude = orientation.latitude;
+			this.set(orientation.longitude, orientation.latitude);
 		}
 	}
 
@@ -33,12 +33,15 @@ export default class Orbit {
 			longitude = this.longitude;
 			latitude = this.latitude;
 		}, (event) => {
-			this.longitude = -event.distance.x * 0.1 + longitude;
-			this.latitude = event.distance.y * 0.1 + latitude;
-			this.direction = event.distance.x ? (event.distance.x / Math.abs(event.distance.x) * -1) : 1;
+			const direction = event.distance.x ? (event.distance.x / Math.abs(event.distance.x) * -1) : 1;
+			this.direction = direction;
+			const lon = longitude - event.distance.x * 0.1;
+			const lat = latitude + event.distance.y * 0.1;
+			this.setInertia(lon, lat);
+			this.set(lon, lat);
 			// console.log('longitude', this.longitude, 'latitude', this.latitude, 'direction', this.direction);
 		}, (event) => {
-			this.speed = Math.abs(event.strength.x) * 100;
+			// this.speed = Math.abs(event.strength.x) * 100;
 			// console.log('speed', this.speed);
 		});
 		dragListener.move = () => {};
@@ -46,26 +49,40 @@ export default class Orbit {
 		return dragListener;
 	}
 
-	update() {
-		const direction = this.direction;
-		const inertia = this.inertia;
-		let speed = this.speed;
-		let latitude = this.latitude;
-		let longitude = this.longitude;
-		if (this.dragListener && this.dragListener.dragging === false) {
-			// longitude += 0.01 * direction * speed;
-			speed = Math.max(1, speed * 0.98);
-			inertia.multiplyScalar(0.98);
-		}
-		latitude = Math.max(-85, Math.min(85, latitude));
+	set(longitude, latitude) {
+		latitude = Math.max(-80, Math.min(80, latitude));
 		const phi = THREE.Math.degToRad(90 - latitude);
 		const theta = THREE.Math.degToRad(longitude);
+		this.longitude = longitude;
+		this.latitude = latitude;
 		this.phi = phi;
 		this.theta = theta;
-		this.latitude = latitude;
-		this.longitude = longitude;
-		this.speed = speed;
+	}
+
+	setInertia(longitude, latitude) {
+		const inertia = this.inertia;
+		inertia.x = (longitude - this.longitude) * 1;
+		inertia.y = (latitude - this.latitude) * 1;
 		this.inertia = inertia;
+		console.log(this.inertia);
+	}
+
+	updateInertia() {
+		const inertia = this.inertia;
+		inertia.multiplyScalar(0.95);
+		this.inertia = inertia;
+		/*
+		let speed = this.speed;
+		speed = Math.max(1, speed * 0.95);
+		this.speed = speed;
+		*/
+	}
+
+	update() {
+		if (this.dragListener && !this.dragListener.dragging) {
+			this.set(this.longitude + this.inertia.x, this.latitude + this.inertia.y);
+			this.updateInertia();
+		}
 	}
 
 }

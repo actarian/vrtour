@@ -50,7 +50,7 @@ export default class TopBar {
 				this.parent.busy = true;
 				TweenMax.to(this.parent.rotation, 0.7, {
 					y,
-					ease: Expo.easeInOut,
+					ease: Power2.easeInOut,
 					onComplete: () => {
 						this.parent.busy = false;
 					}
@@ -100,7 +100,7 @@ export default class TopBar {
 			const from = { value: materials[0].opacity };
 			TweenMax.to(from, 0.7, {
 				value: active ? 1 : 0,
-				ease: Expo.easeInOut,
+				ease: Power2.easeInOut,
 				onUpdate: () => {
 					mesh.position.y = this.py - 30 * from.value;
 					materials.forEach((x, i) => {

@@ -65,7 +65,7 @@ export default class Views extends EmittableGroup {
 				TweenMax.to(this.room.sphere.material, 0.7, {
 					opacity: 0,
 					delay: 0.0,
-					ease: Expo.easeInOut,
+					ease: Power2.easeInOut,
 					onCompleted: () => {
 						setTimeout(() => {
 							resolve(view);
@@ -108,7 +108,7 @@ export default class Views extends EmittableGroup {
 						TweenMax.to(material, 0.7, {
 							opacity: TEST_ENABLED ? 0.5 : 1,
 							delay: 0.1,
-							ease: Expo.easeInOut,
+							ease: Power2.easeInOut,
 							onCompleted: () => {
 								resolve(view);
 							}
@@ -157,7 +157,7 @@ export default class Views extends EmittableGroup {
 				TweenMax.to(from, 0.7, {
 					value: 0,
 					delay: 0.2,
-					ease: Expo.easeInOut,
+					ease: Power2.easeInOut,
 					onUpdate: () => {
 						panel.position.set(position.x, position.y + 30 + 30 * from.value, position.z);
 						panel.lookAt(ORIGIN);
@@ -299,7 +299,7 @@ export default class Views extends EmittableGroup {
 			TweenMax.to(from, 0.7, {
 				opacity: 0,
 				delay: 0.0 * i,
-				ease: Expo.easeInOut,
+				ease: Power2.easeInOut,
 				onUpdate: () => {
 					// console.log(index, from.opacity);
 					point.material.opacity = from.opacity;
@@ -333,7 +333,7 @@ export default class Views extends EmittableGroup {
 			TweenMax.to(from, 0.4, {
 				scale: 3,
 				delay: 0,
-				ease: Expo.easeInOut,
+				ease: Power2.easeInOut,
 				onUpdate: () => {
 					point.scale.set(from.scale, from.scale, from.scale);
 				}
@@ -346,7 +346,7 @@ export default class Views extends EmittableGroup {
 			TweenMax.to(from, 0.4, {
 				scale: 1,
 				delay: 0,
-				ease: Expo.easeInOut,
+				ease: Power2.easeInOut,
 				onUpdate: () => {
 					point.scale.set(from.scale, from.scale, from.scale);
 				}
@@ -442,7 +442,7 @@ export class NavPoint extends InteractiveMesh {
 		TweenMax.to(from, 0.7, {
 			opacity: 1,
 			delay: 0.1 * index,
-			ease: Expo.easeInOut,
+			ease: Power2.easeInOut,
 			onUpdate: () => {
 				// console.log(index, from.opacity);
 				material.opacity = from.opacity;
