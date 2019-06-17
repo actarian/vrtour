@@ -5,6 +5,11 @@ import { cm, mm, POINTER_RADIUS, TEST_ENABLED } from './const';
 import Emittable from './emittable';
 import Menu from './menu';
 
+const GAMEPAD = {
+	LEFT: 0,
+	RIGHT: 1,
+};
+
 export default class Controllers extends Emittable {
 
 	constructor(renderer, scene, pivot) {
@@ -32,8 +37,8 @@ export default class Controllers extends Emittable {
 			group.scale.set(5, 5, 5);
 			pivot.add(group);
 		} else {
-			const left = this.left = this.addController(renderer, scene, 0);
-			const right = this.right = this.addController(renderer, scene, 1);
+			const left = this.left = this.addController(renderer, scene, GAMEPAD.LEFT);
+			const right = this.right = this.addController(renderer, scene, GAMEPAD.RIGHT);
 			const menu = this.menu = new Menu(left || right);
 			menu.on('down', (event) => {
 				this.onMenuDown(event);
@@ -82,7 +87,7 @@ export default class Controllers extends Emittable {
 	}
 
 	update() {
-		const gamePadLeft = this.findGamepad_(0);
+		const gamePadLeft = this.findGamepad_(GAMEPAD.LEFT);
 		if (gamePadLeft) {
 			const triggerLeft = gamePadLeft ? gamePadLeft.buttons.reduce((p, b, i) => b.pressed ? i : p, -1) : -1;
 			if (triggerLeft !== -1) {
@@ -91,7 +96,7 @@ export default class Controllers extends Emittable {
 				this.onLeftSelectEnd();
 			}
 		}
-		const gamePadRight = this.findGamepad_(1);
+		const gamePadRight = this.findGamepad_(GAMEPAD.RIGHT);
 		if (gamePadRight) {
 			const triggerRight = gamePadRight ? gamePadRight.buttons.reduce((p, b, i) => b.pressed ? i : p, -1) : -1;
 			if (triggerRight !== -1) {
@@ -191,7 +196,7 @@ export default class Controllers extends Emittable {
 		const controller = new THREE.Group();
 		controller.position.set(0, 0, 0);
 		controller.index = 0;
-		const cylinder = controller.cylinder = this.addControllerModel(controller, 1);
+		const cylinder = controller.cylinder = this.addControllerModel(controller, GAMEPAD.RIGHT);
 		controller.scale.set(5, 5, 5);
 		scene.add(controller);
 		return controller;
@@ -211,18 +216,18 @@ export default class Controllers extends Emittable {
 		const mesh = new THREE.Group();
 		const texture = new THREE.TextureLoader().load('img/matcap.jpg');
 		const material = new THREE.MeshMatcapMaterial({
-			color: index === 1 ? 0x991111 : 0x111199,
+			color: index === GAMEPAD.RIGHT ? 0x991111 : 0x111199,
 			matcap: texture,
 			transparent: true,
 			opacity: 1,
 		});
 		const loader = new THREE.OBJLoader();
 		loader.load(
-			index === 1 ?
+			index === GAMEPAD.RIGHT ?
 			'models/oculus_quest_controller_right/oculus_quest_controller_right.obj' :
 			'models/oculus_quest_controller_left/oculus_quest_controller_left.obj',
 			(object) => {
-				const x = index === 1 ? -cm(1) : cm(1);
+				const x = index === GAMEPAD.RIGHT ? -cm(1) : cm(1);
 				object.traverse((child) => {
 					// console.log(child);
 					if (child instanceof THREE.Mesh) {
@@ -375,6 +380,7 @@ export default class Controllers extends Emittable {
 	}
 
 	findGamepad_(id) {
+		// !!! fix
 		let gamepad = this.gamepads[id];
 		if (gamepad) {
 			return gamepad;
@@ -412,4 +418,29 @@ export default class Controllers extends Emittable {
 	}
 	*/
 
+	/*
+	// axes
+	function gameLoop() {
+		if(navigator.webkitGetGamepads) {
+			var gp = navigator.webkitGetGamepads()[0];
+		} else {
+			var gp = navigator.getGamepads()[0];
+		}
+
+		if(gp.axes[0] != 0) {
+			b -= gp.axes[0];
+		} else if(gp.axes[1] != 0) {
+			a += gp.axes[1];
+		} else if(gp.axes[2] != 0) {
+			b += gp.axes[2];
+		} else if(gp.axes[3] != 0) {
+			a -= gp.axes[3];
+		}
+
+		ball.style.left = a*2 + "px";
+		ball.style.top = b*2 + "px";
+
+		var start = rAF(gameLoop);
+	};
+	*/
 }

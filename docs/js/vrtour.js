@@ -9179,6 +9179,11 @@ function _inherits(subClass, superClass) { if (typeof superClass !== "function" 
 
 function _setPrototypeOf(o, p) { _setPrototypeOf = Object.setPrototypeOf || function _setPrototypeOf(o, p) { o.__proto__ = p; return o; }; return _setPrototypeOf(o, p); }
 
+var GAMEPAD = {
+  LEFT: 0,
+  RIGHT: 1
+};
+
 var Controllers =
 /*#__PURE__*/
 function (_Emittable) {
@@ -9215,9 +9220,9 @@ function (_Emittable) {
       group.scale.set(5, 5, 5);
       pivot.add(group);
     } else {
-      var left = _this.left = _this.addController(renderer, scene, 0);
+      var left = _this.left = _this.addController(renderer, scene, GAMEPAD.LEFT);
 
-      var _right = _this.right = _this.addController(renderer, scene, 1);
+      var _right = _this.right = _this.addController(renderer, scene, GAMEPAD.RIGHT);
 
       var _menu = _this.menu = new _menu2.default(left || _right);
 
@@ -9282,7 +9287,7 @@ function (_Emittable) {
   }, {
     key: "update",
     value: function update() {
-      var gamePadLeft = this.findGamepad_(0);
+      var gamePadLeft = this.findGamepad_(GAMEPAD.LEFT);
 
       if (gamePadLeft) {
         var triggerLeft = gamePadLeft ? gamePadLeft.buttons.reduce(function (p, b, i) {
@@ -9296,7 +9301,7 @@ function (_Emittable) {
         }
       }
 
-      var gamePadRight = this.findGamepad_(1);
+      var gamePadRight = this.findGamepad_(GAMEPAD.RIGHT);
 
       if (gamePadRight) {
         var triggerRight = gamePadRight ? gamePadRight.buttons.reduce(function (p, b, i) {
@@ -9416,7 +9421,7 @@ function (_Emittable) {
       var controller = new THREE.Group();
       controller.position.set(0, 0, 0);
       controller.index = 0;
-      var cylinder = controller.cylinder = this.addControllerModel(controller, 1);
+      var cylinder = controller.cylinder = this.addControllerModel(controller, GAMEPAD.RIGHT);
       controller.scale.set(5, 5, 5);
       scene.add(controller);
       return controller;
@@ -9440,14 +9445,14 @@ function (_Emittable) {
       var mesh = new THREE.Group();
       var texture = new THREE.TextureLoader().load('img/matcap.jpg');
       var material = new THREE.MeshMatcapMaterial({
-        color: index === 1 ? 0x991111 : 0x111199,
+        color: index === GAMEPAD.RIGHT ? 0x991111 : 0x111199,
         matcap: texture,
         transparent: true,
         opacity: 1
       });
       var loader = new THREE.OBJLoader();
-      loader.load(index === 1 ? 'models/oculus_quest_controller_right/oculus_quest_controller_right.obj' : 'models/oculus_quest_controller_left/oculus_quest_controller_left.obj', function (object) {
-        var x = index === 1 ? -(0, _const.cm)(1) : (0, _const.cm)(1);
+      loader.load(index === GAMEPAD.RIGHT ? 'models/oculus_quest_controller_right/oculus_quest_controller_right.obj' : 'models/oculus_quest_controller_left/oculus_quest_controller_left.obj', function (object) {
+        var x = index === GAMEPAD.RIGHT ? -(0, _const.cm)(1) : (0, _const.cm)(1);
         object.traverse(function (child) {
           // console.log(child);
           if (child instanceof THREE.Mesh) {
@@ -9609,6 +9614,7 @@ function (_Emittable) {
   }, {
     key: "findGamepad_",
     value: function findGamepad_(id) {
+      // !!! fix
       var gamepad = this.gamepads[id];
 
       if (gamepad) {
@@ -9644,6 +9650,29 @@ function (_Emittable) {
     		this.updateController();
     	}
     }
+    */
+
+    /*
+    // axes
+    function gameLoop() {
+    	if(navigator.webkitGetGamepads) {
+    		var gp = navigator.webkitGetGamepads()[0];
+    	} else {
+    		var gp = navigator.getGamepads()[0];
+    	}
+    		if(gp.axes[0] != 0) {
+    		b -= gp.axes[0];
+    	} else if(gp.axes[1] != 0) {
+    		a += gp.axes[1];
+    	} else if(gp.axes[2] != 0) {
+    		b += gp.axes[2];
+    	} else if(gp.axes[3] != 0) {
+    		a -= gp.axes[3];
+    	}
+    		ball.style.left = a*2 + "px";
+    	ball.style.top = b*2 + "px";
+    		var start = rAF(gameLoop);
+    };
     */
 
   }]);
