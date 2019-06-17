@@ -6,7 +6,8 @@ import EmittableMesh from './emittable.mesh';
 export default class InteractiveMesh extends EmittableMesh {
 
 	static hittest(raycaster, down) {
-		const intersections = raycaster.intersectObjects(InteractiveMesh.items);
+		const items = InteractiveMesh.items.filter(x => !x.freezed);
+		const intersections = raycaster.intersectObjects(items);
 		let key, hit;
 		const hash = {};
 		intersections.forEach((intersection, i) => {
@@ -19,7 +20,7 @@ export default class InteractiveMesh extends EmittableMesh {
 			}
 			hash[key] = intersection;
 		});
-		InteractiveMesh.items.forEach(x => {
+		items.forEach(x => {
 			const intersection = hash[x.id]; // intersections.find(i => i.object === x);
 			x.intersection = intersection;
 			x.over = intersection !== undefined;

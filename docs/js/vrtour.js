@@ -9205,16 +9205,19 @@ function (_Emittable) {
 
       document.addEventListener('mousedown', _this.onRightSelectStart);
       document.addEventListener('mouseup', _this.onRightSelectEnd);
-      var menu = _this.menu = new _menu2.default(pivot);
+      var group = new THREE.Group();
+      var menu = _this.menu = new _menu2.default(group);
       menu.on('down', function (event) {
         _this.onMenuDown(event);
       });
-      menu.position.set(0, 0, 0);
-      menu.scale.set(5, 5, 5); // menu.rotation.set(Math.PI / 2, 0, 0);
+      group.rotation.set(Math.PI / 2, 0, 0);
+      group.position.set(0, 0, -2);
+      group.scale.set(5, 5, 5);
+      pivot.add(group);
     } else {
-      var _right = _this.right = _this.addController(renderer, scene, 0);
+      var left = _this.left = _this.addController(renderer, scene, 0);
 
-      var left = _this.left = _this.addController(renderer, scene, 1);
+      var _right = _this.right = _this.addController(renderer, scene, 1);
 
       var _menu = _this.menu = new _menu2.default(left || _right);
 
@@ -9238,7 +9241,7 @@ function (_Emittable) {
       console.log('Controllers.onMenuDown', item, index);
 
       if (index === 0 || index === 2) {
-        var direction = index === 0 ? 1 : -1;
+        var direction = index === 0 ? -1 : 1;
         var y = this.pivot.rotation.y + Math.PI / 2 * direction; // this.pivot.ery = y;
 
         this.pivot.busy = true;
@@ -9279,21 +9282,7 @@ function (_Emittable) {
   }, {
     key: "update",
     value: function update() {
-      var gamePadRight = this.findGamepad_(0);
-
-      if (gamePadRight) {
-        var triggerRight = gamePadRight ? gamePadRight.buttons.reduce(function (p, b, i) {
-          return b.pressed ? i : p;
-        }, -1) : -1;
-
-        if (triggerRight !== -1) {
-          this.onRightSelectStart(triggerRight);
-        } else {
-          this.onRightSelectEnd();
-        }
-      }
-
-      var gamePadLeft = this.findGamepad_(1);
+      var gamePadLeft = this.findGamepad_(0);
 
       if (gamePadLeft) {
         var triggerLeft = gamePadLeft ? gamePadLeft.buttons.reduce(function (p, b, i) {
@@ -9304,6 +9293,20 @@ function (_Emittable) {
           this.onLeftSelectStart(triggerLeft);
         } else {
           this.onLeftSelectEnd();
+        }
+      }
+
+      var gamePadRight = this.findGamepad_(1);
+
+      if (gamePadRight) {
+        var triggerRight = gamePadRight ? gamePadRight.buttons.reduce(function (p, b, i) {
+          return b.pressed ? i : p;
+        }, -1) : -1;
+
+        if (triggerRight !== -1) {
+          this.onRightSelectStart(triggerRight);
+        } else {
+          this.onRightSelectEnd();
         }
       }
     }
@@ -9413,7 +9416,7 @@ function (_Emittable) {
       var controller = new THREE.Group();
       controller.position.set(0, 0, 0);
       controller.index = 0;
-      var cylinder = controller.cylinder = this.addControllerModel(controller, 0);
+      var cylinder = controller.cylinder = this.addControllerModel(controller, 1);
       controller.scale.set(5, 5, 5);
       scene.add(controller);
       return controller;
@@ -9437,16 +9440,19 @@ function (_Emittable) {
       var mesh = new THREE.Group();
       var texture = new THREE.TextureLoader().load('img/matcap.jpg');
       var material = new THREE.MeshMatcapMaterial({
-        color: index === 1 ? 0x0000ff : 0xff0000,
+        color: index === 1 ? 0x991111 : 0x111199,
         matcap: texture,
         transparent: true,
         opacity: 1
       });
       var loader = new THREE.OBJLoader();
-      loader.load(index === 0 ? 'models/oculus_quest_controller_right/oculus_quest_controller_right.obj' : 'models/oculus_quest_controller_left/oculus_quest_controller_left.obj', function (object) {
+      loader.load(index === 1 ? 'models/oculus_quest_controller_right/oculus_quest_controller_right.obj' : 'models/oculus_quest_controller_left/oculus_quest_controller_left.obj', function (object) {
+        var x = index === 1 ? -(0, _const.cm)(1) : (0, _const.cm)(1);
         object.traverse(function (child) {
+          // console.log(child);
           if (child instanceof THREE.Mesh) {
             child.material = material;
+            child.geometry.translate(x, 0, 0);
           }
         });
         mesh.add(object);
@@ -9464,14 +9470,14 @@ function (_Emittable) {
       var geometry = new THREE.CylinderBufferGeometry((0, _const.cm)(2), (0, _const.cm)(2), (0, _const.cm)(12), 24);
       var texture = new THREE.TextureLoader().load('img/matcap.jpg');
       var material = new THREE.MeshMatcapMaterial({
-        color: index === 1 ? 0x0000ff : 0xff0000,
+        color: index === 1 ? 0x991111 : 0x111199,
         matcap: texture,
         transparent: true,
         opacity: 1
       });
       /*
       const material = new THREE.MeshBasicMaterial({
-      	color: i === 0 ? 0x0000ff : 0xff0000,
+      	color: i === 0 ? 0x111199 : 0x991111,
       	// roughness: 0.2,
       	// metalness: 0.1,
       });
@@ -9506,7 +9512,7 @@ function (_Emittable) {
       var indicator = new THREE.Mesh(geometryIndicator, materialIndicator);
       controller.indicator = indicator;
       indicator.geometry.rotateX(Math.PI / 2);
-      indicator.position.set(0, 0, -(0, _const.cm)(18));
+      indicator.position.set(0, 0, -(0, _const.cm)(18.5));
     }
   }, {
     key: "addText",
@@ -9936,7 +9942,10 @@ function (_EmittableMesh) {
   _createClass(InteractiveMesh, null, [{
     key: "hittest",
     value: function hittest(raycaster, down) {
-      var intersections = raycaster.intersectObjects(InteractiveMesh.items);
+      var items = InteractiveMesh.items.filter(function (x) {
+        return !x.freezed;
+      });
+      var intersections = raycaster.intersectObjects(items);
       var key, hit;
       var hash = {};
       intersections.forEach(function (intersection, i) {
@@ -9950,7 +9959,7 @@ function (_EmittableMesh) {
 
         hash[key] = intersection;
       });
-      InteractiveMesh.items.forEach(function (x) {
+      items.forEach(function (x) {
         var intersection = hash[x.id]; // intersections.find(i => i.object === x);
 
         x.intersection = intersection;
@@ -10129,7 +10138,8 @@ function (_EmittableGroup) {
 
         _this2.emit('down', event);
       });
-      this.panels.push(panel);
+      this.panels.push(panel); // this.panels.forEach(panel => panel.items.forEach(x => x.freezed = true));
+
       return panel;
     }
   }, {
@@ -10359,11 +10369,11 @@ function (_InteractiveMesh) {
     var cols = 3;
     var rows = Math.ceil(total / cols);
     var sx = size / 2 - (cols * d - gutter) / 2;
-    var sy = size / 2 - (rows * d - gutter) / 2;
+    var sy = -size / 2 + (rows * d - gutter) / 2;
     var r = Math.floor(index / cols);
     var c = index - r * cols;
 
-    _this6.position.set(sx + d * c, sy + d * r, 0); // !!!
+    _this6.position.set(sx + d * c, sy - d * r, 0); // !!!
 
 
     var from = {

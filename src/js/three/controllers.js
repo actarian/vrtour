@@ -22,17 +22,18 @@ export default class Controllers extends Emittable {
 			const right = this.right = this.addControllerTest(scene);
 			document.addEventListener('mousedown', this.onRightSelectStart);
 			document.addEventListener('mouseup', this.onRightSelectEnd);
-			const menu = this.menu = new Menu(pivot);
+			const group = new THREE.Group();
+			const menu = this.menu = new Menu(group);
 			menu.on('down', (event) => {
 				this.onMenuDown(event);
 			});
-			menu.position.set(0, 0, 0);
-			menu.scale.set(5, 5, 5);
-			// menu.rotation.set(Math.PI / 2, 0, 0);
-
+			group.rotation.set(Math.PI / 2, 0, 0);
+			group.position.set(0, 0, -2);
+			group.scale.set(5, 5, 5);
+			pivot.add(group);
 		} else {
-			const right = this.right = this.addController(renderer, scene, 0);
-			const left = this.left = this.addController(renderer, scene, 1);
+			const left = this.left = this.addController(renderer, scene, 0);
+			const right = this.right = this.addController(renderer, scene, 1);
 			const menu = this.menu = new Menu(left || right);
 			menu.on('down', (event) => {
 				this.onMenuDown(event);
@@ -46,7 +47,7 @@ export default class Controllers extends Emittable {
 		const index = event.index;
 		console.log('Controllers.onMenuDown', item, index);
 		if (index === 0 || index === 2) {
-			const direction = index === 0 ? 1 : -1;
+			const direction = index === 0 ? -1 : 1;
 			const y = this.pivot.rotation.y + Math.PI / 2 * direction;
 			// this.pivot.ery = y;
 			this.pivot.busy = true;
@@ -81,22 +82,22 @@ export default class Controllers extends Emittable {
 	}
 
 	update() {
-		const gamePadRight = this.findGamepad_(0);
-		if (gamePadRight) {
-			const triggerRight = gamePadRight ? gamePadRight.buttons.reduce((p, b, i) => b.pressed ? i : p, -1) : -1;
-			if (triggerRight !== -1) {
-				this.onRightSelectStart(triggerRight);
-			} else {
-				this.onRightSelectEnd();
-			}
-		}
-		const gamePadLeft = this.findGamepad_(1);
+		const gamePadLeft = this.findGamepad_(0);
 		if (gamePadLeft) {
 			const triggerLeft = gamePadLeft ? gamePadLeft.buttons.reduce((p, b, i) => b.pressed ? i : p, -1) : -1;
 			if (triggerLeft !== -1) {
 				this.onLeftSelectStart(triggerLeft);
 			} else {
 				this.onLeftSelectEnd();
+			}
+		}
+		const gamePadRight = this.findGamepad_(1);
+		if (gamePadRight) {
+			const triggerRight = gamePadRight ? gamePadRight.buttons.reduce((p, b, i) => b.pressed ? i : p, -1) : -1;
+			if (triggerRight !== -1) {
+				this.onRightSelectStart(triggerRight);
+			} else {
+				this.onRightSelectEnd();
 			}
 		}
 	}
@@ -190,7 +191,7 @@ export default class Controllers extends Emittable {
 		const controller = new THREE.Group();
 		controller.position.set(0, 0, 0);
 		controller.index = 0;
-		const cylinder = controller.cylinder = this.addControllerModel(controller, 0);
+		const cylinder = controller.cylinder = this.addControllerModel(controller, 1);
 		controller.scale.set(5, 5, 5);
 		scene.add(controller);
 		return controller;
@@ -210,20 +211,23 @@ export default class Controllers extends Emittable {
 		const mesh = new THREE.Group();
 		const texture = new THREE.TextureLoader().load('img/matcap.jpg');
 		const material = new THREE.MeshMatcapMaterial({
-			color: index === 1 ? 0x0000ff : 0xff0000,
+			color: index === 1 ? 0x991111 : 0x111199,
 			matcap: texture,
 			transparent: true,
 			opacity: 1,
 		});
 		const loader = new THREE.OBJLoader();
 		loader.load(
-			index === 0 ?
+			index === 1 ?
 			'models/oculus_quest_controller_right/oculus_quest_controller_right.obj' :
 			'models/oculus_quest_controller_left/oculus_quest_controller_left.obj',
 			(object) => {
+				const x = index === 1 ? -cm(1) : cm(1);
 				object.traverse((child) => {
+					// console.log(child);
 					if (child instanceof THREE.Mesh) {
 						child.material = material;
+						child.geometry.translate(x, 0, 0);
 					}
 				});
 				mesh.add(object);
@@ -244,14 +248,14 @@ export default class Controllers extends Emittable {
 		const geometry = new THREE.CylinderBufferGeometry(cm(2), cm(2), cm(12), 24);
 		const texture = new THREE.TextureLoader().load('img/matcap.jpg');
 		const material = new THREE.MeshMatcapMaterial({
-			color: index === 1 ? 0x0000ff : 0xff0000,
+			color: index === 1 ? 0x991111 : 0x111199,
 			matcap: texture,
 			transparent: true,
 			opacity: 1,
 		});
 		/*
 		const material = new THREE.MeshBasicMaterial({
-			color: i === 0 ? 0x0000ff : 0xff0000,
+			color: i === 0 ? 0x111199 : 0x991111,
 			// roughness: 0.2,
 			// metalness: 0.1,
 		});
@@ -282,7 +286,7 @@ export default class Controllers extends Emittable {
 		const indicator = new THREE.Mesh(geometryIndicator, materialIndicator);
 		controller.indicator = indicator;
 		indicator.geometry.rotateX(Math.PI / 2);
-		indicator.position.set(0, 0, -cm(18));
+		indicator.position.set(0, 0, -cm(18.5));
 	}
 
 	addText(parent) {

@@ -60,6 +60,7 @@ export default class Menu extends EmittableGroup {
 			this.emit('down', event);
 		});
 		this.panels.push(panel);
+		// this.panels.forEach(panel => panel.items.forEach(x => x.freezed = true));
 		return panel;
 	}
 
@@ -228,10 +229,10 @@ export class MenuItem extends InteractiveMesh {
 		const cols = 3;
 		const rows = Math.ceil(total / cols);
 		const sx = size / 2 - (cols * d - gutter) / 2;
-		const sy = size / 2 - (rows * d - gutter) / 2;
+		const sy = -size / 2 + (rows * d - gutter) / 2;
 		const r = Math.floor(index / cols);
 		const c = index - r * cols;
-		this.position.set(sx + d * c, sy + d * r, 0);
+		this.position.set(sx + d * c, sy - d * r, 0);
 		// !!!
 		const from = { value: 0 };
 		this.on('over', () => {
