@@ -190,7 +190,7 @@ export default class Controllers extends Emittable {
 		const controller = new THREE.Group();
 		controller.position.set(0, 0, 0);
 		controller.index = 0;
-		const cylinder = controller.cylinder = this.addControllerCylinder(controller, 0);
+		const cylinder = controller.cylinder = this.addControllerModel(controller, 0);
 		controller.scale.set(5, 5, 5);
 		scene.add(controller);
 		return controller;
@@ -200,17 +200,51 @@ export default class Controllers extends Emittable {
 		const controller = renderer.vr.getController(index);
 		if (controller) {
 			controller.index = index;
-			const cylinder = controller.cylinder = this.addControllerCylinder(controller, index);
+			const cylinder = controller.cylinder = this.addControllerModel(controller, index);
 			scene.add(controller);
 		}
 		return controller;
+	}
+
+	addControllerModel(controller, index) {
+		const mesh = new THREE.Group();
+		const texture = new THREE.TextureLoader().load('img/matcap.jpg');
+		const material = new THREE.MeshMatcapMaterial({
+			color: index === 1 ? 0x0000ff : 0xff0000,
+			matcap: texture,
+			transparent: true,
+			opacity: 1,
+		});
+		const loader = new THREE.OBJLoader();
+		loader.load(
+			index === 0 ?
+			'models/oculus_quest_controller_right/oculus_quest_controller_right.obj' :
+			'models/oculus_quest_controller_left/oculus_quest_controller_left.obj',
+			(object) => {
+				object.traverse((child) => {
+					if (child instanceof THREE.Mesh) {
+						child.material = material;
+					}
+				});
+				mesh.add(object);
+			},
+			(xhr) => {
+				// console.log( ( xhr.loaded / xhr.total * 100 ) + '% loaded' );
+			},
+			(error) => {
+				console.log('An error happened');
+			}
+		);
+		this.addControllerIndicator(controller);
+		controller.add(mesh);
+		return mesh;
 	}
 
 	addControllerCylinder(controller, index) {
 		const geometry = new THREE.CylinderBufferGeometry(cm(2), cm(2), cm(12), 24);
 		const texture = new THREE.TextureLoader().load('img/matcap.jpg');
 		const material = new THREE.MeshMatcapMaterial({
-			color: index === 0 ? 0x0000ff : 0xff0000,
+			color: index === 1 ? 0x0000ff : 0xff0000,
 			matcap: texture,
 			transparent: true,
 			opacity: 1,
@@ -232,7 +266,13 @@ export default class Controllers extends Emittable {
 		mesh.geometry.rotateX(Math.PI / 2);
 		controller.add(mesh);
 		//
-		const geometryIndicator = new THREE.CylinderBufferGeometry(mm(5), mm(1), cm(30), 5); // 10, 12
+		this.addControllerIndicator(controller);
+		//
+		return mesh;
+	}
+
+	addControllerIndicator(controller) {
+		const geometryIndicator = new THREE.CylinderBufferGeometry(mm(2), mm(1), cm(30), 5); // 10, 12
 		const materialIndicator = new THREE.MeshBasicMaterial({
 			color: 0xffffff,
 			// matcap: texture,
@@ -242,10 +282,7 @@ export default class Controllers extends Emittable {
 		const indicator = new THREE.Mesh(geometryIndicator, materialIndicator);
 		controller.indicator = indicator;
 		indicator.geometry.rotateX(Math.PI / 2);
-		indicator.position.set(0, 0, -cm(15));
-		// controller.add(indicator);
-		//
-		return mesh;
+		indicator.position.set(0, 0, -cm(18));
 	}
 
 	addText(parent) {

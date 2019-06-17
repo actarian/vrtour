@@ -9413,7 +9413,7 @@ function (_Emittable) {
       var controller = new THREE.Group();
       controller.position.set(0, 0, 0);
       controller.index = 0;
-      var cylinder = controller.cylinder = this.addControllerCylinder(controller, 0);
+      var cylinder = controller.cylinder = this.addControllerModel(controller, 0);
       controller.scale.set(5, 5, 5);
       scene.add(controller);
       return controller;
@@ -9425,11 +9425,38 @@ function (_Emittable) {
 
       if (controller) {
         controller.index = index;
-        var cylinder = controller.cylinder = this.addControllerCylinder(controller, index);
+        var cylinder = controller.cylinder = this.addControllerModel(controller, index);
         scene.add(controller);
       }
 
       return controller;
+    }
+  }, {
+    key: "addControllerModel",
+    value: function addControllerModel(controller, index) {
+      var mesh = new THREE.Group();
+      var texture = new THREE.TextureLoader().load('img/matcap.jpg');
+      var material = new THREE.MeshMatcapMaterial({
+        color: index === 1 ? 0x0000ff : 0xff0000,
+        matcap: texture,
+        transparent: true,
+        opacity: 1
+      });
+      var loader = new THREE.OBJLoader();
+      loader.load(index === 0 ? 'models/oculus_quest_controller_right/oculus_quest_controller_right.obj' : 'models/oculus_quest_controller_left/oculus_quest_controller_left.obj', function (object) {
+        object.traverse(function (child) {
+          if (child instanceof THREE.Mesh) {
+            child.material = material;
+          }
+        });
+        mesh.add(object);
+      }, function (xhr) {// console.log( ( xhr.loaded / xhr.total * 100 ) + '% loaded' );
+      }, function (error) {
+        console.log('An error happened');
+      });
+      this.addControllerIndicator(controller);
+      controller.add(mesh);
+      return mesh;
     }
   }, {
     key: "addControllerCylinder",
@@ -9437,7 +9464,7 @@ function (_Emittable) {
       var geometry = new THREE.CylinderBufferGeometry((0, _const.cm)(2), (0, _const.cm)(2), (0, _const.cm)(12), 24);
       var texture = new THREE.TextureLoader().load('img/matcap.jpg');
       var material = new THREE.MeshMatcapMaterial({
-        color: index === 0 ? 0x0000ff : 0xff0000,
+        color: index === 1 ? 0x0000ff : 0xff0000,
         matcap: texture,
         transparent: true,
         opacity: 1
@@ -9461,7 +9488,14 @@ function (_Emittable) {
       mesh.geometry.rotateX(Math.PI / 2);
       controller.add(mesh); //
 
-      var geometryIndicator = new THREE.CylinderBufferGeometry((0, _const.mm)(5), (0, _const.mm)(1), (0, _const.cm)(30), 5); // 10, 12
+      this.addControllerIndicator(controller); //
+
+      return mesh;
+    }
+  }, {
+    key: "addControllerIndicator",
+    value: function addControllerIndicator(controller) {
+      var geometryIndicator = new THREE.CylinderBufferGeometry((0, _const.mm)(2), (0, _const.mm)(1), (0, _const.cm)(30), 5); // 10, 12
 
       var materialIndicator = new THREE.MeshBasicMaterial({
         color: 0xffffff,
@@ -9472,10 +9506,7 @@ function (_Emittable) {
       var indicator = new THREE.Mesh(geometryIndicator, materialIndicator);
       controller.indicator = indicator;
       indicator.geometry.rotateX(Math.PI / 2);
-      indicator.position.set(0, 0, -(0, _const.cm)(15)); // controller.add(indicator);
-      //
-
-      return mesh;
+      indicator.position.set(0, 0, -(0, _const.cm)(18));
     }
   }, {
     key: "addText",
@@ -10470,8 +10501,7 @@ function () {
       var inertia = this.inertia;
       inertia.x = (longitude - this.longitude) * 1;
       inertia.y = (latitude - this.latitude) * 1;
-      this.inertia = inertia;
-      console.log(this.inertia);
+      this.inertia = inertia; // console.log(this.inertia);
     }
   }, {
     key: "updateInertia",

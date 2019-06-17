@@ -64,7 +64,7 @@ export default class Orbit {
 		inertia.x = (longitude - this.longitude) * 1;
 		inertia.y = (latitude - this.latitude) * 1;
 		this.inertia = inertia;
-		console.log(this.inertia);
+		// console.log(this.inertia);
 	}
 
 	updateInertia() {
