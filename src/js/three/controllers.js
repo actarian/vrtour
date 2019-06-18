@@ -6,8 +6,8 @@ import Emittable from './emittable';
 import Menu from './menu';
 
 const GAMEPAD = {
-	LEFT: 0,
-	RIGHT: 1,
+	LEFT: 1,
+	RIGHT: 0,
 };
 
 export default class Controllers extends Emittable {
@@ -63,7 +63,15 @@ export default class Controllers extends Emittable {
 					this.pivot.busy = false;
 				}
 			});
+		} else if (index === 1) {
+			const panel = this.menu.addPanel();
+			if (panel) {
+				this.menu.panel = panel;
+				this.menu.next();
+				this.menu.appear(panel);
+			}
 		}
+
 	}
 
 	hapticFeedback() {
@@ -91,7 +99,7 @@ export default class Controllers extends Emittable {
 		if (gamePadLeft) {
 			const triggerLeft = gamePadLeft ? gamePadLeft.buttons.reduce((p, b, i) => b.pressed ? i : p, -1) : -1;
 			if (triggerLeft !== -1) {
-				this.onLeftSelectStart(triggerLeft);
+				this.onLeftSelectStart(triggerLeft, gamePadLeft);
 			} else {
 				this.onLeftSelectEnd();
 			}
@@ -100,7 +108,7 @@ export default class Controllers extends Emittable {
 		if (gamePadRight) {
 			const triggerRight = gamePadRight ? gamePadRight.buttons.reduce((p, b, i) => b.pressed ? i : p, -1) : -1;
 			if (triggerRight !== -1) {
-				this.onRightSelectStart(triggerRight);
+				this.onRightSelectStart(triggerRight, gamePadRight);
 			} else {
 				this.onRightSelectEnd();
 			}
@@ -115,7 +123,7 @@ export default class Controllers extends Emittable {
 		}
 	}
 
-	onLeftSelectStart(id) {
+	onLeftSelectStart(id, gamepad) {
 		try {
 			if (this.left.button !== id) {
 				this.left.button = id;
@@ -128,10 +136,10 @@ export default class Controllers extends Emittable {
 						this.menu.enter();
 						break;
 					case 3:
-						this.menu.next();
+						// this.menu.next();
 						break;
 				}
-				this.setText(String(id));
+				this.setText((gamepad ? gamepad.id : '') + ' ' + String(id));
 				this.isControllerSelecting = true;
 				this.isControllerSelectionDirty = true;
 			}
@@ -159,12 +167,12 @@ export default class Controllers extends Emittable {
 		}
 	}
 
-	onRightSelectStart(id) {
+	onRightSelectStart(id, gamepad) {
 		try {
 			if (this.right.button !== id) {
 				this.right.button = id;
 				// 1 front, 2 side, 3 A, 4 B, 5?
-				this.setText(String(id));
+				this.setText((gamepad ? gamepad.id : '') + ' ' + String(id));
 				this.isControllerSelecting = true;
 				this.isControllerSelectionDirty = true;
 			}

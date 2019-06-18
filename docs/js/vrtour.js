@@ -9180,8 +9180,8 @@ function _inherits(subClass, superClass) { if (typeof superClass !== "function" 
 function _setPrototypeOf(o, p) { _setPrototypeOf = Object.setPrototypeOf || function _setPrototypeOf(o, p) { o.__proto__ = p; return o; }; return _setPrototypeOf(o, p); }
 
 var GAMEPAD = {
-  LEFT: 0,
-  RIGHT: 1
+  LEFT: 1,
+  RIGHT: 0
 };
 
 var Controllers =
@@ -9257,6 +9257,14 @@ function (_Emittable) {
             _this2.pivot.busy = false;
           }
         });
+      } else if (index === 1) {
+        var panel = this.menu.addPanel();
+
+        if (panel) {
+          this.menu.panel = panel;
+          this.menu.next();
+          this.menu.appear(panel);
+        }
       }
     }
   }, {
@@ -9295,7 +9303,7 @@ function (_Emittable) {
         }, -1) : -1;
 
         if (triggerLeft !== -1) {
-          this.onLeftSelectStart(triggerLeft);
+          this.onLeftSelectStart(triggerLeft, gamePadLeft);
         } else {
           this.onLeftSelectEnd();
         }
@@ -9309,7 +9317,7 @@ function (_Emittable) {
         }, -1) : -1;
 
         if (triggerRight !== -1) {
-          this.onRightSelectStart(triggerRight);
+          this.onRightSelectStart(triggerRight, gamePadRight);
         } else {
           this.onRightSelectEnd();
         }
@@ -9327,7 +9335,7 @@ function (_Emittable) {
     }
   }, {
     key: "onLeftSelectStart",
-    value: function onLeftSelectStart(id) {
+    value: function onLeftSelectStart(id, gamepad) {
       try {
         if (this.left.button !== id) {
           this.left.button = id; // 0 trigger, 1 front, 2 side, 3 Y, 4 X
@@ -9342,11 +9350,11 @@ function (_Emittable) {
               break;
 
             case 3:
-              this.menu.next();
+              // this.menu.next();
               break;
           }
 
-          this.setText(String(id));
+          this.setText((gamepad ? gamepad.id : '') + ' ' + String(id));
           this.isControllerSelecting = true;
           this.isControllerSelectionDirty = true;
         }
@@ -9379,12 +9387,12 @@ function (_Emittable) {
     }
   }, {
     key: "onRightSelectStart",
-    value: function onRightSelectStart(id) {
+    value: function onRightSelectStart(id, gamepad) {
       try {
         if (this.right.button !== id) {
           this.right.button = id; // 1 front, 2 side, 3 A, 4 B, 5?
 
-          this.setText(String(id));
+          this.setText((gamepad ? gamepad.id : '') + ' ' + String(id));
           this.isControllerSelecting = true;
           this.isControllerSelectionDirty = true;
         }
@@ -10146,25 +10154,6 @@ function (_EmittableGroup) {
       var items = new Array(count).fill({});
       var panel = this.panel = new MenuPanel(this, items, index);
       panel.on('down', function (event) {
-        var index = event.index;
-
-        if (index === 1) {
-          if (_this2.addPanel()) {
-            _this2.next();
-
-            var from = {
-              value: panel.plane.material.opacity
-            };
-            TweenMax.to(from, 0.5, {
-              value: 1,
-              ease: Power2.easeInOut,
-              onUpdate: function onUpdate() {
-                _this2.enterExitPanel_(panel, from.value);
-              }
-            });
-          }
-        }
-
         _this2.emit('down', event);
       });
       this.panels.push(panel); // this.panels.forEach(panel => panel.items.forEach(x => x.freezed = true));
@@ -10181,9 +10170,28 @@ function (_EmittableGroup) {
       }
     }
   }, {
+    key: "appear",
+    value: function appear(panel) {
+      var _this3 = this;
+
+      var from = {
+        value: panel.plane.material.opacity
+      };
+      TweenMax.to(from, 0.5, {
+        value: 1,
+        ease: Power2.easeInOut,
+        onUpdate: function onUpdate() {
+          _this3.enterExitPanel_(panel, from.value);
+        },
+        onComplete: function onComplete() {
+          _this3.unfreeze();
+        }
+      });
+    }
+  }, {
     key: "enter",
     value: function enter() {
-      var _this3 = this;
+      var _this4 = this;
 
       if (this.active) {
         return;
@@ -10192,42 +10200,49 @@ function (_EmittableGroup) {
       this.active = true;
       this.parent_.add(this);
       var from = {
-        value: this.panel.plane.material.opacity
+        value: 0
       };
       TweenMax.to(from, 0.5, {
         value: 1,
         ease: Power2.easeInOut,
         onUpdate: function onUpdate() {
-          _this3.position.z = -(0, _const.cm)(2) * (1 - from.value);
+          _this4.position.z = -(0, _const.cm)(2) * (1 - from.value);
 
-          _this3.enterExitPanel_(_this3.panel, from.value);
+          _this4.panels.forEach(function (x) {
+            return _this4.enterExitPanel_(x, from.value);
+          });
         },
-        onComplete: function onComplete() {}
+        onComplete: function onComplete() {
+          _this4.unfreeze();
+        }
       });
     }
   }, {
     key: "exit",
     value: function exit() {
-      var _this4 = this;
+      var _this5 = this;
 
       if (!this.active) {
         return;
       }
 
       this.active = false;
+      this.freeze();
       var from = {
-        value: this.panel.plane.material.opacity
+        value: 1
       };
       TweenMax.to(from, 0.5, {
         value: 0,
         ease: Power2.easeInOut,
         onUpdate: function onUpdate() {
-          _this4.position.z = -(0, _const.cm)(2) * (1 - from.value);
+          _this5.position.z = -(0, _const.cm)(2) * (1 - from.value);
 
-          _this4.enterExitPanel_(_this4.panel, from.value);
+          _this5.panels.forEach(function (x) {
+            return _this5.enterExitPanel_(x, from.value);
+          });
         },
         onComplete: function onComplete() {
-          _this4.parent_.remove(_this4);
+          _this5.parent_.remove(_this5);
         }
       });
     }
@@ -10237,12 +10252,17 @@ function (_EmittableGroup) {
   }, {
     key: "next",
     value: function next() {
+      var _this6 = this;
+
+      this.freeze();
       var r = Math.PI * 2 / 3;
       var z = Math.ceil(this.rotation.z / r) * r + r;
       TweenMax.to(this.rotation, 0.7, {
         z: z,
         ease: Power2.easeInOut,
-        onComplete: function onComplete() {}
+        onComplete: function onComplete() {
+          _this6.unfreeze();
+        }
       });
     }
   }, {
@@ -10256,6 +10276,20 @@ function (_EmittableGroup) {
       opacity(panel.plane, value * 0.8);
       panel.items.forEach(function (x) {
         return opacity(x, value * 0.1);
+      });
+    }
+  }, {
+    key: "freeze",
+    value: function freeze() {
+      this.panels.forEach(function (x) {
+        return x.freeze();
+      });
+    }
+  }, {
+    key: "unfreeze",
+    value: function unfreeze() {
+      this.panels.forEach(function (x) {
+        return x.unfreeze();
       });
     }
   }]);
@@ -10283,13 +10317,13 @@ function (_EmittableGroup2) {
   }]);
 
   function MenuPanel(parent, items, index) {
-    var _this5;
+    var _this7;
 
     _classCallCheck(this, MenuPanel);
 
-    _this5 = _possibleConstructorReturn(this, _getPrototypeOf(MenuPanel).call(this));
-    _this5.index = index;
-    _this5.rotation.z = Math.PI * 2 / 3 * index;
+    _this7 = _possibleConstructorReturn(this, _getPrototypeOf(MenuPanel).call(this));
+    _this7.index = index;
+    _this7.rotation.z = -Math.PI * 2 / 3 * index;
     var map = MenuPanel.getTexture();
     var geometry = new THREE.PlaneGeometry(W, H, 1, 2); // geometry.rotateY(Math.PI);
 
@@ -10305,26 +10339,42 @@ function (_EmittableGroup2) {
     plane.renderOrder = 90;
     plane.position.set(0, W / 2, -H);
     plane.rotation.set(-Math.PI / 2, 0, 0);
-    _this5.plane = plane; // this.addItems(plane, items);
+    _this7.plane = plane; // this.addItems(plane, items);
 
-    items = _this5.items = items.map(function (item, index) {
+    items = _this7.items = items.map(function (item, index) {
       return new MenuItem(plane, item, index, items.length);
     });
     items.forEach(function (item, index) {
       return item.on('down', function () {
-        _this5.emit('down', {
-          panel: _assertThisInitialized(_this5),
+        _this7.emit('down', {
+          panel: _assertThisInitialized(_this7),
           item: item,
           index: index
         });
       });
     });
 
-    _this5.add(plane);
+    _this7.add(plane);
 
-    parent.add(_assertThisInitialized(_this5));
-    return _this5;
+    parent.add(_assertThisInitialized(_this7));
+    return _this7;
   }
+
+  _createClass(MenuPanel, [{
+    key: "freeze",
+    value: function freeze() {
+      this.items.forEach(function (x) {
+        return x.freezed = true;
+      });
+    }
+  }, {
+    key: "unfreeze",
+    value: function unfreeze() {
+      this.items.forEach(function (x) {
+        return x.freezed = false;
+      });
+    }
+  }]);
 
   return MenuPanel;
 }(_emittable.default);
@@ -10366,12 +10416,27 @@ function (_InteractiveMesh) {
   }, {
     key: "getTexture",
     value: function getTexture(item, index) {
-      return this.texture || (this.texture = this.getLoader().load('img/menu-item.png'));
+      switch (index) {
+        case 0:
+          return this.texture0 || (this.texture0 = this.getLoader().load('img/menu-item-prev.png'));
+          break;
+
+        case 1:
+          return this.texture1 || (this.texture1 = this.getLoader().load('img/menu-item-load.png'));
+          break;
+
+        case 2:
+          return this.texture2 || (this.texture2 = this.getLoader().load('img/menu-item-next.png'));
+          break;
+
+        default:
+          return this.texture || (this.texture = this.getLoader().load('img/menu-item.png'));
+      }
     }
   }]);
 
   function MenuItem(parent, item, index, total) {
-    var _this6;
+    var _this8;
 
     _classCallCheck(this, MenuItem);
 
@@ -10387,10 +10452,11 @@ function (_InteractiveMesh) {
       // side: THREE.DoubleSide
 
     });
-    _this6 = _possibleConstructorReturn(this, _getPrototypeOf(MenuItem).call(this, geometry, material));
-    _this6.item = item;
-    _this6.index = index;
-    _this6.renderOrder = 100; // this.rotation.set(0, -0.5, 0);
+    _this8 = _possibleConstructorReturn(this, _getPrototypeOf(MenuItem).call(this, geometry, material));
+    _this8.freezed = true;
+    _this8.item = item;
+    _this8.index = index;
+    _this8.renderOrder = 100; // this.rotation.set(0, -0.5, 0);
     // this.position.set(0, 0, 0);
     // this.lookAt(ORIGIN);
 
@@ -10402,35 +10468,35 @@ function (_InteractiveMesh) {
     var r = Math.floor(index / cols);
     var c = index - r * cols;
 
-    _this6.position.set(sx + d * c, sy - d * r, 0); // !!!
+    _this8.position.set(sx + d * c, sy - d * r, 0); // !!!
 
 
     var from = {
       value: 0
     };
 
-    _this6.on('over', function () {
+    _this8.on('over', function () {
       TweenMax.to(from, 0.4, {
         value: 1,
         ease: Power2.easeInOut,
         onUpdate: function onUpdate() {
-          _this6.overOutTween_(from.value);
+          _this8.overOutTween_(from.value);
         }
       });
     });
 
-    _this6.on('out', function () {
+    _this8.on('out', function () {
       TweenMax.to(from, 0.4, {
         value: 0,
         ease: Power2.easeInOut,
         onUpdate: function onUpdate() {
-          _this6.overOutTween_(from.value);
+          _this8.overOutTween_(from.value);
         }
       });
     });
 
-    parent.add(_assertThisInitialized(_this6));
-    return _this6;
+    parent.add(_assertThisInitialized(_this8));
+    return _this8;
   }
 
   _createClass(MenuItem, [{

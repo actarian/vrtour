@@ -43,20 +43,6 @@ export default class Menu extends EmittableGroup {
 		const items = new Array(count).fill({});
 		const panel = this.panel = new MenuPanel(this, items, index);
 		panel.on('down', (event) => {
-			const index = event.index;
-			if (index === 1) {
-				if (this.addPanel()) {
-					this.next();
-					const from = { value: panel.plane.material.opacity };
-					TweenMax.to(from, 0.5, {
-						value: 1,
-						ease: Power2.easeInOut,
-						onUpdate: () => {
-							this.enterExitPanel_(panel, from.value);
-						}
-					});
-				}
-			}
 			this.emit('down', event);
 		});
 		this.panels.push(panel);
@@ -72,21 +58,37 @@ export default class Menu extends EmittableGroup {
 		}
 	}
 
+	appear(panel) {
+		const from = { value: panel.plane.material.opacity };
+		TweenMax.to(from, 0.5, {
+			value: 1,
+			ease: Power2.easeInOut,
+			onUpdate: () => {
+				this.enterExitPanel_(panel, from.value);
+			},
+			onComplete: () => {
+				this.unfreeze();
+			}
+		});
+	}
+
 	enter() {
 		if (this.active) {
 			return;
 		}
 		this.active = true;
 		this.parent_.add(this);
-		const from = { value: this.panel.plane.material.opacity };
+		const from = { value: 0 };
 		TweenMax.to(from, 0.5, {
 			value: 1,
 			ease: Power2.easeInOut,
 			onUpdate: () => {
 				this.position.z = -cm(2) * (1 - from.value);
-				this.enterExitPanel_(this.panel, from.value);
+				this.panels.forEach(x => this.enterExitPanel_(x, from.value));
 			},
-			onComplete: () => {}
+			onComplete: () => {
+				this.unfreeze();
+			}
 		});
 	}
 
@@ -95,13 +97,14 @@ export default class Menu extends EmittableGroup {
 			return;
 		}
 		this.active = false;
-		const from = { value: this.panel.plane.material.opacity };
+		this.freeze();
+		const from = { value: 1 };
 		TweenMax.to(from, 0.5, {
 			value: 0,
 			ease: Power2.easeInOut,
 			onUpdate: () => {
 				this.position.z = -cm(2) * (1 - from.value);
-				this.enterExitPanel_(this.panel, from.value);
+				this.panels.forEach(x => this.enterExitPanel_(x, from.value));
 			},
 			onComplete: () => {
 				this.parent_.remove(this);
@@ -114,12 +117,15 @@ export default class Menu extends EmittableGroup {
 	}
 
 	next() {
+		this.freeze();
 		const r = Math.PI * 2 / 3;
 		const z = Math.ceil(this.rotation.z / r) * r + r;
 		TweenMax.to(this.rotation, 0.7, {
 			z,
 			ease: Power2.easeInOut,
-			onComplete: () => {}
+			onComplete: () => {
+				this.unfreeze();
+			}
 		});
 	}
 
@@ -130,6 +136,14 @@ export default class Menu extends EmittableGroup {
 		};
 		opacity(panel.plane, value * 0.8);
 		panel.items.forEach(x => opacity(x, value * 0.1));
+	}
+
+	freeze() {
+		this.panels.forEach(x => x.freeze());
+	}
+
+	unfreeze() {
+		this.panels.forEach(x => x.unfreeze());
 	}
 
 }
@@ -147,7 +161,7 @@ export class MenuPanel extends EmittableGroup {
 	constructor(parent, items, index) {
 		super();
 		this.index = index;
-		this.rotation.z = Math.PI * 2 / 3 * index;
+		this.rotation.z = -Math.PI * 2 / 3 * index;
 		const map = MenuPanel.getTexture();
 		const geometry = new THREE.PlaneGeometry(W, H, 1, 2);
 		// geometry.rotateY(Math.PI);
@@ -171,6 +185,14 @@ export class MenuPanel extends EmittableGroup {
 		}));
 		this.add(plane);
 		parent.add(this);
+	}
+
+	freeze() {
+		this.items.forEach(x => x.freezed = true);
+	}
+
+	unfreeze() {
+		this.items.forEach(x => x.freezed = false);
 	}
 
 }
@@ -202,7 +224,20 @@ export class MenuItem extends InteractiveMesh {
 	}
 
 	static getTexture(item, index) {
-		return this.texture || (this.texture = this.getLoader().load('img/menu-item.png'));
+		switch (index) {
+			case 0:
+				return this.texture0 || (this.texture0 = this.getLoader().load('img/menu-item-prev.png'));
+				break;
+			case 1:
+				return this.texture1 || (this.texture1 = this.getLoader().load('img/menu-item-load.png'));
+				break;
+			case 2:
+				return this.texture2 || (this.texture2 = this.getLoader().load('img/menu-item-next.png'));
+				break;
+			default:
+				return this.texture || (this.texture = this.getLoader().load('img/menu-item.png'));
+
+		}
 	}
 
 	constructor(parent, item, index, total) {
@@ -219,6 +254,7 @@ export class MenuItem extends InteractiveMesh {
 			// side: THREE.DoubleSide
 		});
 		super(geometry, material);
+		this.freezed = true;
 		this.item = item;
 		this.index = index;
 		this.renderOrder = 100;
