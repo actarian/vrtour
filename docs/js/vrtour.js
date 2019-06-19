@@ -10070,13 +10070,15 @@ InteractiveMesh.items = [];
 Object.defineProperty(exports, "__esModule", {
   value: true
 });
-exports.MenuItem = exports.MenuPanel = exports.default = void 0;
+exports.default = void 0;
 
 var _const = require("./const");
 
 var _emittable = _interopRequireDefault(require("./emittable.group"));
 
-var _interactive = _interopRequireDefault(require("./interactive.mesh"));
+var _menuGrid = require("./menu/menu-grid");
+
+var _menuList = require("./menu/menu-list");
 
 function _interopRequireDefault(obj) { return obj && obj.__esModule ? obj : { default: obj }; }
 
@@ -10097,9 +10099,6 @@ function _getPrototypeOf(o) { _getPrototypeOf = Object.setPrototypeOf ? Object.g
 function _inherits(subClass, superClass) { if (typeof superClass !== "function" && superClass !== null) { throw new TypeError("Super expression must either be null or a function"); } subClass.prototype = Object.create(superClass && superClass.prototype, { constructor: { value: subClass, writable: true, configurable: true } }); if (superClass) _setPrototypeOf(subClass, superClass); }
 
 function _setPrototypeOf(o, p) { _setPrototypeOf = Object.setPrototypeOf || function _setPrototypeOf(o, p) { o.__proto__ = p; return o; }; return _setPrototypeOf(o, p); }
-
-var W = (0, _const.cm)(10);
-var H = (0, _const.cm)(20);
 
 var Menu =
 /*#__PURE__*/
@@ -10150,9 +10149,20 @@ function (_EmittableGroup) {
         return;
       }
 
-      var count = 15;
-      var items = new Array(count).fill({});
-      var panel = this.panel = new MenuPanel(this, items, index);
+      var panel;
+
+      if (index === 1) {
+        var count = 5;
+        var items = new Array(count).fill({});
+        panel = this.panel = new _menuList.MenuListPanel(this, items, index);
+      } else {
+        var _count = 15;
+
+        var _items = new Array(_count).fill({});
+
+        panel = this.panel = new _menuGrid.MenuGridPanel(this, _items, index);
+      }
+
       panel.on('down', function (event) {
         _this2.emit('down', event);
       });
@@ -10299,12 +10309,49 @@ function (_EmittableGroup) {
 
 exports.default = Menu;
 
-var MenuPanel =
-/*#__PURE__*/
-function (_EmittableGroup2) {
-  _inherits(MenuPanel, _EmittableGroup2);
+},{"./const":4,"./emittable.group":6,"./menu/menu-grid":11,"./menu/menu-list":12}],11:[function(require,module,exports){
+"use strict";
 
-  _createClass(MenuPanel, null, [{
+Object.defineProperty(exports, "__esModule", {
+  value: true
+});
+exports.MenuGridItem = exports.MenuGridPanel = void 0;
+
+var _const = require("../const");
+
+var _emittable = _interopRequireDefault(require("../emittable.group"));
+
+var _interactive = _interopRequireDefault(require("../interactive.mesh"));
+
+function _interopRequireDefault(obj) { return obj && obj.__esModule ? obj : { default: obj }; }
+
+function _typeof(obj) { if (typeof Symbol === "function" && typeof Symbol.iterator === "symbol") { _typeof = function _typeof(obj) { return typeof obj; }; } else { _typeof = function _typeof(obj) { return obj && typeof Symbol === "function" && obj.constructor === Symbol && obj !== Symbol.prototype ? "symbol" : typeof obj; }; } return _typeof(obj); }
+
+function _classCallCheck(instance, Constructor) { if (!(instance instanceof Constructor)) { throw new TypeError("Cannot call a class as a function"); } }
+
+function _possibleConstructorReturn(self, call) { if (call && (_typeof(call) === "object" || typeof call === "function")) { return call; } return _assertThisInitialized(self); }
+
+function _getPrototypeOf(o) { _getPrototypeOf = Object.setPrototypeOf ? Object.getPrototypeOf : function _getPrototypeOf(o) { return o.__proto__ || Object.getPrototypeOf(o); }; return _getPrototypeOf(o); }
+
+function _assertThisInitialized(self) { if (self === void 0) { throw new ReferenceError("this hasn't been initialised - super() hasn't been called"); } return self; }
+
+function _defineProperties(target, props) { for (var i = 0; i < props.length; i++) { var descriptor = props[i]; descriptor.enumerable = descriptor.enumerable || false; descriptor.configurable = true; if ("value" in descriptor) descriptor.writable = true; Object.defineProperty(target, descriptor.key, descriptor); } }
+
+function _createClass(Constructor, protoProps, staticProps) { if (protoProps) _defineProperties(Constructor.prototype, protoProps); if (staticProps) _defineProperties(Constructor, staticProps); return Constructor; }
+
+function _inherits(subClass, superClass) { if (typeof superClass !== "function" && superClass !== null) { throw new TypeError("Super expression must either be null or a function"); } subClass.prototype = Object.create(superClass && superClass.prototype, { constructor: { value: subClass, writable: true, configurable: true } }); if (superClass) _setPrototypeOf(subClass, superClass); }
+
+function _setPrototypeOf(o, p) { _setPrototypeOf = Object.setPrototypeOf || function _setPrototypeOf(o, p) { o.__proto__ = p; return o; }; return _setPrototypeOf(o, p); }
+
+var W = (0, _const.cm)(10);
+var H = (0, _const.cm)(20);
+
+var MenuGridPanel =
+/*#__PURE__*/
+function (_EmittableGroup) {
+  _inherits(MenuGridPanel, _EmittableGroup);
+
+  _createClass(MenuGridPanel, null, [{
     key: "getLoader",
     value: function getLoader() {
       return this.loader || (this.loader = new THREE.TextureLoader());
@@ -10316,15 +10363,15 @@ function (_EmittableGroup2) {
     }
   }]);
 
-  function MenuPanel(parent, items, index) {
-    var _this7;
+  function MenuGridPanel(parent, items, index) {
+    var _this;
 
-    _classCallCheck(this, MenuPanel);
+    _classCallCheck(this, MenuGridPanel);
 
-    _this7 = _possibleConstructorReturn(this, _getPrototypeOf(MenuPanel).call(this));
-    _this7.index = index;
-    _this7.rotation.z = -Math.PI * 2 / 3 * index;
-    var map = MenuPanel.getTexture();
+    _this = _possibleConstructorReturn(this, _getPrototypeOf(MenuGridPanel).call(this));
+    _this.index = index;
+    _this.rotation.z = -Math.PI * 2 / 3 * index;
+    var map = MenuGridPanel.getTexture();
     var geometry = new THREE.PlaneGeometry(W, H, 1, 2); // geometry.rotateY(Math.PI);
 
     var material = new THREE.MeshBasicMaterial({
@@ -10339,28 +10386,28 @@ function (_EmittableGroup2) {
     plane.renderOrder = 90;
     plane.position.set(0, W / 2, -H);
     plane.rotation.set(-Math.PI / 2, 0, 0);
-    _this7.plane = plane; // this.addItems(plane, items);
+    _this.plane = plane; // this.addItems(plane, items);
 
-    items = _this7.items = items.map(function (item, index) {
-      return new MenuItem(plane, item, index, items.length);
+    items = _this.items = items.map(function (item, index) {
+      return new MenuGridItem(plane, item, index, items.length);
     });
     items.forEach(function (item, index) {
       return item.on('down', function () {
-        _this7.emit('down', {
-          panel: _assertThisInitialized(_this7),
+        _this.emit('down', {
+          panel: _assertThisInitialized(_this),
           item: item,
           index: index
         });
       });
     });
 
-    _this7.add(plane);
+    _this.add(plane);
 
-    parent.add(_assertThisInitialized(_this7));
-    return _this7;
+    parent.add(_assertThisInitialized(_this));
+    return _this;
   }
 
-  _createClass(MenuPanel, [{
+  _createClass(MenuGridPanel, [{
     key: "freeze",
     value: function freeze() {
       this.items.forEach(function (x) {
@@ -10376,17 +10423,17 @@ function (_EmittableGroup2) {
     }
   }]);
 
-  return MenuPanel;
+  return MenuGridPanel;
 }(_emittable.default);
 
-exports.MenuPanel = MenuPanel;
+exports.MenuGridPanel = MenuGridPanel;
 
-var MenuItem =
+var MenuGridItem =
 /*#__PURE__*/
 function (_InteractiveMesh) {
-  _inherits(MenuItem, _InteractiveMesh);
+  _inherits(MenuGridItem, _InteractiveMesh);
 
-  _createClass(MenuItem, null, [{
+  _createClass(MenuGridItem, null, [{
     key: "getTexture_",
     value: function getTexture_(index) {
       var canvas = document.createElement('canvas');
@@ -10435,14 +10482,14 @@ function (_InteractiveMesh) {
     }
   }]);
 
-  function MenuItem(parent, item, index, total) {
-    var _this8;
+  function MenuGridItem(parent, item, index, total) {
+    var _this2;
 
-    _classCallCheck(this, MenuItem);
+    _classCallCheck(this, MenuGridItem);
 
     var size = W / 16 * 4;
     var gutter = W / 16 * 1;
-    var map = MenuItem.getTexture(item, index);
+    var map = MenuGridItem.getTexture(item, index);
     var geometry = new THREE.PlaneGeometry(size, size, 1, 1);
     var material = new THREE.MeshBasicMaterial({
       // color: 0xffffff,
@@ -10452,11 +10499,11 @@ function (_InteractiveMesh) {
       // side: THREE.DoubleSide
 
     });
-    _this8 = _possibleConstructorReturn(this, _getPrototypeOf(MenuItem).call(this, geometry, material));
-    _this8.freezed = true;
-    _this8.item = item;
-    _this8.index = index;
-    _this8.renderOrder = 100; // this.rotation.set(0, -0.5, 0);
+    _this2 = _possibleConstructorReturn(this, _getPrototypeOf(MenuGridItem).call(this, geometry, material));
+    _this2.freezed = true;
+    _this2.item = item;
+    _this2.index = index;
+    _this2.renderOrder = 100; // this.rotation.set(0, -0.5, 0);
     // this.position.set(0, 0, 0);
     // this.lookAt(ORIGIN);
 
@@ -10468,53 +10515,268 @@ function (_InteractiveMesh) {
     var r = Math.floor(index / cols);
     var c = index - r * cols;
 
-    _this8.position.set(sx + d * c, sy - d * r, 0); // !!!
+    _this2.position.set(sx + d * c, sy - d * r, 0); // !!!
 
 
     var from = {
       value: 0
     };
 
-    _this8.on('over', function () {
+    _this2.on('over', function () {
       TweenMax.to(from, 0.4, {
         value: 1,
         ease: Power2.easeInOut,
         onUpdate: function onUpdate() {
-          _this8.overOutTween_(from.value);
+          _this2.overOutTween_(from.value);
         }
       });
     });
 
-    _this8.on('out', function () {
+    _this2.on('out', function () {
       TweenMax.to(from, 0.4, {
         value: 0,
         ease: Power2.easeInOut,
         onUpdate: function onUpdate() {
-          _this8.overOutTween_(from.value);
+          _this2.overOutTween_(from.value);
         }
       });
     });
 
-    parent.add(_assertThisInitialized(_this8));
-    return _this8;
+    parent.add(_assertThisInitialized(_this2));
+    return _this2;
   }
 
-  _createClass(MenuItem, [{
+  _createClass(MenuGridItem, [{
     key: "overOutTween_",
     value: function overOutTween_(value) {
       // const z = W / 16 * 1;
       this.position.z = (0, _const.mm)(1) + (0, _const.mm)(4) * value;
-      this.material.opacity = 0.1 + value * 0.9;
+      this.material.opacity = 0.1 + value * 1.9;
       this.material.needsUpdate = true;
     }
   }]);
 
-  return MenuItem;
+  return MenuGridItem;
 }(_interactive.default);
 
-exports.MenuItem = MenuItem;
+exports.MenuGridItem = MenuGridItem;
 
-},{"./const":4,"./emittable.group":6,"./interactive.mesh":9}],11:[function(require,module,exports){
+},{"../const":4,"../emittable.group":6,"../interactive.mesh":9}],12:[function(require,module,exports){
+"use strict";
+
+Object.defineProperty(exports, "__esModule", {
+  value: true
+});
+exports.MenuListItem = exports.MenuListPanel = void 0;
+
+var _const = require("../const");
+
+var _emittable = _interopRequireDefault(require("../emittable.group"));
+
+var _interactive = _interopRequireDefault(require("../interactive.mesh"));
+
+function _interopRequireDefault(obj) { return obj && obj.__esModule ? obj : { default: obj }; }
+
+function _typeof(obj) { if (typeof Symbol === "function" && typeof Symbol.iterator === "symbol") { _typeof = function _typeof(obj) { return typeof obj; }; } else { _typeof = function _typeof(obj) { return obj && typeof Symbol === "function" && obj.constructor === Symbol && obj !== Symbol.prototype ? "symbol" : typeof obj; }; } return _typeof(obj); }
+
+function _classCallCheck(instance, Constructor) { if (!(instance instanceof Constructor)) { throw new TypeError("Cannot call a class as a function"); } }
+
+function _possibleConstructorReturn(self, call) { if (call && (_typeof(call) === "object" || typeof call === "function")) { return call; } return _assertThisInitialized(self); }
+
+function _getPrototypeOf(o) { _getPrototypeOf = Object.setPrototypeOf ? Object.getPrototypeOf : function _getPrototypeOf(o) { return o.__proto__ || Object.getPrototypeOf(o); }; return _getPrototypeOf(o); }
+
+function _assertThisInitialized(self) { if (self === void 0) { throw new ReferenceError("this hasn't been initialised - super() hasn't been called"); } return self; }
+
+function _defineProperties(target, props) { for (var i = 0; i < props.length; i++) { var descriptor = props[i]; descriptor.enumerable = descriptor.enumerable || false; descriptor.configurable = true; if ("value" in descriptor) descriptor.writable = true; Object.defineProperty(target, descriptor.key, descriptor); } }
+
+function _createClass(Constructor, protoProps, staticProps) { if (protoProps) _defineProperties(Constructor.prototype, protoProps); if (staticProps) _defineProperties(Constructor, staticProps); return Constructor; }
+
+function _inherits(subClass, superClass) { if (typeof superClass !== "function" && superClass !== null) { throw new TypeError("Super expression must either be null or a function"); } subClass.prototype = Object.create(superClass && superClass.prototype, { constructor: { value: subClass, writable: true, configurable: true } }); if (superClass) _setPrototypeOf(subClass, superClass); }
+
+function _setPrototypeOf(o, p) { _setPrototypeOf = Object.setPrototypeOf || function _setPrototypeOf(o, p) { o.__proto__ = p; return o; }; return _setPrototypeOf(o, p); }
+
+var W = (0, _const.cm)(10);
+var H = (0, _const.cm)(20);
+
+var MenuListPanel =
+/*#__PURE__*/
+function (_EmittableGroup) {
+  _inherits(MenuListPanel, _EmittableGroup);
+
+  _createClass(MenuListPanel, null, [{
+    key: "getLoader",
+    value: function getLoader() {
+      return this.loader || (this.loader = new THREE.TextureLoader());
+    }
+  }, {
+    key: "getTexture",
+    value: function getTexture() {
+      return this.texture || (this.texture = this.getLoader().load('img/menu-list.png'));
+    }
+  }]);
+
+  function MenuListPanel(parent, items, index) {
+    var _this;
+
+    _classCallCheck(this, MenuListPanel);
+
+    _this = _possibleConstructorReturn(this, _getPrototypeOf(MenuListPanel).call(this));
+    _this.index = index;
+    _this.rotation.z = -Math.PI * 2 / 3 * index;
+    var map = MenuListPanel.getTexture();
+    var geometry = new THREE.PlaneGeometry(W, H, 1, 2); // geometry.rotateY(Math.PI);
+
+    var material = new THREE.MeshBasicMaterial({
+      // color: 0xffffff,
+      map: map,
+      transparent: true,
+      opacity: 0,
+      // blending: THREE.AdditiveBlending,
+      side: THREE.DoubleSide
+    });
+    var plane = new THREE.Mesh(geometry, material);
+    plane.renderOrder = 90;
+    plane.position.set(0, W / 2, -H);
+    plane.rotation.set(-Math.PI / 2, 0, 0);
+    _this.plane = plane; // this.addItems(plane, items);
+
+    items = _this.items = items.map(function (item, index) {
+      return new MenuListItem(plane, item, index, items.length);
+    });
+    items.forEach(function (item, index) {
+      return item.on('down', function () {
+        _this.emit('down', {
+          panel: _assertThisInitialized(_this),
+          item: item,
+          index: index
+        });
+      });
+    });
+
+    _this.add(plane);
+
+    parent.add(_assertThisInitialized(_this));
+    return _this;
+  }
+
+  _createClass(MenuListPanel, [{
+    key: "freeze",
+    value: function freeze() {
+      this.items.forEach(function (x) {
+        return x.freezed = true;
+      });
+    }
+  }, {
+    key: "unfreeze",
+    value: function unfreeze() {
+      this.items.forEach(function (x) {
+        return x.freezed = false;
+      });
+    }
+  }]);
+
+  return MenuListPanel;
+}(_emittable.default);
+
+exports.MenuListPanel = MenuListPanel;
+
+var MenuListItem =
+/*#__PURE__*/
+function (_InteractiveMesh) {
+  _inherits(MenuListItem, _InteractiveMesh);
+
+  _createClass(MenuListItem, null, [{
+    key: "getLoader",
+    value: function getLoader() {
+      return this.loader || (this.loader = new THREE.TextureLoader());
+    }
+  }, {
+    key: "getTexture",
+    value: function getTexture(item, index) {
+      return this.texture || (this.texture = this.getLoader().load('img/menu-item-list.png'));
+    }
+  }]);
+
+  function MenuListItem(parent, item, index, total) {
+    var _this2;
+
+    _classCallCheck(this, MenuListItem);
+
+    var size = W / 16 * 4;
+    var gutter = W / 16 * 1;
+    var map = MenuListItem.getTexture(item, index);
+    var geometry = new THREE.PlaneGeometry(W, size, 1, 1);
+    var material = new THREE.MeshBasicMaterial({
+      // color: 0xffffff,
+      map: map,
+      opacity: 0,
+      transparent: true // blending: THREE.AdditiveBlending,
+      // side: THREE.DoubleSide
+
+    });
+    _this2 = _possibleConstructorReturn(this, _getPrototypeOf(MenuListItem).call(this, geometry, material));
+    _this2.freezed = true;
+    _this2.item = item;
+    _this2.index = index;
+    _this2.renderOrder = 100; // this.rotation.set(0, -0.5, 0);
+    // this.position.set(0, 0, 0);
+    // this.lookAt(ORIGIN);
+
+    var d = size + gutter;
+    var cols = 1;
+    var rows = Math.ceil(total / cols);
+    var sx = 0;
+    var sy = -size / 2 + (rows * d - gutter) / 2;
+    var r = Math.floor(index / cols);
+    var c = index - r * cols;
+
+    _this2.position.set(sx, sy - d * r, 0); // !!!
+
+
+    var from = {
+      value: 0
+    };
+
+    _this2.on('over', function () {
+      TweenMax.to(from, 0.4, {
+        value: 1,
+        ease: Power2.easeInOut,
+        onUpdate: function onUpdate() {
+          _this2.overOutTween_(from.value);
+        }
+      });
+    });
+
+    _this2.on('out', function () {
+      TweenMax.to(from, 0.4, {
+        value: 0,
+        ease: Power2.easeInOut,
+        onUpdate: function onUpdate() {
+          _this2.overOutTween_(from.value);
+        }
+      });
+    });
+
+    parent.add(_assertThisInitialized(_this2));
+    return _this2;
+  }
+
+  _createClass(MenuListItem, [{
+    key: "overOutTween_",
+    value: function overOutTween_(value) {
+      // const z = W / 16 * 1;
+      this.position.z = (0, _const.mm)(1) + (0, _const.mm)(4) * value;
+      this.material.opacity = 0.1 + value * 1.9;
+      this.material.needsUpdate = true;
+    }
+  }]);
+
+  return MenuListItem;
+}(_interactive.default);
+
+exports.MenuListItem = MenuListItem;
+
+},{"../const":4,"../emittable.group":6,"../interactive.mesh":9}],13:[function(require,module,exports){
 "use strict";
 
 Object.defineProperty(exports, "__esModule", {
@@ -10635,7 +10897,7 @@ function () {
 
 exports.default = Orbit;
 
-},{"../shared/drag.listener":2}],12:[function(require,module,exports){
+},{"../shared/drag.listener":2}],14:[function(require,module,exports){
 "use strict";
 
 Object.defineProperty(exports, "__esModule", {
@@ -11231,7 +11493,7 @@ function (_InteractiveMesh) {
 
 exports.NavPoint = NavPoint;
 
-},{"./const":4,"./emittable.group":6,"./interactive.mesh":9,"html2canvas":1}],13:[function(require,module,exports){
+},{"./const":4,"./emittable.group":6,"./interactive.mesh":9,"html2canvas":1}],15:[function(require,module,exports){
 "use strict";
 
 Object.defineProperty(exports, "__esModule", {
@@ -11580,7 +11842,7 @@ function (_EventEmitter) {
 
 exports.VR = VR;
 
-},{"../shared/event-emitter":3}],14:[function(require,module,exports){
+},{"../shared/event-emitter":3}],16:[function(require,module,exports){
 "use strict";
 
 var _const = require("./three/const");
@@ -12430,5 +12692,5 @@ if (SHOW_HELPERS) {
 }
 */
 
-},{"./three/const":4,"./three/controllers":5,"./three/interactive.mesh":9,"./three/orbit":11,"./three/views":12,"./three/vr":13}]},{},[14]);
+},{"./three/const":4,"./three/controllers":5,"./three/interactive.mesh":9,"./three/orbit":13,"./three/views":14,"./three/vr":15}]},{},[16]);
 //# sourceMappingURL=vrtour.js.map
