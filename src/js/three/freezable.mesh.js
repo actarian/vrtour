@@ -3,6 +3,17 @@
 
 export default class FreezableMesh extends THREE.Mesh {
 
+	get freezed() {
+		return this.freezed_;
+	}
+
+	set freezed(freezed) {
+		if (this.freezed_ !== freezed) {
+			this.freezed_ = freezed;
+			this.children.filter(x => x.hasOwnProperty('freezed')).forEach(x => x.freezed = freezed);
+		}
+	}
+
 	constructor(geometry, material) {
 		geometry = geometry || new THREE.BoxGeometry(5, 5, 5);
 		material = material || new THREE.MeshBasicMaterial({
@@ -15,17 +26,11 @@ export default class FreezableMesh extends THREE.Mesh {
 	}
 
 	freeze() {
-		if (!this.freezed) {
-			this.freezed = true;
-			this.children.filter(x => x instanceof FreezableMesh).forEach(x => x.freeze());
-		}
+		this.freezed = true;
 	}
 
 	unfreeze() {
-		if (this.freezed) {
-			this.freezed = false;
-			this.children.filter(x => x instanceof FreezableMesh).forEach(x => x.unfreeze());
-		}
+		this.freezed = false;
 	}
 
 }

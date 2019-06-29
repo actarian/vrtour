@@ -1,7 +1,18 @@
 /* jshint esversion: 6 */
 /* global window, document */
 
-export default class FreezableMesh extends THREE.Group {
+export default class FreezableGroup extends THREE.Group {
+
+	get freezed() {
+		return this.freezed_;
+	}
+
+	set freezed(freezed) {
+		if (this.freezed_ !== freezed) {
+			this.freezed_ = freezed;
+			this.children.filter(x => x.hasOwnProperty('freezed')).forEach(x => x.freezed = freezed);
+		}
+	}
 
 	constructor() {
 		super();
@@ -9,17 +20,11 @@ export default class FreezableMesh extends THREE.Group {
 	}
 
 	freeze() {
-		if (!this.freezed) {
-			this.freezed = true;
-			this.children.filter(x => x instanceof FreezableMesh).forEach(x => x.freeze());
-		}
+		this.freezed = true;
 	}
 
 	unfreeze() {
-		if (this.freezed) {
-			this.freezed = false;
-			this.children.filter(x => x instanceof FreezableMesh).forEach(x => x.unfreeze());
-		}
+		this.freezed = false;
 	}
 
 }

@@ -47,14 +47,6 @@ export class MenuListPanel extends EmittableGroup {
 		parent.add(this);
 	}
 
-	freeze() {
-		this.items.forEach(x => x.freezed = true);
-	}
-
-	unfreeze() {
-		this.items.forEach(x => x.freezed = false);
-	}
-
 }
 
 export class MenuListItem extends InteractiveMesh {

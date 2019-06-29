@@ -1,7 +1,9 @@
+import FreezableMesh from "./freezable.mesh";
+
 /* jshint esversion: 6 */
 /* global window, document */
 
-export default class EmittableMesh extends THREE.Mesh {
+export default class EmittableMesh extends FreezableMesh {
 
 	constructor(geometry, material) {
 		geometry = geometry || new THREE.BoxGeometry(5, 5, 5);
@@ -36,6 +38,12 @@ export default class EmittableMesh extends THREE.Mesh {
 			event.forEach(callback => {
 				// callback.call(this, data);
 				callback(data);
+			});
+		}
+		const broadcast = this.events.broadcast;
+		if (broadcast) {
+			broadcast.forEach(callback => {
+				callback(type, data);
 			});
 		}
 	}

@@ -3,6 +3,7 @@
 
 import { cm, mm, POINTER_RADIUS, TEST_ENABLED } from './const';
 import Emittable from './emittable';
+import Gamepads from './gamepads';
 import Menu from './menu';
 
 const GAMEPAD = {
@@ -14,7 +15,7 @@ export default class Controllers extends Emittable {
 
 	constructor(renderer, scene, pivot) {
 		super();
-		this.gamepads = {};
+		this.gamepads_ = {};
 		this.renderer = renderer;
 		this.scene = scene;
 		this.pivot = pivot;
@@ -45,6 +46,16 @@ export default class Controllers extends Emittable {
 			});
 		}
 		const text = this.text = this.addText(pivot);
+		const gamepads = this.gamepads = new Gamepads();
+		gamepads.on('press', (button) => {
+			this.setText(`press ${button.gamepad.hand} ${button.index}`);
+		});
+		gamepads.on('release', (button) => {
+			this.setText(`release ${button.gamepad.hand} ${button.index}`);
+		});
+		gamepads.on('axis', (axis) => {
+			this.setText(`axis ${axis.gamepad.hand} ${axis.index} { x:${axis.x}, y:${axis.y} }`);
+		});
 	}
 
 	onMenuDown(event) {
@@ -71,7 +82,6 @@ export default class Controllers extends Emittable {
 				this.menu.appear(panel);
 			}
 		}
-
 	}
 
 	hapticFeedback() {
@@ -139,7 +149,7 @@ export default class Controllers extends Emittable {
 						// this.menu.next();
 						break;
 				}
-				this.setText((gamepad ? gamepad.id : '') + ' ' + String(id));
+				// this.setText((gamepad ? gamepad.id : '') + ' ' + String(id));
 				this.isControllerSelecting = true;
 				this.isControllerSelectionDirty = true;
 			}
@@ -172,7 +182,7 @@ export default class Controllers extends Emittable {
 			if (this.right.button !== id) {
 				this.right.button = id;
 				// 1 front, 2 side, 3 A, 4 B, 5?
-				this.setText((gamepad ? gamepad.id : '') + ' ' + String(id));
+				// this.setText((gamepad ? gamepad.id : '') + ' ' + String(id));
 				this.isControllerSelecting = true;
 				this.isControllerSelectionDirty = true;
 			}
@@ -307,53 +317,12 @@ export default class Controllers extends Emittable {
 		loader.load('fonts/helvetiker_regular.typeface.json', (font) => {
 			this.font = font;
 			const material = new THREE.MeshBasicMaterial({
-				color: 0x33c5f6,
+				color: 0x111111, // 0x33c5f6,
 				transparent: true,
 				opacity: 1,
 				side: THREE.DoubleSide
 			});
 			this.fontMaterial = material;
-			/*
-			const shapes = font.generateShapes('0', 10);
-			const geometry = new THREE.ShapeBufferGeometry(shapes);
-			geometry.dynamic = true;
-			geometry.computeBoundingBox();
-			const x = -0.5 * (geometry.boundingBox.max.x - geometry.boundingBox.min.x);
-			geometry.translate(x, 5, -80);
-			// make shape ( N.B. edge view not visible )
-			const text = new THREE.Mesh(geometry, material);
-			// text.position.set(-10000, -10000, -10000);
-			this.text = text;
-			parent.add(text);
-			*/
-			/*
-			// make line shape ( N.B. edge view remains visible )
-			const matDark = new THREE.LineBasicMaterial({
-				color: color,
-				side: THREE.DoubleSide
-			});
-			const holeShapes = [];
-			for (let i = 0; i < shapes.length; i++) {
-				const shape = shapes[i];
-				if (shape.holes && shape.holes.length > 0) {
-					for (let j = 0; j < shape.holes.length; j++) {
-						const hole = shape.holes[j];
-						holeShapes.push(hole);
-					}
-				}
-			}
-			shapes.push.apply(shapes, holeShapes);
-			const lineText = new THREE.Object3D();
-			for (let i = 0; i < shapes.length; i++) {
-				const shape = shapes[i];
-				const points = shape.getPoints();
-				const geometry = new THREE.BufferGeometry().setFromPoints(points);
-				geometry.translate(xMid, 0, 0);
-				const lineMesh = new THREE.Line(geometry, matDark);
-				lineText.add(lineMesh);
-			}
-			parent.add(lineText);
-			*/
 		});
 	}
 
@@ -365,31 +334,18 @@ export default class Controllers extends Emittable {
 		}
 		const shapes = this.font.generateShapes(message, 5);
 		const geometry = new THREE.ShapeBufferGeometry(shapes);
-		// geometry.dynamic = true;
 		geometry.computeBoundingBox();
 		const x = -0.5 * (geometry.boundingBox.max.x - geometry.boundingBox.min.x);
 		geometry.translate(x, 0, 0);
-		// make shape ( N.B. edge view not visible )
 		const text = new THREE.Mesh(geometry, this.fontMaterial);
 		text.position.set(0, 0, -POINTER_RADIUS);
 		this.text = text;
 		this.pivot.add(text);
-		/*
-		const shapes = this.font.generateShapes(message, 10);
-		const geometry = new THREE.ShapeBufferGeometry(shapes);
-		geometry.computeBoundingBox();
-		const x = -0.5 * (geometry.boundingBox.max.x - geometry.boundingBox.min.x);
-		const text = this.text;
-		text.geometry.copy(geometry);
-		text.geometry.translate(x, 0, 0);
-		// text.geometry.position.needsUpdate = true;
-		geometry.dispose();
-		*/
 	}
 
 	findGamepad_(id) {
 		// !!! fix
-		let gamepad = this.gamepads[id];
+		let gamepad = this.gamepads_[id];
 		if (gamepad) {
 			return gamepad;
 		}
@@ -406,7 +362,7 @@ export default class Controllers extends Emittable {
 					gamepad.id.startsWith('Spatial Controller')
 				)) {
 				if (j === id) {
-					this.gamepads[id] = gamepad;
+					this.gamepads_[id] = gamepad;
 					return gamepad;
 				}
 				j++;
@@ -414,41 +370,4 @@ export default class Controllers extends Emittable {
 		}
 	}
 
-	/*
-	testController() {
-		if (TEST_ENABLED) {
-			if (this.controller) {
-				this.controller.position.x = this.mouse.x * 50;
-				this.controller.position.y = this.mouse.y * 50;
-			}
-			this.updateController();
-		}
-	}
-	*/
-
-	/*
-	// axes
-	function gameLoop() {
-		if(navigator.webkitGetGamepads) {
-			var gp = navigator.webkitGetGamepads()[0];
-		} else {
-			var gp = navigator.getGamepads()[0];
-		}
-
-		if(gp.axes[0] != 0) {
-			b -= gp.axes[0];
-		} else if(gp.axes[1] != 0) {
-			a += gp.axes[1];
-		} else if(gp.axes[2] != 0) {
-			b += gp.axes[2];
-		} else if(gp.axes[3] != 0) {
-			a -= gp.axes[3];
-		}
-
-		ball.style.left = a*2 + "px";
-		ball.style.top = b*2 + "px";
-
-		var start = rAF(gameLoop);
-	};
-	*/
 }

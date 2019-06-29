@@ -30,6 +30,12 @@ export default class Emittable {
 				callback(data);
 			});
 		}
+		const broadcast = this.events.broadcast;
+		if (broadcast) {
+			broadcast.forEach(callback => {
+				callback(type, data);
+			});
+		}
 	}
 
 }

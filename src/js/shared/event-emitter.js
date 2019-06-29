@@ -23,6 +23,12 @@ export default class EventEmitter {
 				callback(data);
 			});
 		}
+		const broadcast = this.events.broadcast;
+		if (broadcast) {
+			broadcast.forEach(callback => {
+				callback(type, data);
+			});
+		}
 	}
 
 }

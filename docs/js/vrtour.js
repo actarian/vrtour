@@ -9043,64 +9043,6 @@ exports.default = DragListener;
 Object.defineProperty(exports, "__esModule", {
   value: true
 });
-exports.default = void 0;
-
-function _classCallCheck(instance, Constructor) { if (!(instance instanceof Constructor)) { throw new TypeError("Cannot call a class as a function"); } }
-
-function _defineProperties(target, props) { for (var i = 0; i < props.length; i++) { var descriptor = props[i]; descriptor.enumerable = descriptor.enumerable || false; descriptor.configurable = true; if ("value" in descriptor) descriptor.writable = true; Object.defineProperty(target, descriptor.key, descriptor); } }
-
-function _createClass(Constructor, protoProps, staticProps) { if (protoProps) _defineProperties(Constructor.prototype, protoProps); if (staticProps) _defineProperties(Constructor, staticProps); return Constructor; }
-
-/* jshint esversion: 6 */
-
-/* global window, document */
-var EventEmitter =
-/*#__PURE__*/
-function () {
-  function EventEmitter() {
-    _classCallCheck(this, EventEmitter);
-
-    this.events = {};
-  }
-
-  _createClass(EventEmitter, [{
-    key: "addListener",
-    value: function addListener(type, callback) {
-      var _this = this;
-
-      var event = this.events[type] = this.events[type] || [];
-      event.push(callback);
-      return function () {
-        _this.events[type] = event.filter(function (x) {
-          return x !== callback;
-        });
-      };
-    }
-  }, {
-    key: "emit",
-    value: function emit(type, data) {
-      var event = this.events[type];
-
-      if (event) {
-        event.forEach(function (callback) {
-          // callback.call(this, data);
-          callback(data);
-        });
-      }
-    }
-  }]);
-
-  return EventEmitter;
-}();
-
-exports.default = EventEmitter;
-
-},{}],4:[function(require,module,exports){
-"use strict";
-
-Object.defineProperty(exports, "__esModule", {
-  value: true
-});
 exports.cm = cm;
 exports.mm = mm;
 exports.addCube = addCube;
@@ -9109,7 +9051,7 @@ exports.ORIGIN = exports.POINTER_RADIUS = exports.POINT_RADIUS = exports.PANEL_R
 /* jshint esversion: 6 */
 
 /* global window, document */
-var TEST_ENABLED = false;
+var TEST_ENABLED = true;
 exports.TEST_ENABLED = TEST_ENABLED;
 var ROOM_RADIUS = 200;
 exports.ROOM_RADIUS = ROOM_RADIUS;
@@ -9145,7 +9087,7 @@ THREE.Euler.prototype.add = function (euler) {
   return this;
 };
 
-},{}],5:[function(require,module,exports){
+},{}],4:[function(require,module,exports){
 "use strict";
 
 Object.defineProperty(exports, "__esModule", {
@@ -9156,6 +9098,8 @@ exports.default = void 0;
 var _const = require("./const");
 
 var _emittable = _interopRequireDefault(require("./emittable"));
+
+var _gamepads = _interopRequireDefault(require("./gamepads"));
 
 var _menu2 = _interopRequireDefault(require("./menu"));
 
@@ -9195,7 +9139,7 @@ function (_Emittable) {
     _classCallCheck(this, Controllers);
 
     _this = _possibleConstructorReturn(this, _getPrototypeOf(Controllers).call(this));
-    _this.gamepads = {};
+    _this.gamepads_ = {};
     _this.renderer = renderer;
     _this.scene = scene;
     _this.pivot = pivot;
@@ -9233,6 +9177,16 @@ function (_Emittable) {
 
     var text = _this.text = _this.addText(pivot);
 
+    var gamepads = _this.gamepads = new _gamepads.default();
+    gamepads.on('press', function (button) {
+      _this.setText("press ".concat(button.gamepad.hand, " ").concat(button.index));
+    });
+    gamepads.on('release', function (button) {
+      _this.setText("release ".concat(button.gamepad.hand, " ").concat(button.index));
+    });
+    gamepads.on('axis', function (axis) {
+      _this.setText("axis ".concat(axis.gamepad.hand, " ").concat(axis.index, " { x:").concat(axis.x, ", y:").concat(axis.y, " }"));
+    });
     return _this;
   }
 
@@ -9352,9 +9306,9 @@ function (_Emittable) {
             case 3:
               // this.menu.next();
               break;
-          }
+          } // this.setText((gamepad ? gamepad.id : '') + ' ' + String(id));
 
-          this.setText((gamepad ? gamepad.id : '') + ' ' + String(id));
+
           this.isControllerSelecting = true;
           this.isControllerSelectionDirty = true;
         }
@@ -9391,8 +9345,8 @@ function (_Emittable) {
       try {
         if (this.right.button !== id) {
           this.right.button = id; // 1 front, 2 side, 3 A, 4 B, 5?
+          // this.setText((gamepad ? gamepad.id : '') + ' ' + String(id));
 
-          this.setText((gamepad ? gamepad.id : '') + ' ' + String(id));
           this.isControllerSelecting = true;
           this.isControllerSelectionDirty = true;
         }
@@ -9536,54 +9490,13 @@ function (_Emittable) {
       loader.load('fonts/helvetiker_regular.typeface.json', function (font) {
         _this3.font = font;
         var material = new THREE.MeshBasicMaterial({
-          color: 0x33c5f6,
+          color: 0x111111,
+          // 0x33c5f6,
           transparent: true,
           opacity: 1,
           side: THREE.DoubleSide
         });
         _this3.fontMaterial = material;
-        /*
-        const shapes = font.generateShapes('0', 10);
-        const geometry = new THREE.ShapeBufferGeometry(shapes);
-        geometry.dynamic = true;
-        geometry.computeBoundingBox();
-        const x = -0.5 * (geometry.boundingBox.max.x - geometry.boundingBox.min.x);
-        geometry.translate(x, 5, -80);
-        // make shape ( N.B. edge view not visible )
-        const text = new THREE.Mesh(geometry, material);
-        // text.position.set(-10000, -10000, -10000);
-        this.text = text;
-        parent.add(text);
-        */
-
-        /*
-        // make line shape ( N.B. edge view remains visible )
-        const matDark = new THREE.LineBasicMaterial({
-        	color: color,
-        	side: THREE.DoubleSide
-        });
-        const holeShapes = [];
-        for (let i = 0; i < shapes.length; i++) {
-        	const shape = shapes[i];
-        	if (shape.holes && shape.holes.length > 0) {
-        		for (let j = 0; j < shape.holes.length; j++) {
-        			const hole = shape.holes[j];
-        			holeShapes.push(hole);
-        		}
-        	}
-        }
-        shapes.push.apply(shapes, holeShapes);
-        const lineText = new THREE.Object3D();
-        for (let i = 0; i < shapes.length; i++) {
-        	const shape = shapes[i];
-        	const points = shape.getPoints();
-        	const geometry = new THREE.BufferGeometry().setFromPoints(points);
-        	geometry.translate(xMid, 0, 0);
-        	const lineMesh = new THREE.Line(geometry, matDark);
-        	lineText.add(lineMesh);
-        }
-        parent.add(lineText);
-        */
       });
     }
   }, {
@@ -9597,33 +9510,20 @@ function (_Emittable) {
       }
 
       var shapes = this.font.generateShapes(message, 5);
-      var geometry = new THREE.ShapeBufferGeometry(shapes); // geometry.dynamic = true;
-
+      var geometry = new THREE.ShapeBufferGeometry(shapes);
       geometry.computeBoundingBox();
       var x = -0.5 * (geometry.boundingBox.max.x - geometry.boundingBox.min.x);
-      geometry.translate(x, 0, 0); // make shape ( N.B. edge view not visible )
-
+      geometry.translate(x, 0, 0);
       var text = new THREE.Mesh(geometry, this.fontMaterial);
       text.position.set(0, 0, -_const.POINTER_RADIUS);
       this.text = text;
       this.pivot.add(text);
-      /*
-      const shapes = this.font.generateShapes(message, 10);
-      const geometry = new THREE.ShapeBufferGeometry(shapes);
-      geometry.computeBoundingBox();
-      const x = -0.5 * (geometry.boundingBox.max.x - geometry.boundingBox.min.x);
-      const text = this.text;
-      text.geometry.copy(geometry);
-      text.geometry.translate(x, 0, 0);
-      // text.geometry.position.needsUpdate = true;
-      geometry.dispose();
-      */
     }
   }, {
     key: "findGamepad_",
     value: function findGamepad_(id) {
       // !!! fix
-      var gamepad = this.gamepads[id];
+      var gamepad = this.gamepads_[id];
 
       if (gamepad) {
         return gamepad;
@@ -9640,7 +9540,7 @@ function (_Emittable) {
 
         if (gamepad && (gamepad.id === 'Daydream Controller' || gamepad.id === 'Gear VR Controller' || gamepad.id === 'Oculus Go Controller' || gamepad.id === 'OpenVR Gamepad' || gamepad.id.startsWith('Oculus Touch') || gamepad.id.startsWith('Spatial Controller'))) {
           if (j === id) {
-            this.gamepads[id] = gamepad;
+            this.gamepads_[id] = gamepad;
             return gamepad;
           }
 
@@ -9648,41 +9548,6 @@ function (_Emittable) {
         }
       }
     }
-    /*
-    testController() {
-    	if (TEST_ENABLED) {
-    		if (this.controller) {
-    			this.controller.position.x = this.mouse.x * 50;
-    			this.controller.position.y = this.mouse.y * 50;
-    		}
-    		this.updateController();
-    	}
-    }
-    */
-
-    /*
-    // axes
-    function gameLoop() {
-    	if(navigator.webkitGetGamepads) {
-    		var gp = navigator.webkitGetGamepads()[0];
-    	} else {
-    		var gp = navigator.getGamepads()[0];
-    	}
-    		if(gp.axes[0] != 0) {
-    		b -= gp.axes[0];
-    	} else if(gp.axes[1] != 0) {
-    		a += gp.axes[1];
-    	} else if(gp.axes[2] != 0) {
-    		b += gp.axes[2];
-    	} else if(gp.axes[3] != 0) {
-    		a -= gp.axes[3];
-    	}
-    		ball.style.left = a*2 + "px";
-    	ball.style.top = b*2 + "px";
-    		var start = rAF(gameLoop);
-    };
-    */
-
   }]);
 
   return Controllers;
@@ -9690,13 +9555,17 @@ function (_Emittable) {
 
 exports.default = Controllers;
 
-},{"./const":4,"./emittable":7,"./menu":10}],6:[function(require,module,exports){
+},{"./const":3,"./emittable":6,"./gamepads":10,"./menu":12}],5:[function(require,module,exports){
 "use strict";
 
 Object.defineProperty(exports, "__esModule", {
   value: true
 });
 exports.default = void 0;
+
+var _freezable = _interopRequireDefault(require("./freezable.group"));
+
+function _interopRequireDefault(obj) { return obj && obj.__esModule ? obj : { default: obj }; }
 
 function _typeof(obj) { if (typeof Symbol === "function" && typeof Symbol.iterator === "symbol") { _typeof = function _typeof(obj) { return typeof obj; }; } else { _typeof = function _typeof(obj) { return obj && typeof Symbol === "function" && obj.constructor === Symbol && obj !== Symbol.prototype ? "symbol" : typeof obj; }; } return _typeof(obj); }
 
@@ -9721,16 +9590,15 @@ function _setPrototypeOf(o, p) { _setPrototypeOf = Object.setPrototypeOf || func
 /* global window, document */
 var EmittableGroup =
 /*#__PURE__*/
-function (_THREE$Group) {
-  _inherits(EmittableGroup, _THREE$Group);
+function (_FreezableGroup) {
+  _inherits(EmittableGroup, _FreezableGroup);
 
   function EmittableGroup() {
     var _this;
 
     _classCallCheck(this, EmittableGroup);
 
-    _this = _possibleConstructorReturn(this, _getPrototypeOf(EmittableGroup).call(this)); // this.renderOrder = 10;
-
+    _this = _possibleConstructorReturn(this, _getPrototypeOf(EmittableGroup).call(this));
     _this.events = {};
     return _this;
   }
@@ -9770,15 +9638,23 @@ function (_THREE$Group) {
           callback(data);
         });
       }
+
+      var broadcast = this.events.broadcast;
+
+      if (broadcast) {
+        broadcast.forEach(function (callback) {
+          callback(type, data);
+        });
+      }
     }
   }]);
 
   return EmittableGroup;
-}(THREE.Group);
+}(_freezable.default);
 
 exports.default = EmittableGroup;
 
-},{}],7:[function(require,module,exports){
+},{"./freezable.group":8}],6:[function(require,module,exports){
 "use strict";
 
 Object.defineProperty(exports, "__esModule", {
@@ -9839,6 +9715,14 @@ function () {
           callback(data);
         });
       }
+
+      var broadcast = this.events.broadcast;
+
+      if (broadcast) {
+        broadcast.forEach(function (callback) {
+          callback(type, data);
+        });
+      }
     }
   }]);
 
@@ -9847,13 +9731,17 @@ function () {
 
 exports.default = Emittable;
 
-},{}],8:[function(require,module,exports){
+},{}],7:[function(require,module,exports){
 "use strict";
 
 Object.defineProperty(exports, "__esModule", {
   value: true
 });
 exports.default = void 0;
+
+var _freezable = _interopRequireDefault(require("./freezable.mesh"));
+
+function _interopRequireDefault(obj) { return obj && obj.__esModule ? obj : { default: obj }; }
 
 function _typeof(obj) { if (typeof Symbol === "function" && typeof Symbol.iterator === "symbol") { _typeof = function _typeof(obj) { return typeof obj; }; } else { _typeof = function _typeof(obj) { return obj && typeof Symbol === "function" && obj.constructor === Symbol && obj !== Symbol.prototype ? "symbol" : typeof obj; }; } return _typeof(obj); }
 
@@ -9878,8 +9766,8 @@ function _setPrototypeOf(o, p) { _setPrototypeOf = Object.setPrototypeOf || func
 /* global window, document */
 var EmittableMesh =
 /*#__PURE__*/
-function (_THREE$Mesh) {
-  _inherits(EmittableMesh, _THREE$Mesh);
+function (_FreezableMesh) {
+  _inherits(EmittableMesh, _FreezableMesh);
 
   function EmittableMesh(geometry, material) {
     var _this;
@@ -9933,15 +9821,527 @@ function (_THREE$Mesh) {
           callback(data);
         });
       }
+
+      var broadcast = this.events.broadcast;
+
+      if (broadcast) {
+        broadcast.forEach(function (callback) {
+          callback(type, data);
+        });
+      }
     }
   }]);
 
   return EmittableMesh;
-}(THREE.Mesh);
+}(_freezable.default);
 
 exports.default = EmittableMesh;
 
+},{"./freezable.mesh":9}],8:[function(require,module,exports){
+"use strict";
+
+Object.defineProperty(exports, "__esModule", {
+  value: true
+});
+exports.default = void 0;
+
+function _typeof(obj) { if (typeof Symbol === "function" && typeof Symbol.iterator === "symbol") { _typeof = function _typeof(obj) { return typeof obj; }; } else { _typeof = function _typeof(obj) { return obj && typeof Symbol === "function" && obj.constructor === Symbol && obj !== Symbol.prototype ? "symbol" : typeof obj; }; } return _typeof(obj); }
+
+function _classCallCheck(instance, Constructor) { if (!(instance instanceof Constructor)) { throw new TypeError("Cannot call a class as a function"); } }
+
+function _possibleConstructorReturn(self, call) { if (call && (_typeof(call) === "object" || typeof call === "function")) { return call; } return _assertThisInitialized(self); }
+
+function _assertThisInitialized(self) { if (self === void 0) { throw new ReferenceError("this hasn't been initialised - super() hasn't been called"); } return self; }
+
+function _getPrototypeOf(o) { _getPrototypeOf = Object.setPrototypeOf ? Object.getPrototypeOf : function _getPrototypeOf(o) { return o.__proto__ || Object.getPrototypeOf(o); }; return _getPrototypeOf(o); }
+
+function _defineProperties(target, props) { for (var i = 0; i < props.length; i++) { var descriptor = props[i]; descriptor.enumerable = descriptor.enumerable || false; descriptor.configurable = true; if ("value" in descriptor) descriptor.writable = true; Object.defineProperty(target, descriptor.key, descriptor); } }
+
+function _createClass(Constructor, protoProps, staticProps) { if (protoProps) _defineProperties(Constructor.prototype, protoProps); if (staticProps) _defineProperties(Constructor, staticProps); return Constructor; }
+
+function _inherits(subClass, superClass) { if (typeof superClass !== "function" && superClass !== null) { throw new TypeError("Super expression must either be null or a function"); } subClass.prototype = Object.create(superClass && superClass.prototype, { constructor: { value: subClass, writable: true, configurable: true } }); if (superClass) _setPrototypeOf(subClass, superClass); }
+
+function _setPrototypeOf(o, p) { _setPrototypeOf = Object.setPrototypeOf || function _setPrototypeOf(o, p) { o.__proto__ = p; return o; }; return _setPrototypeOf(o, p); }
+
+/* jshint esversion: 6 */
+
+/* global window, document */
+var FreezableGroup =
+/*#__PURE__*/
+function (_THREE$Group) {
+  _inherits(FreezableGroup, _THREE$Group);
+
+  _createClass(FreezableGroup, [{
+    key: "freezed",
+    get: function get() {
+      return this.freezed_;
+    },
+    set: function set(freezed) {
+      if (this.freezed_ !== freezed) {
+        this.freezed_ = freezed;
+        this.children.filter(function (x) {
+          return x.hasOwnProperty('freezed');
+        }).forEach(function (x) {
+          return x.freezed = freezed;
+        });
+      }
+    }
+  }]);
+
+  function FreezableGroup() {
+    var _this;
+
+    _classCallCheck(this, FreezableGroup);
+
+    _this = _possibleConstructorReturn(this, _getPrototypeOf(FreezableGroup).call(this));
+    _this.freezed = false;
+    return _this;
+  }
+
+  _createClass(FreezableGroup, [{
+    key: "freeze",
+    value: function freeze() {
+      this.freezed = true;
+    }
+  }, {
+    key: "unfreeze",
+    value: function unfreeze() {
+      this.freezed = false;
+    }
+  }]);
+
+  return FreezableGroup;
+}(THREE.Group);
+
+exports.default = FreezableGroup;
+
 },{}],9:[function(require,module,exports){
+"use strict";
+
+Object.defineProperty(exports, "__esModule", {
+  value: true
+});
+exports.default = void 0;
+
+function _typeof(obj) { if (typeof Symbol === "function" && typeof Symbol.iterator === "symbol") { _typeof = function _typeof(obj) { return typeof obj; }; } else { _typeof = function _typeof(obj) { return obj && typeof Symbol === "function" && obj.constructor === Symbol && obj !== Symbol.prototype ? "symbol" : typeof obj; }; } return _typeof(obj); }
+
+function _classCallCheck(instance, Constructor) { if (!(instance instanceof Constructor)) { throw new TypeError("Cannot call a class as a function"); } }
+
+function _possibleConstructorReturn(self, call) { if (call && (_typeof(call) === "object" || typeof call === "function")) { return call; } return _assertThisInitialized(self); }
+
+function _assertThisInitialized(self) { if (self === void 0) { throw new ReferenceError("this hasn't been initialised - super() hasn't been called"); } return self; }
+
+function _getPrototypeOf(o) { _getPrototypeOf = Object.setPrototypeOf ? Object.getPrototypeOf : function _getPrototypeOf(o) { return o.__proto__ || Object.getPrototypeOf(o); }; return _getPrototypeOf(o); }
+
+function _defineProperties(target, props) { for (var i = 0; i < props.length; i++) { var descriptor = props[i]; descriptor.enumerable = descriptor.enumerable || false; descriptor.configurable = true; if ("value" in descriptor) descriptor.writable = true; Object.defineProperty(target, descriptor.key, descriptor); } }
+
+function _createClass(Constructor, protoProps, staticProps) { if (protoProps) _defineProperties(Constructor.prototype, protoProps); if (staticProps) _defineProperties(Constructor, staticProps); return Constructor; }
+
+function _inherits(subClass, superClass) { if (typeof superClass !== "function" && superClass !== null) { throw new TypeError("Super expression must either be null or a function"); } subClass.prototype = Object.create(superClass && superClass.prototype, { constructor: { value: subClass, writable: true, configurable: true } }); if (superClass) _setPrototypeOf(subClass, superClass); }
+
+function _setPrototypeOf(o, p) { _setPrototypeOf = Object.setPrototypeOf || function _setPrototypeOf(o, p) { o.__proto__ = p; return o; }; return _setPrototypeOf(o, p); }
+
+/* jshint esversion: 6 */
+
+/* global window, document */
+var FreezableMesh =
+/*#__PURE__*/
+function (_THREE$Mesh) {
+  _inherits(FreezableMesh, _THREE$Mesh);
+
+  _createClass(FreezableMesh, [{
+    key: "freezed",
+    get: function get() {
+      return this.freezed_;
+    },
+    set: function set(freezed) {
+      if (this.freezed_ !== freezed) {
+        this.freezed_ = freezed;
+        this.children.filter(function (x) {
+          return x.hasOwnProperty('freezed');
+        }).forEach(function (x) {
+          return x.freezed = freezed;
+        });
+      }
+    }
+  }]);
+
+  function FreezableMesh(geometry, material) {
+    var _this;
+
+    _classCallCheck(this, FreezableMesh);
+
+    geometry = geometry || new THREE.BoxGeometry(5, 5, 5);
+    material = material || new THREE.MeshBasicMaterial({
+      color: 0xff00ff // opacity: 1,
+      // transparent: true,
+
+    });
+    _this = _possibleConstructorReturn(this, _getPrototypeOf(FreezableMesh).call(this, geometry, material));
+    _this.freezed = false;
+    return _this;
+  }
+
+  _createClass(FreezableMesh, [{
+    key: "freeze",
+    value: function freeze() {
+      this.freezed = true;
+    }
+  }, {
+    key: "unfreeze",
+    value: function unfreeze() {
+      this.freezed = false;
+    }
+  }]);
+
+  return FreezableMesh;
+}(THREE.Mesh);
+
+exports.default = FreezableMesh;
+
+},{}],10:[function(require,module,exports){
+"use strict";
+
+Object.defineProperty(exports, "__esModule", {
+  value: true
+});
+exports.GamepadAxis = exports.GamepadButton = exports.Gamepad = exports.GAMEPAD = exports.GAMEPAD_MODELS = exports.GAMEPAD_HANDS = exports.default = exports.SUPPORTED_REGEXP = exports.SUPPORTED_GAMEPADS = void 0;
+
+var _emittable = _interopRequireDefault(require("./emittable"));
+
+function _interopRequireDefault(obj) { return obj && obj.__esModule ? obj : { default: obj }; }
+
+function _typeof(obj) { if (typeof Symbol === "function" && typeof Symbol.iterator === "symbol") { _typeof = function _typeof(obj) { return typeof obj; }; } else { _typeof = function _typeof(obj) { return obj && typeof Symbol === "function" && obj.constructor === Symbol && obj !== Symbol.prototype ? "symbol" : typeof obj; }; } return _typeof(obj); }
+
+function _classCallCheck(instance, Constructor) { if (!(instance instanceof Constructor)) { throw new TypeError("Cannot call a class as a function"); } }
+
+function _possibleConstructorReturn(self, call) { if (call && (_typeof(call) === "object" || typeof call === "function")) { return call; } return _assertThisInitialized(self); }
+
+function _getPrototypeOf(o) { _getPrototypeOf = Object.setPrototypeOf ? Object.getPrototypeOf : function _getPrototypeOf(o) { return o.__proto__ || Object.getPrototypeOf(o); }; return _getPrototypeOf(o); }
+
+function _assertThisInitialized(self) { if (self === void 0) { throw new ReferenceError("this hasn't been initialised - super() hasn't been called"); } return self; }
+
+function _defineProperties(target, props) { for (var i = 0; i < props.length; i++) { var descriptor = props[i]; descriptor.enumerable = descriptor.enumerable || false; descriptor.configurable = true; if ("value" in descriptor) descriptor.writable = true; Object.defineProperty(target, descriptor.key, descriptor); } }
+
+function _createClass(Constructor, protoProps, staticProps) { if (protoProps) _defineProperties(Constructor.prototype, protoProps); if (staticProps) _defineProperties(Constructor, staticProps); return Constructor; }
+
+function _inherits(subClass, superClass) { if (typeof superClass !== "function" && superClass !== null) { throw new TypeError("Super expression must either be null or a function"); } subClass.prototype = Object.create(superClass && superClass.prototype, { constructor: { value: subClass, writable: true, configurable: true } }); if (superClass) _setPrototypeOf(subClass, superClass); }
+
+function _setPrototypeOf(o, p) { _setPrototypeOf = Object.setPrototypeOf || function _setPrototypeOf(o, p) { o.__proto__ = p; return o; }; return _setPrototypeOf(o, p); }
+
+var SUPPORTED_GAMEPADS = ['Gear VR Controller', 'Daydream Controller', 'Oculus Go Controller', 'OpenVR Gamepad', 'Oculus Touch', 'Spatial Controller'];
+exports.SUPPORTED_GAMEPADS = SUPPORTED_GAMEPADS;
+var SUPPORTED_REGEXP = new RegExp("/^(".concat(SUPPORTED_GAMEPADS.join('|'), ")/"), 'i');
+exports.SUPPORTED_REGEXP = SUPPORTED_REGEXP;
+
+var Gamepads =
+/*#__PURE__*/
+function (_Emittable) {
+  _inherits(Gamepads, _Emittable);
+
+  _createClass(Gamepads, null, [{
+    key: "get",
+    value: function get() {
+      return typeof navigator.getGamepads === 'function' ? navigator.getGamepads() : [];
+    }
+  }, {
+    key: "isSupported",
+    value: function isSupported(id) {
+      return SUPPORTED_REGEXP.match(id);
+    }
+  }]);
+
+  function Gamepads() {
+    var _this;
+
+    _classCallCheck(this, Gamepads);
+
+    _this = _possibleConstructorReturn(this, _getPrototypeOf(Gamepads).call(this));
+    _this.gamepads = {};
+    _this.hands = {};
+    var gamepads = Gamepads.get();
+
+    for (var i = 0; i < gamepads.length; i++) {
+      _this.connect(gamepads[i]);
+    }
+
+    _this.onConnect = function (event) {
+      _this.connect(event.gamepad);
+    };
+
+    _this.onDisconnect = function (event) {
+      _this.disconnect(event.gamepad);
+    };
+
+    _this.onEvent = _this.onEvent.bind(_assertThisInitialized(_this));
+
+    _this.addListeners();
+
+    return _this;
+  }
+
+  _createClass(Gamepads, [{
+    key: "connect",
+    value: function connect(gamepad) {
+      // Note: gamepad === navigator.getGamepads()[gamepad.index]
+      if (gamepad) {
+        var id = gamepad.id;
+
+        if (Gamepads.isSupported(id)) {
+          var index = gamepad.index;
+          gamepad = this.gamepads[index] ? this.gamepads[index] : this.gamepads[index] = new Gamepad(gamepad);
+          this.hands[gamepad.hand] = gamepad;
+          this.emit('connect', gamepad);
+          gamepad.on('broadcast', this.onEvent);
+        }
+      }
+    }
+  }, {
+    key: "disconnect",
+    value: function disconnect(gamepad) {
+      // Note: gamepad === navigator.getGamepads()[gamepad.index]
+      var id = gamepad.id;
+
+      if (Gamepads.isSupported(id)) {
+        var index = _gamepad.index;
+
+        var _gamepad = this.gamepads[index] || _gamepad;
+
+        if (_gamepad instanceof Gamepad) {
+          _gamepad.off('broadcast', this.onEvent);
+
+          _gamepad.destroy();
+        }
+
+        delete this.gamepads[_gamepad.index];
+        delete this.hands[_gamepad.hand];
+        this.emit('disconnect', _gamepad);
+      }
+    }
+  }, {
+    key: "onEvent",
+    value: function onEvent(type, event) {
+      this.emit(type, event);
+    }
+  }, {
+    key: "addListeners",
+    value: function addListeners() {
+      window.addEventListener("gamepadconnected", this.onConnect, false);
+      window.addEventListener("gamepaddisconnected", this.onDisconnect, false);
+    }
+  }, {
+    key: "removeListeners",
+    value: function removeListeners() {
+      window.removeEventListener("gamepadconnected", this.onConnect, false);
+      window.removeEventListener("gamepaddisconnected", this.onDisconnect, false);
+    }
+  }, {
+    key: "update",
+    value: function update() {
+      Object.keys(this.gamepads).forEach(function (x) {
+        return x.update();
+      });
+    }
+  }, {
+    key: "destroy",
+    value: function destroy() {
+      this.removeListeners();
+      Object.keys(this.gamepads).forEach(function (x) {
+        return x.destroy();
+      });
+      this.gamepads = null;
+    }
+  }]);
+
+  return Gamepads;
+}(_emittable.default);
+
+exports.default = Gamepads;
+var GAMEPAD_HANDS = {
+  NONE: 'none',
+  LEFT: 'left',
+  RIGHT: 'right'
+};
+exports.GAMEPAD_HANDS = GAMEPAD_HANDS;
+var GAMEPAD_MODELS = {
+  OCULUS_TOUCH: 0
+};
+exports.GAMEPAD_MODELS = GAMEPAD_MODELS;
+var GAMEPAD = {
+  RIGHT: 0,
+  LEFT: 1,
+  NONE: 3
+};
+exports.GAMEPAD = GAMEPAD;
+
+var Gamepad =
+/*#__PURE__*/
+function (_Emittable2) {
+  _inherits(Gamepad, _Emittable2);
+
+  function Gamepad(gamepad) {
+    var _this2;
+
+    _classCallCheck(this, Gamepad);
+
+    _this2.index = gamempad.index;
+    _this2.id = gamempad.id;
+    _this2.hand = _this2.getHand();
+    _this2.type = _this2.getType();
+    _this2.gamepad = gamepad;
+    _this2.buttons = {};
+    _this2.axes = {};
+    return _possibleConstructorReturn(_this2);
+  }
+
+  _createClass(Gamepad, [{
+    key: "getHand",
+    value: function getHand() {
+      if (this.id.match(/(\sleft)/i)) {
+        return GAMEPAD_HANDS.LEFT;
+      } else if (this.id.match(/(\sright)/i)) {
+        return GAMEPAD_HANDS.RIGHT;
+      } else {
+        return GAMEPAD_HANDS.NONE;
+      }
+    }
+  }, {
+    key: "getType",
+    value: function getType() {
+      return this.id; // !!!
+    }
+  }, {
+    key: "update",
+    value: function update() {
+      this.updateButtons();
+      this.updateAxes();
+    }
+  }, {
+    key: "updateButtons",
+    value: function updateButtons() {
+      var _this3 = this;
+
+      this.gamepad.buttons.forEach(function (x, i) {
+        var button = _this3.buttons[i] || (_this3.buttons[i] = new GamepadButton(i, _this3));
+
+        if (button.pressed !== x.pressed) {
+          button.pressed = x.pressed;
+
+          if (x.pressed) {
+            _this3.emit('press', button); // this.onPress(i);
+
+          } else if (status !== undefined) {
+            _this3.emit('release', button); // this.onRelease(i);
+
+          }
+        }
+      });
+    }
+  }, {
+    key: "updateAxes",
+    value: function updateAxes() {
+      var axes = this.gamepad.axes;
+
+      for (var i = 0; i < axes.length; i += 2) {
+        var index = Math.floor(i / 2);
+        var axis = this.axes[index] || (this.axes[index] = new GamepadAxis(index, this));
+        var x = axes[i];
+        var y = axes[i + 1];
+
+        if (axis.x !== x || axis.y !== y) {
+          axis.x = x;
+          axis.y = y;
+          this.emit('axis', axis);
+        }
+      }
+    }
+  }, {
+    key: "feedback",
+    value: function feedback() {
+      var strength = arguments.length > 0 && arguments[0] !== undefined ? arguments[0] : 0.1;
+      var duration = arguments.length > 1 && arguments[1] !== undefined ? arguments[1] : 50;
+      // !!! care for battery
+      var actuators = this.gamepad.hapticActuators;
+
+      if (actuators && actuators.length) {
+        return actuators[0].pulse(strength, duration);
+      } else {
+        return Promise.reject();
+      }
+    }
+  }, {
+    key: "destroy",
+    value: function destroy() {}
+  }, {
+    key: "onPress",
+    value: function onPress(id) {
+      if (this.button !== id) {
+        this.button = id; // 0 trigger, 1 front, 2 side, 3 Y, 4 X
+        // this.setText((gamepad ? gamepad.id : '') + ' ' + String(id));
+
+        this.down = true;
+        this.emit('down', id);
+      }
+      /*
+      if (this.controller !== this.left) {
+      	if (this.controller) {
+      		this.controller.remove(this.controller.indicator);
+      	}
+      	this.controller = this.left;
+      	this.controller.add(this.controller.indicator);
+      }
+      */
+
+    }
+  }, {
+    key: "onRelease",
+    value: function onRelease() {
+      if (this.button !== undefined) {
+        var id = this.button;
+        this.button = undefined;
+        this.down = false;
+        this.emit('up', id);
+      }
+    }
+  }]);
+
+  return Gamepad;
+}(_emittable.default);
+
+exports.Gamepad = Gamepad;
+
+var GamepadButton = function GamepadButton(index, gamepad) {
+  _classCallCheck(this, GamepadButton);
+
+  this.index = index;
+  this.gamempad = gamepad;
+  this.pressed = false;
+};
+
+exports.GamepadButton = GamepadButton;
+
+var GamepadAxis =
+/*#__PURE__*/
+function (_THREE$Vector) {
+  _inherits(GamepadAxis, _THREE$Vector);
+
+  function GamepadAxis(index, gamepad) {
+    var _this4;
+
+    _classCallCheck(this, GamepadAxis);
+
+    _this4 = _possibleConstructorReturn(this, _getPrototypeOf(GamepadAxis).call(this));
+    _this4.index = index;
+    _this4.gamempad = gamepad;
+    return _this4;
+  }
+
+  return GamepadAxis;
+}(THREE.Vector2);
+
+exports.GamepadAxis = GamepadAxis;
+
+},{"./emittable":6}],11:[function(require,module,exports){
 "use strict";
 
 Object.defineProperty(exports, "__esModule", {
@@ -10064,7 +10464,7 @@ function (_EmittableMesh) {
 exports.default = InteractiveMesh;
 InteractiveMesh.items = [];
 
-},{"./emittable.mesh":8}],10:[function(require,module,exports){
+},{"./emittable.mesh":7}],12:[function(require,module,exports){
 "use strict";
 
 Object.defineProperty(exports, "__esModule", {
@@ -10309,7 +10709,7 @@ function (_EmittableGroup) {
 
 exports.default = Menu;
 
-},{"./const":4,"./emittable.group":6,"./menu/menu-grid":11,"./menu/menu-list":12}],11:[function(require,module,exports){
+},{"./const":3,"./emittable.group":5,"./menu/menu-grid":13,"./menu/menu-list":14}],13:[function(require,module,exports){
 "use strict";
 
 Object.defineProperty(exports, "__esModule", {
@@ -10406,22 +10806,6 @@ function (_EmittableGroup) {
     parent.add(_assertThisInitialized(_this));
     return _this;
   }
-
-  _createClass(MenuGridPanel, [{
-    key: "freeze",
-    value: function freeze() {
-      this.items.forEach(function (x) {
-        return x.freezed = true;
-      });
-    }
-  }, {
-    key: "unfreeze",
-    value: function unfreeze() {
-      this.items.forEach(function (x) {
-        return x.freezed = false;
-      });
-    }
-  }]);
 
   return MenuGridPanel;
 }(_emittable.default);
@@ -10561,7 +10945,7 @@ function (_InteractiveMesh) {
 
 exports.MenuGridItem = MenuGridItem;
 
-},{"../const":4,"../emittable.group":6,"../interactive.mesh":9}],12:[function(require,module,exports){
+},{"../const":3,"../emittable.group":5,"../interactive.mesh":11}],14:[function(require,module,exports){
 "use strict";
 
 Object.defineProperty(exports, "__esModule", {
@@ -10658,22 +11042,6 @@ function (_EmittableGroup) {
     parent.add(_assertThisInitialized(_this));
     return _this;
   }
-
-  _createClass(MenuListPanel, [{
-    key: "freeze",
-    value: function freeze() {
-      this.items.forEach(function (x) {
-        return x.freezed = true;
-      });
-    }
-  }, {
-    key: "unfreeze",
-    value: function unfreeze() {
-      this.items.forEach(function (x) {
-        return x.freezed = false;
-      });
-    }
-  }]);
 
   return MenuListPanel;
 }(_emittable.default);
@@ -10776,7 +11144,7 @@ function (_InteractiveMesh) {
 
 exports.MenuListItem = MenuListItem;
 
-},{"../const":4,"../emittable.group":6,"../interactive.mesh":9}],13:[function(require,module,exports){
+},{"../const":3,"../emittable.group":5,"../interactive.mesh":11}],15:[function(require,module,exports){
 "use strict";
 
 Object.defineProperty(exports, "__esModule", {
@@ -10897,7 +11265,7 @@ function () {
 
 exports.default = Orbit;
 
-},{"../shared/drag.listener":2}],14:[function(require,module,exports){
+},{"../shared/drag.listener":2}],16:[function(require,module,exports){
 "use strict";
 
 Object.defineProperty(exports, "__esModule", {
@@ -11493,7 +11861,7 @@ function (_InteractiveMesh) {
 
 exports.NavPoint = NavPoint;
 
-},{"./const":4,"./emittable.group":6,"./interactive.mesh":9,"html2canvas":1}],15:[function(require,module,exports){
+},{"./const":3,"./emittable.group":5,"./interactive.mesh":11,"html2canvas":1}],17:[function(require,module,exports){
 "use strict";
 
 Object.defineProperty(exports, "__esModule", {
@@ -11501,7 +11869,7 @@ Object.defineProperty(exports, "__esModule", {
 });
 exports.VR = exports.VR_MODE = void 0;
 
-var _eventEmitter = _interopRequireDefault(require("../shared/event-emitter"));
+var _emittable = _interopRequireDefault(require("./emittable"));
 
 function _interopRequireDefault(obj) { return obj && obj.__esModule ? obj : { default: obj }; }
 
@@ -11532,8 +11900,8 @@ exports.VR_MODE = VR_MODE;
 
 var VR =
 /*#__PURE__*/
-function (_EventEmitter) {
-  _inherits(VR, _EventEmitter);
+function (_Emittable) {
+  _inherits(VR, _Emittable);
 
   function VR(renderer, options, onError) {
     var _this;
@@ -11548,7 +11916,7 @@ function (_EventEmitter) {
 
     if (onError) {
       // console.log(onError);
-      _this.addListener('error', onError);
+      _this.on('error', onError);
     }
 
     _this.renderer = renderer;
@@ -11838,11 +12206,11 @@ function (_EventEmitter) {
   }]);
 
   return VR;
-}(_eventEmitter.default);
+}(_emittable.default);
 
 exports.VR = VR;
 
-},{"../shared/event-emitter":3}],16:[function(require,module,exports){
+},{"./emittable":6}],18:[function(require,module,exports){
 "use strict";
 
 var _const = require("./three/const");
@@ -12692,5 +13060,5 @@ if (SHOW_HELPERS) {
 }
 */
 
-},{"./three/const":4,"./three/controllers":5,"./three/interactive.mesh":9,"./three/orbit":13,"./three/views":14,"./three/vr":15}]},{},[16]);
+},{"./three/const":3,"./three/controllers":4,"./three/interactive.mesh":11,"./three/orbit":15,"./three/views":16,"./three/vr":17}]},{},[18]);
 //# sourceMappingURL=vrtour.js.map

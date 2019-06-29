@@ -1,11 +1,12 @@
+import FreezableGroup from "./freezable.group";
+
 /* jshint esversion: 6 */
 /* global window, document */
 
-export default class EmittableGroup extends THREE.Group {
+export default class EmittableGroup extends FreezableGroup {
 
 	constructor() {
 		super();
-		// this.renderOrder = 10;
 		this.events = {};
 	}
 
@@ -30,6 +31,12 @@ export default class EmittableGroup extends THREE.Group {
 			event.forEach(callback => {
 				// callback.call(this, data);
 				callback(data);
+			});
+		}
+		const broadcast = this.events.broadcast;
+		if (broadcast) {
+			broadcast.forEach(callback => {
+				callback(type, data);
 			});
 		}
 	}
