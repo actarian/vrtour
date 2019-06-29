@@ -9051,7 +9051,7 @@ exports.ORIGIN = exports.POINTER_RADIUS = exports.POINT_RADIUS = exports.PANEL_R
 /* jshint esversion: 6 */
 
 /* global window, document */
-var TEST_ENABLED = true;
+var TEST_ENABLED = false;
 exports.TEST_ENABLED = TEST_ENABLED;
 var ROOM_RADIUS = 200;
 exports.ROOM_RADIUS = ROOM_RADIUS;
