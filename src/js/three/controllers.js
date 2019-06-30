@@ -118,25 +118,29 @@ export default class Controllers extends Emittable {
 	}
 
 	update() {
-		const gamePadLeft = this.findGamepad_(GAMEPAD.LEFT);
-		if (gamePadLeft) {
-			const triggerLeft = gamePadLeft ? gamePadLeft.buttons.reduce((p, b, i) => b.pressed ? i : p, -1) : -1;
-			if (triggerLeft !== -1) {
-				this.onLeftSelectStart(triggerLeft, gamePadLeft);
-			} else {
-				this.onLeftSelectEnd();
-			}
-		}
-		const gamePadRight = this.findGamepad_(GAMEPAD.RIGHT);
-		if (gamePadRight) {
-			const triggerRight = gamePadRight ? gamePadRight.buttons.reduce((p, b, i) => b.pressed ? i : p, -1) : -1;
-			if (triggerRight !== -1) {
-				this.onRightSelectStart(triggerRight, gamePadRight);
-			} else {
-				this.onRightSelectEnd();
-			}
-		}
 		this.gamepads.update();
+		if (this.left) {
+			const gamePadLeft = this.findGamepad_(this.left.index);
+			if (gamePadLeft) {
+				const triggerLeft = gamePadLeft ? gamePadLeft.buttons.reduce((p, b, i) => b.pressed ? i : p, -1) : -1;
+				if (triggerLeft !== -1) {
+					this.onLeftSelectStart(triggerLeft, gamePadLeft);
+				} else {
+					this.onLeftSelectEnd();
+				}
+			}
+		}
+		if (this.right) {
+			const gamePadRight = this.findGamepad_(this.right.index);
+			if (gamePadRight) {
+				const triggerRight = gamePadRight ? gamePadRight.buttons.reduce((p, b, i) => b.pressed ? i : p, -1) : -1;
+				if (triggerRight !== -1) {
+					this.onRightSelectStart(triggerRight, gamePadRight);
+				} else {
+					this.onRightSelectEnd();
+				}
+			}
+		}
 	}
 
 	updateTest(mouse) {
@@ -237,7 +241,7 @@ export default class Controllers extends Emittable {
 	addController(renderer, scene, gamepad) {
 		const controller = renderer.vr.getController(gamepad.index);
 		if (controller) {
-			controller.index = index;
+			controller.index = gamepad.index;
 			const cylinder = controller.cylinder = this.addControllerModel(controller, gamepad.hand);
 			scene.add(controller);
 			this.controllers_[gamepad.index] = controller;

@@ -9265,35 +9265,39 @@ function (_Emittable) {
   }, {
     key: "update",
     value: function update() {
-      var gamePadLeft = this.findGamepad_(GAMEPAD.LEFT);
-
-      if (gamePadLeft) {
-        var triggerLeft = gamePadLeft ? gamePadLeft.buttons.reduce(function (p, b, i) {
-          return b.pressed ? i : p;
-        }, -1) : -1;
-
-        if (triggerLeft !== -1) {
-          this.onLeftSelectStart(triggerLeft, gamePadLeft);
-        } else {
-          this.onLeftSelectEnd();
-        }
-      }
-
-      var gamePadRight = this.findGamepad_(GAMEPAD.RIGHT);
-
-      if (gamePadRight) {
-        var triggerRight = gamePadRight ? gamePadRight.buttons.reduce(function (p, b, i) {
-          return b.pressed ? i : p;
-        }, -1) : -1;
-
-        if (triggerRight !== -1) {
-          this.onRightSelectStart(triggerRight, gamePadRight);
-        } else {
-          this.onRightSelectEnd();
-        }
-      }
-
       this.gamepads.update();
+
+      if (this.left) {
+        var gamePadLeft = this.findGamepad_(this.left.index);
+
+        if (gamePadLeft) {
+          var triggerLeft = gamePadLeft ? gamePadLeft.buttons.reduce(function (p, b, i) {
+            return b.pressed ? i : p;
+          }, -1) : -1;
+
+          if (triggerLeft !== -1) {
+            this.onLeftSelectStart(triggerLeft, gamePadLeft);
+          } else {
+            this.onLeftSelectEnd();
+          }
+        }
+      }
+
+      if (this.right) {
+        var gamePadRight = this.findGamepad_(this.right.index);
+
+        if (gamePadRight) {
+          var triggerRight = gamePadRight ? gamePadRight.buttons.reduce(function (p, b, i) {
+            return b.pressed ? i : p;
+          }, -1) : -1;
+
+          if (triggerRight !== -1) {
+            this.onRightSelectStart(triggerRight, gamePadRight);
+          } else {
+            this.onRightSelectEnd();
+          }
+        }
+      }
     }
   }, {
     key: "updateTest",
@@ -9412,7 +9416,7 @@ function (_Emittable) {
       var controller = renderer.vr.getController(gamepad.index);
 
       if (controller) {
-        controller.index = index;
+        controller.index = gamepad.index;
         var cylinder = controller.cylinder = this.addControllerModel(controller, gamepad.hand);
         scene.add(controller);
         this.controllers_[gamepad.index] = controller;
