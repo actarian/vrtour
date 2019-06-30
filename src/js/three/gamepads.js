@@ -16,21 +16,28 @@ export default class Gamepads extends Emittable {
 		return SUPPORTED_REGEXP.match(id);
 	}
 
-	constructor() {
-		super();
+	set gamepads(gamepads) {
+		this.gamepads_ = gamepads;
 	}
 
-	init() {
-		this.gamepads = {};
-		this.hands = {};
-		const gamepads = Gamepads.get();
-		for (let i = 0; i < gamepads.length; i++) {
-			this.connect(gamepads[i]);
+	get gamepads() {
+		if (!this.gamepads_) {
+			this.gamepads_ = {};
+			const gamepads = Gamepads.get();
+			for (let i = 0; i < gamepads.length; i++) {
+				this.connect(gamepads[i]);
+			}
+			this.addListeners();
 		}
+		return this.gamepads_;
+	}
+
+	constructor() {
+		super();
+		this.hands = {};
 		this.onConnect = (event) => { this.connect(event.gamepad); };
 		this.onDisconnect = (event) => { this.disconnect(event.gamepad); };
 		this.onEvent = this.onEvent.bind(this);
-		this.addListeners();
 	}
 
 	connect(gamepad) {
@@ -78,11 +85,7 @@ export default class Gamepads extends Emittable {
 	}
 
 	update() {
-		if (this.gamepads) {
-			Object.keys(this.gamepads).forEach(x => x.update());
-		} else {
-			this.init();
-		}
+		Object.keys(this.gamepads).forEach(x => x.update());
 	}
 
 	destroy() {

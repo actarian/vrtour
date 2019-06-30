@@ -61,10 +61,14 @@ class VRTour {
 		// this.addIO();
 		console.log('vr.mode', vr.mode, TEST_ENABLED);
 		if (vr.mode !== VR_MODE.NONE) {
-			const controllers = this.controllers = new Controllers(renderer, scene, pivot);
-			// const topBar = this.topBar = new TopBar(pivot);
-			const pointer = this.pointer = this.addPointer(pivot);
-			this.addPointerListeners();
+			try {
+				const controllers = this.controllers = new Controllers(renderer, scene, pivot);
+				// const topBar = this.topBar = new TopBar(pivot);
+				const pointer = this.pointer = this.addPointer(pivot);
+				this.addPointerListeners();
+			} catch (error) {
+				this.debugInfo.innerHTML = error;
+			}
 		} else if (TEST_ENABLED) {
 			const controllers = this.controllers = new Controllers(renderer, scene, pivot);
 			// const topBar = this.topBar = new TopBar(pivot);
@@ -388,25 +392,29 @@ class VRTour {
 	}
 
 	render(delta) {
-		const cameraDirection = this.camera.getWorldDirection(this.cameraDirection);
-		if (this.vr.mode !== VR_MODE.NONE) {
-			// this.dragListener.move();
-			this.controllers.update();
-			this.updateController();
-			/*
-			this.topBar.active = this.controllers.controller && this.pointer.position.y > 15;
-			this.topBar.update(cameraDirection);
-			*/
-		} else if (TEST_ENABLED) {
-			// this.dragListener.move();
-			this.updateCamera();
-			this.updateController();
-			/*
-			this.topBar.active = this.controllers.controller && this.pointer.position.y > 15;
-			this.topBar.update(cameraDirection);
-			*/
-		} else {
-			this.updateCamera();
+		try {
+			const cameraDirection = this.camera.getWorldDirection(this.cameraDirection);
+			if (this.vr.mode !== VR_MODE.NONE) {
+				// this.dragListener.move();
+				this.controllers.update();
+				this.updateController();
+				/*
+				this.topBar.active = this.controllers.controller && this.pointer.position.y > 15;
+				this.topBar.update(cameraDirection);
+				*/
+			} else if (TEST_ENABLED) {
+				// this.dragListener.move();
+				this.updateCamera();
+				this.updateController();
+				/*
+				this.topBar.active = this.controllers.controller && this.pointer.position.y > 15;
+				this.topBar.update(cameraDirection);
+				*/
+			} else {
+				this.updateCamera();
+			}
+		} catch (error) {
+			this.debugInfo.innerHTML = error;
 		}
 		const renderer = this.renderer;
 		renderer.render(this.scene, this.camera);

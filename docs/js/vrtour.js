@@ -10031,9 +10031,9 @@ function _classCallCheck(instance, Constructor) { if (!(instance instanceof Cons
 
 function _possibleConstructorReturn(self, call) { if (call && (_typeof(call) === "object" || typeof call === "function")) { return call; } return _assertThisInitialized(self); }
 
-function _assertThisInitialized(self) { if (self === void 0) { throw new ReferenceError("this hasn't been initialised - super() hasn't been called"); } return self; }
-
 function _getPrototypeOf(o) { _getPrototypeOf = Object.setPrototypeOf ? Object.getPrototypeOf : function _getPrototypeOf(o) { return o.__proto__ || Object.getPrototypeOf(o); }; return _getPrototypeOf(o); }
+
+function _assertThisInitialized(self) { if (self === void 0) { throw new ReferenceError("this hasn't been initialised - super() hasn't been called"); } return self; }
 
 function _defineProperties(target, props) { for (var i = 0; i < props.length; i++) { var descriptor = props[i]; descriptor.enumerable = descriptor.enumerable || false; descriptor.configurable = true; if ("value" in descriptor) descriptor.writable = true; Object.defineProperty(target, descriptor.key, descriptor); } }
 
@@ -10053,7 +10053,26 @@ var Gamepads =
 function (_Emittable) {
   _inherits(Gamepads, _Emittable);
 
-  _createClass(Gamepads, null, [{
+  _createClass(Gamepads, [{
+    key: "gamepads",
+    set: function set(gamepads) {
+      this.gamepads_ = gamepads;
+    },
+    get: function get() {
+      if (!this.gamepads_) {
+        this.gamepads_ = {};
+        var gamepads = Gamepads.get();
+
+        for (var i = 0; i < gamepads.length; i++) {
+          this.connect(gamepads[i]);
+        }
+
+        this.addListeners();
+      }
+
+      return this.gamepads_;
+    }
+  }], [{
     key: "get",
     value: function get() {
       return typeof navigator.getGamepads === 'function' ? navigator.getGamepads() : [];
@@ -10066,36 +10085,26 @@ function (_Emittable) {
   }]);
 
   function Gamepads() {
+    var _this;
+
     _classCallCheck(this, Gamepads);
 
-    return _possibleConstructorReturn(this, _getPrototypeOf(Gamepads).call(this));
+    _this = _possibleConstructorReturn(this, _getPrototypeOf(Gamepads).call(this));
+    _this.hands = {};
+
+    _this.onConnect = function (event) {
+      _this.connect(event.gamepad);
+    };
+
+    _this.onDisconnect = function (event) {
+      _this.disconnect(event.gamepad);
+    };
+
+    _this.onEvent = _this.onEvent.bind(_assertThisInitialized(_this));
+    return _this;
   }
 
   _createClass(Gamepads, [{
-    key: "init",
-    value: function init() {
-      var _this = this;
-
-      this.gamepads = {};
-      this.hands = {};
-      var gamepads = Gamepads.get();
-
-      for (var i = 0; i < gamepads.length; i++) {
-        this.connect(gamepads[i]);
-      }
-
-      this.onConnect = function (event) {
-        _this.connect(event.gamepad);
-      };
-
-      this.onDisconnect = function (event) {
-        _this.disconnect(event.gamepad);
-      };
-
-      this.onEvent = this.onEvent.bind(this);
-      this.addListeners();
-    }
-  }, {
     key: "connect",
     value: function connect(gamepad) {
       // Note: gamepad === navigator.getGamepads()[gamepad.index]
@@ -10153,13 +10162,9 @@ function (_Emittable) {
   }, {
     key: "update",
     value: function update() {
-      if (this.gamepads) {
-        Object.keys(this.gamepads).forEach(function (x) {
-          return x.update();
-        });
-      } else {
-        this.init();
-      }
+      Object.keys(this.gamepads).forEach(function (x) {
+        return x.update();
+      });
     }
   }, {
     key: "destroy",
@@ -12334,10 +12339,14 @@ function () {
       console.log('vr.mode', vr.mode, _const.TEST_ENABLED);
 
       if (vr.mode !== _vr.VR_MODE.NONE) {
-        var controllers = this.controllers = new _controllers2.default(renderer, scene, pivot); // const topBar = this.topBar = new TopBar(pivot);
+        try {
+          var controllers = this.controllers = new _controllers2.default(renderer, scene, pivot); // const topBar = this.topBar = new TopBar(pivot);
 
-        var pointer = this.pointer = this.addPointer(pivot);
-        this.addPointerListeners();
+          var pointer = this.pointer = this.addPointer(pivot);
+          this.addPointerListeners();
+        } catch (error) {
+          this.debugInfo.innerHTML = error;
+        }
       } else if (_const.TEST_ENABLED) {
         var _controllers = this.controllers = new _controllers2.default(renderer, scene, pivot); // const topBar = this.topBar = new TopBar(pivot);
 
@@ -12715,26 +12724,30 @@ function () {
   }, {
     key: "render",
     value: function render(delta) {
-      var cameraDirection = this.camera.getWorldDirection(this.cameraDirection);
+      try {
+        var cameraDirection = this.camera.getWorldDirection(this.cameraDirection);
 
-      if (this.vr.mode !== _vr.VR_MODE.NONE) {
-        // this.dragListener.move();
-        this.controllers.update();
-        this.updateController();
-        /*
-        this.topBar.active = this.controllers.controller && this.pointer.position.y > 15;
-        this.topBar.update(cameraDirection);
-        */
-      } else if (_const.TEST_ENABLED) {
-        // this.dragListener.move();
-        this.updateCamera();
-        this.updateController();
-        /*
-        this.topBar.active = this.controllers.controller && this.pointer.position.y > 15;
-        this.topBar.update(cameraDirection);
-        */
-      } else {
-        this.updateCamera();
+        if (this.vr.mode !== _vr.VR_MODE.NONE) {
+          // this.dragListener.move();
+          this.controllers.update();
+          this.updateController();
+          /*
+          this.topBar.active = this.controllers.controller && this.pointer.position.y > 15;
+          this.topBar.update(cameraDirection);
+          */
+        } else if (_const.TEST_ENABLED) {
+          // this.dragListener.move();
+          this.updateCamera();
+          this.updateController();
+          /*
+          this.topBar.active = this.controllers.controller && this.pointer.position.y > 15;
+          this.topBar.update(cameraDirection);
+          */
+        } else {
+          this.updateCamera();
+        }
+      } catch (error) {
+        this.debugInfo.innerHTML = error;
       }
 
       var renderer = this.renderer;
