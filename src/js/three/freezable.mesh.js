@@ -8,10 +8,9 @@ export default class FreezableMesh extends THREE.Mesh {
 	}
 
 	set freezed(freezed) {
-		if (this.freezed_ !== freezed) {
-			this.freezed_ = freezed;
-			this.children.filter(x => x.hasOwnProperty('freezed')).forEach(x => x.freezed = freezed);
-		}
+		// !!! cycle through freezable and not freezable
+		this.freezed_ = freezed;
+		this.children.filter(x => x.__lookupGetter__('freezed')).forEach(x => x.freezed = freezed);
 	}
 
 	constructor(geometry, material) {

@@ -9099,9 +9099,11 @@ var _const = require("./const");
 
 var _emittable = _interopRequireDefault(require("./emittable"));
 
-var _gamepads = _interopRequireDefault(require("./gamepads"));
+var _gamepads = _interopRequireWildcard(require("./gamepads"));
 
 var _menu2 = _interopRequireDefault(require("./menu"));
+
+function _interopRequireWildcard(obj) { if (obj && obj.__esModule) { return obj; } else { var newObj = {}; if (obj != null) { for (var key in obj) { if (Object.prototype.hasOwnProperty.call(obj, key)) { var desc = Object.defineProperty && Object.getOwnPropertyDescriptor ? Object.getOwnPropertyDescriptor(obj, key) : {}; if (desc.get || desc.set) { Object.defineProperty(newObj, key, desc); } else { newObj[key] = obj[key]; } } } } newObj.default = obj; return newObj; } }
 
 function _interopRequireDefault(obj) { return obj && obj.__esModule ? obj : { default: obj }; }
 
@@ -9139,6 +9141,7 @@ function (_Emittable) {
     _classCallCheck(this, Controllers);
 
     _this = _possibleConstructorReturn(this, _getPrototypeOf(Controllers).call(this));
+    _this.controllers_ = {};
     _this.gamepads_ = {};
     _this.renderer = renderer;
     _this.scene = scene;
@@ -9163,21 +9166,33 @@ function (_Emittable) {
       group.position.set(0, 0, -2);
       group.scale.set(5, 5, 5);
       pivot.add(group);
-    } else {
-      var left = _this.left = _this.addController(renderer, scene, GAMEPAD.LEFT);
-
-      var _right = _this.right = _this.addController(renderer, scene, GAMEPAD.RIGHT);
-
-      var _menu = _this.menu = new _menu2.default(left || _right);
-
-      _menu.on('down', function (event) {
-        _this.onMenuDown(event);
-      });
     }
 
     var text = _this.text = _this.addText(pivot);
 
     var gamepads = _this.gamepads = new _gamepads.default();
+    gamepads.on('connect', function (gamepad) {
+      _this.setText("connect ".concat(gamepad.hand, " ").concat(gamepad.index));
+
+      var controller = _this.addController(renderer, scene, gamepad);
+
+      if (gamepad.hand === _gamepads.GAMEPAD_HANDS.LEFT) {
+        _this.left = controller;
+
+        var _menu = _this.menu = new _menu2.default(controller);
+
+        _menu.on('down', function (event) {
+          _this.onMenuDown(event);
+        });
+      } else {
+        _this.right = controller;
+      }
+    });
+    gamepads.on('disconnect', function (gamepad) {
+      _this.setText("disconnect ".concat(gamepad.hand, " ").concat(gamepad.index));
+
+      _this.removeController(gamepad);
+    });
     gamepads.on('press', function (button) {
       _this.setText("press ".concat(button.gamepad.hand, " ").concat(button.index));
     });
@@ -9185,7 +9200,9 @@ function (_Emittable) {
       _this.setText("release ".concat(button.gamepad.hand, " ").concat(button.index));
     });
     gamepads.on('axis', function (axis) {
-      _this.setText("axis ".concat(axis.gamepad.hand, " ").concat(axis.index, " { x:").concat(axis.x, ", y:").concat(axis.y, " }"));
+      _this.setText("axis ".concat(axis.gamepad.hand, " ").concat(axis.index, " { x:").concat(axis.x, ", y:").concat(axis.y, " }")); // axisup, axisdown, axisleft, axisright
+      // this.menu.next();
+
     });
     return _this;
   }
@@ -9196,8 +9213,7 @@ function (_Emittable) {
       var _this2 = this;
 
       var item = event.item;
-      var index = event.index;
-      console.log('Controllers.onMenuDown', item, index);
+      var index = event.index; // console.log('Controllers.onMenuDown', item, index);
 
       if (index === 0 || index === 2) {
         var direction = index === 0 ? -1 : 1;
@@ -9276,6 +9292,8 @@ function (_Emittable) {
           this.onRightSelectEnd();
         }
       }
+
+      this.gamepads.update();
     }
   }, {
     key: "updateTest",
@@ -9383,38 +9401,49 @@ function (_Emittable) {
       var controller = new THREE.Group();
       controller.position.set(0, 0, 0);
       controller.index = 0;
-      var cylinder = controller.cylinder = this.addControllerModel(controller, GAMEPAD.RIGHT);
+      var cylinder = controller.cylinder = this.addControllerModel(controller, _gamepads.GAMEPAD_HANDS.RIGHT);
       controller.scale.set(5, 5, 5);
       scene.add(controller);
       return controller;
     }
   }, {
     key: "addController",
-    value: function addController(renderer, scene, index) {
-      var controller = renderer.vr.getController(index);
+    value: function addController(renderer, scene, gamepad) {
+      var controller = renderer.vr.getController(gamepad.index);
 
       if (controller) {
         controller.index = index;
-        var cylinder = controller.cylinder = this.addControllerModel(controller, index);
+        var cylinder = controller.cylinder = this.addControllerModel(controller, gamepad.hand);
         scene.add(controller);
+        this.controllers_[gamepad.index] = controller;
       }
 
       return controller;
     }
   }, {
+    key: "removeController",
+    value: function removeController(gamepad) {
+      var controller = this.controllers_[gamepad.index];
+
+      if (controller) {
+        controller.parent.remove(controller);
+        delete this.controllers_[gamepad.index];
+      }
+    }
+  }, {
     key: "addControllerModel",
-    value: function addControllerModel(controller, index) {
+    value: function addControllerModel(controller, hand) {
       var mesh = new THREE.Group();
       var texture = new THREE.TextureLoader().load('img/matcap.jpg');
       var material = new THREE.MeshMatcapMaterial({
-        color: index === GAMEPAD.RIGHT ? 0x991111 : 0x111199,
+        color: hand === _gamepads.GAMEPAD_HANDS.RIGHT ? 0x991111 : 0x111199,
         matcap: texture,
         transparent: true,
         opacity: 1
       });
       var loader = new THREE.OBJLoader();
-      loader.load(index === GAMEPAD.RIGHT ? 'models/oculus_quest_controller_right/oculus_quest_controller_right.obj' : 'models/oculus_quest_controller_left/oculus_quest_controller_left.obj', function (object) {
-        var x = index === GAMEPAD.RIGHT ? -(0, _const.cm)(1) : (0, _const.cm)(1);
+      loader.load(hand === _gamepads.GAMEPAD_HANDS.RIGHT ? 'models/oculus_quest_controller_right/oculus_quest_controller_right.obj' : 'models/oculus_quest_controller_left/oculus_quest_controller_left.obj', function (object) {
+        var x = hand === _gamepads.GAMEPAD_HANDS.RIGHT ? -(0, _const.cm)(1) : (0, _const.cm)(1);
         object.traverse(function (child) {
           // console.log(child);
           if (child instanceof THREE.Mesh) {
@@ -9433,36 +9462,19 @@ function (_Emittable) {
     }
   }, {
     key: "addControllerCylinder",
-    value: function addControllerCylinder(controller, index) {
+    value: function addControllerCylinder(controller, hand) {
       var geometry = new THREE.CylinderBufferGeometry((0, _const.cm)(2), (0, _const.cm)(2), (0, _const.cm)(12), 24);
       var texture = new THREE.TextureLoader().load('img/matcap.jpg');
       var material = new THREE.MeshMatcapMaterial({
-        color: index === 1 ? 0x991111 : 0x111199,
+        color: hand === _gamepads.GAMEPAD_HANDS.RIGHT ? 0x991111 : 0x111199,
         matcap: texture,
         transparent: true,
         opacity: 1
       });
-      /*
-      const material = new THREE.MeshBasicMaterial({
-      	color: i === 0 ? 0x111199 : 0x991111,
-      	// roughness: 0.2,
-      	// metalness: 0.1,
-      });
-      */
-
-      /*
-      const modifier = new THREE.SubdivisionModifier(2);
-      const smoothGeometry = modifier.modify(geometry);
-      const smoothBufferGeometry = new THREE.BufferGeometry().fromGeometry(smoothGeometry);
-      const mesh = new THREE.Mesh(smoothBufferGeometry, material);
-      */
-
       var mesh = new THREE.Mesh(geometry, material);
       mesh.geometry.rotateX(Math.PI / 2);
-      controller.add(mesh); //
-
-      this.addControllerIndicator(controller); //
-
+      controller.add(mesh);
+      this.addControllerIndicator(controller);
       return mesh;
     }
   }, {
@@ -9877,14 +9889,13 @@ function (_THREE$Group) {
       return this.freezed_;
     },
     set: function set(freezed) {
-      if (this.freezed_ !== freezed) {
-        this.freezed_ = freezed;
-        this.children.filter(function (x) {
-          return x.hasOwnProperty('freezed');
-        }).forEach(function (x) {
-          return x.freezed = freezed;
-        });
-      }
+      // !!! cycle through freezable and not freezable
+      this.freezed_ = freezed;
+      this.children.filter(function (x) {
+        return x.__lookupGetter__('freezed');
+      }).forEach(function (x) {
+        return x.freezed = freezed;
+      });
     }
   }]);
 
@@ -9955,14 +9966,13 @@ function (_THREE$Mesh) {
       return this.freezed_;
     },
     set: function set(freezed) {
-      if (this.freezed_ !== freezed) {
-        this.freezed_ = freezed;
-        this.children.filter(function (x) {
-          return x.hasOwnProperty('freezed');
-        }).forEach(function (x) {
-          return x.freezed = freezed;
-        });
-      }
+      // !!! cycle through freezable and not freezable
+      this.freezed_ = freezed;
+      this.children.filter(function (x) {
+        return x.__lookupGetter__('freezed');
+      }).forEach(function (x) {
+        return x.freezed = freezed;
+      });
     }
   }]);
 
@@ -10017,9 +10027,9 @@ function _classCallCheck(instance, Constructor) { if (!(instance instanceof Cons
 
 function _possibleConstructorReturn(self, call) { if (call && (_typeof(call) === "object" || typeof call === "function")) { return call; } return _assertThisInitialized(self); }
 
-function _getPrototypeOf(o) { _getPrototypeOf = Object.setPrototypeOf ? Object.getPrototypeOf : function _getPrototypeOf(o) { return o.__proto__ || Object.getPrototypeOf(o); }; return _getPrototypeOf(o); }
-
 function _assertThisInitialized(self) { if (self === void 0) { throw new ReferenceError("this hasn't been initialised - super() hasn't been called"); } return self; }
+
+function _getPrototypeOf(o) { _getPrototypeOf = Object.setPrototypeOf ? Object.getPrototypeOf : function _getPrototypeOf(o) { return o.__proto__ || Object.getPrototypeOf(o); }; return _getPrototypeOf(o); }
 
 function _defineProperties(target, props) { for (var i = 0; i < props.length; i++) { var descriptor = props[i]; descriptor.enumerable = descriptor.enumerable || false; descriptor.configurable = true; if ("value" in descriptor) descriptor.writable = true; Object.defineProperty(target, descriptor.key, descriptor); } }
 
@@ -10052,35 +10062,36 @@ function (_Emittable) {
   }]);
 
   function Gamepads() {
-    var _this;
-
     _classCallCheck(this, Gamepads);
 
-    _this = _possibleConstructorReturn(this, _getPrototypeOf(Gamepads).call(this));
-    _this.gamepads = {};
-    _this.hands = {};
-    var gamepads = Gamepads.get();
-
-    for (var i = 0; i < gamepads.length; i++) {
-      _this.connect(gamepads[i]);
-    }
-
-    _this.onConnect = function (event) {
-      _this.connect(event.gamepad);
-    };
-
-    _this.onDisconnect = function (event) {
-      _this.disconnect(event.gamepad);
-    };
-
-    _this.onEvent = _this.onEvent.bind(_assertThisInitialized(_this));
-
-    _this.addListeners();
-
-    return _this;
+    return _possibleConstructorReturn(this, _getPrototypeOf(Gamepads).call(this));
   }
 
   _createClass(Gamepads, [{
+    key: "init",
+    value: function init() {
+      var _this = this;
+
+      this.gamepads = {};
+      this.hands = {};
+      var gamepads = Gamepads.get();
+
+      for (var i = 0; i < gamepads.length; i++) {
+        this.connect(gamepads[i]);
+      }
+
+      this.onConnect = function (event) {
+        _this.connect(event.gamepad);
+      };
+
+      this.onDisconnect = function (event) {
+        _this.disconnect(event.gamepad);
+      };
+
+      this.onEvent = this.onEvent.bind(this);
+      this.addListeners();
+    }
+  }, {
     key: "connect",
     value: function connect(gamepad) {
       // Note: gamepad === navigator.getGamepads()[gamepad.index]
@@ -10138,9 +10149,13 @@ function (_Emittable) {
   }, {
     key: "update",
     value: function update() {
-      Object.keys(this.gamepads).forEach(function (x) {
-        return x.update();
-      });
+      if (this.gamepads) {
+        Object.keys(this.gamepads).forEach(function (x) {
+          return x.update();
+        });
+      } else {
+        this.init();
+      }
     }
   }, {
     key: "destroy",
@@ -10184,11 +10199,11 @@ function (_Emittable2) {
 
     _classCallCheck(this, Gamepad);
 
-    _this2.index = gamempad.index;
+    _this2.gamepad = gamepad;
     _this2.id = gamempad.id;
+    _this2.index = gamempad.index;
     _this2.hand = _this2.getHand();
     _this2.type = _this2.getType();
-    _this2.gamepad = gamepad;
     _this2.buttons = {};
     _this2.axes = {};
     return _possibleConstructorReturn(_this2);
@@ -10197,9 +10212,9 @@ function (_Emittable2) {
   _createClass(Gamepad, [{
     key: "getHand",
     value: function getHand() {
-      if (this.id.match(/(\sleft)/i)) {
+      if (this.gamepad.hand === 'left' || this.id.match(/(\sleft)/i)) {
         return GAMEPAD_HANDS.LEFT;
-      } else if (this.id.match(/(\sright)/i)) {
+      } else if (this.gamepad.hand === 'right' || this.id.match(/(\sright)/i)) {
         return GAMEPAD_HANDS.RIGHT;
       } else {
         return GAMEPAD_HANDS.NONE;
@@ -10721,6 +10736,8 @@ var _const = require("../const");
 
 var _emittable = _interopRequireDefault(require("../emittable.group"));
 
+var _freezable = _interopRequireDefault(require("../freezable.mesh"));
+
 var _interactive = _interopRequireDefault(require("../interactive.mesh"));
 
 function _interopRequireDefault(obj) { return obj && obj.__esModule ? obj : { default: obj }; }
@@ -10782,7 +10799,7 @@ function (_EmittableGroup) {
       // blending: THREE.AdditiveBlending,
       side: THREE.DoubleSide
     });
-    var plane = new THREE.Mesh(geometry, material);
+    var plane = new _freezable.default(geometry, material);
     plane.renderOrder = 90;
     plane.position.set(0, W / 2, -H);
     plane.rotation.set(-Math.PI / 2, 0, 0);
@@ -10945,7 +10962,7 @@ function (_InteractiveMesh) {
 
 exports.MenuGridItem = MenuGridItem;
 
-},{"../const":3,"../emittable.group":5,"../interactive.mesh":11}],14:[function(require,module,exports){
+},{"../const":3,"../emittable.group":5,"../freezable.mesh":9,"../interactive.mesh":11}],14:[function(require,module,exports){
 "use strict";
 
 Object.defineProperty(exports, "__esModule", {
@@ -10956,6 +10973,8 @@ exports.MenuListItem = exports.MenuListPanel = void 0;
 var _const = require("../const");
 
 var _emittable = _interopRequireDefault(require("../emittable.group"));
+
+var _freezable = _interopRequireDefault(require("../freezable.mesh"));
 
 var _interactive = _interopRequireDefault(require("../interactive.mesh"));
 
@@ -11018,7 +11037,7 @@ function (_EmittableGroup) {
       // blending: THREE.AdditiveBlending,
       side: THREE.DoubleSide
     });
-    var plane = new THREE.Mesh(geometry, material);
+    var plane = new _freezable.default(geometry, material);
     plane.renderOrder = 90;
     plane.position.set(0, W / 2, -H);
     plane.rotation.set(-Math.PI / 2, 0, 0);
@@ -11144,7 +11163,7 @@ function (_InteractiveMesh) {
 
 exports.MenuListItem = MenuListItem;
 
-},{"../const":3,"../emittable.group":5,"../interactive.mesh":11}],15:[function(require,module,exports){
+},{"../const":3,"../emittable.group":5,"../freezable.mesh":9,"../interactive.mesh":11}],15:[function(require,module,exports){
 "use strict";
 
 Object.defineProperty(exports, "__esModule", {

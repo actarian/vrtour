@@ -3,6 +3,7 @@
 
 import { cm, mm } from '../const';
 import EmittableGroup from '../emittable.group';
+import FreezableMesh from '../freezable.mesh';
 import InteractiveMesh from '../interactive.mesh';
 
 const W = cm(10);
@@ -33,7 +34,7 @@ export class MenuGridPanel extends EmittableGroup {
 			// blending: THREE.AdditiveBlending,
 			side: THREE.DoubleSide,
 		});
-		const plane = new THREE.Mesh(geometry, material);
+		const plane = new FreezableMesh(geometry, material);
 		plane.renderOrder = 90;
 		plane.position.set(0, W / 2, -H);
 		plane.rotation.set(-Math.PI / 2, 0, 0);

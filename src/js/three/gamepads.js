@@ -18,6 +18,9 @@ export default class Gamepads extends Emittable {
 
 	constructor() {
 		super();
+	}
+
+	init() {
 		this.gamepads = {};
 		this.hands = {};
 		const gamepads = Gamepads.get();
@@ -75,7 +78,11 @@ export default class Gamepads extends Emittable {
 	}
 
 	update() {
-		Object.keys(this.gamepads).forEach(x => x.update());
+		if (this.gamepads) {
+			Object.keys(this.gamepads).forEach(x => x.update());
+		} else {
+			this.init();
+		}
 	}
 
 	destroy() {
@@ -99,19 +106,19 @@ export const GAMEPAD = {
 export class Gamepad extends Emittable {
 
 	constructor(gamepad) {
-		this.index = gamempad.index;
+		this.gamepad = gamepad;
 		this.id = gamempad.id;
+		this.index = gamempad.index;
 		this.hand = this.getHand();
 		this.type = this.getType();
-		this.gamepad = gamepad;
 		this.buttons = {};
 		this.axes = {};
 	}
 
 	getHand() {
-		if (this.id.match(/(\sleft)/i)) {
+		if (this.gamepad.hand === 'left' || this.id.match(/(\sleft)/i)) {
 			return GAMEPAD_HANDS.LEFT;
-		} else if (this.id.match(/(\sright)/i)) {
+		} else if (this.gamepad.hand === 'right' || this.id.match(/(\sright)/i)) {
 			return GAMEPAD_HANDS.RIGHT;
 		} else {
 			return GAMEPAD_HANDS.NONE;
