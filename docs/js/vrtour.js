@@ -9170,7 +9170,9 @@ function (_Emittable) {
 
     var text = _this.text = _this.addText(pivot);
 
-    var gamepads = _this.gamepads = new _gamepads.default();
+    var gamepads = _this.gamepads = new _gamepads.default(function (text) {
+      _this.setText(text);
+    });
     gamepads.on('connect', function (gamepad) {
       _this.setText("connect ".concat(gamepad.hand, " ").concat(gamepad.index));
 
@@ -10084,12 +10086,13 @@ function (_Emittable) {
     }
   }]);
 
-  function Gamepads() {
+  function Gamepads(setText) {
     var _this;
 
     _classCallCheck(this, Gamepads);
 
     _this = _possibleConstructorReturn(this, _getPrototypeOf(Gamepads).call(this));
+    _this.setText = setText;
     _this.hands = {};
 
     _this.onConnect = function (event) {
@@ -10110,6 +10113,7 @@ function (_Emittable) {
       // Note: gamepad === navigator.getGamepads()[gamepad.index]
       if (gamepad) {
         var id = gamepad.id;
+        this.setText("connect ".concat(gamepad.id, " ").concat(Gamepads.isSupported(id)));
 
         if (Gamepads.isSupported(id)) {
           var index = gamepad.index;

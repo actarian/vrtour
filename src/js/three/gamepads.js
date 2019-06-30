@@ -32,8 +32,9 @@ export default class Gamepads extends Emittable {
 		return this.gamepads_;
 	}
 
-	constructor() {
+	constructor(setText) {
 		super();
+		this.setText = setText;
 		this.hands = {};
 		this.onConnect = (event) => { this.connect(event.gamepad); };
 		this.onDisconnect = (event) => { this.disconnect(event.gamepad); };
@@ -44,6 +45,7 @@ export default class Gamepads extends Emittable {
 		// Note: gamepad === navigator.getGamepads()[gamepad.index]
 		if (gamepad) {
 			const id = gamepad.id;
+			this.setText(`connect ${gamepad.id} ${Gamepads.isSupported(id)}`);
 			if (Gamepads.isSupported(id)) {
 				const index = gamepad.index;
 				gamepad = this.gamepads[index] ? this.gamepads[index] : (this.gamepads[index] = new Gamepad(gamepad));

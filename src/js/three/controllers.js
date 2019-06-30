@@ -40,7 +40,9 @@ export default class Controllers extends Emittable {
 			pivot.add(group);
 		}
 		const text = this.text = this.addText(pivot);
-		const gamepads = this.gamepads = new Gamepads();
+		const gamepads = this.gamepads = new Gamepads((text) => {
+			this.setText(text);
+		});
 		gamepads.on('connect', (gamepad) => {
 			this.setText(`connect ${gamepad.hand} ${gamepad.index}`);
 			const controller = this.addController(renderer, scene, gamepad);
