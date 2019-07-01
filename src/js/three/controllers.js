@@ -6,11 +6,6 @@ import Emittable from './emittable';
 import Gamepads, { GAMEPAD_HANDS } from './gamepads';
 import Menu from './menu';
 
-const GAMEPAD = {
-	LEFT: 1,
-	RIGHT: 0,
-};
-
 export default class Controllers extends Emittable {
 
 	constructor(renderer, scene, pivot) {

@@ -9125,11 +9125,6 @@ function _inherits(subClass, superClass) { if (typeof superClass !== "function" 
 
 function _setPrototypeOf(o, p) { _setPrototypeOf = Object.setPrototypeOf || function _setPrototypeOf(o, p) { o.__proto__ = p; return o; }; return _setPrototypeOf(o, p); }
 
-var GAMEPAD = {
-  LEFT: 1,
-  RIGHT: 0
-};
-
 var Controllers =
 /*#__PURE__*/
 function (_Emittable) {
@@ -10021,13 +10016,21 @@ exports.default = FreezableMesh;
 Object.defineProperty(exports, "__esModule", {
   value: true
 });
-exports.GamepadAxis = exports.GamepadButton = exports.Gamepad = exports.GAMEPAD = exports.GAMEPAD_MODELS = exports.GAMEPAD_HANDS = exports.default = exports.SUPPORTED_REGEXP = exports.SUPPORTED_GAMEPADS = void 0;
+exports.GamepadAxis = exports.GamepadButton = exports.Gamepad = exports.GAMEPAD_MODELS = exports.GAMEPAD_HANDS = exports.default = exports.SUPPORTED_REGEXP = exports.SUPPORTED_GAMEPADS = void 0;
 
 var _emittable = _interopRequireDefault(require("./emittable"));
 
 function _interopRequireDefault(obj) { return obj && obj.__esModule ? obj : { default: obj }; }
 
 function _typeof(obj) { if (typeof Symbol === "function" && typeof Symbol.iterator === "symbol") { _typeof = function _typeof(obj) { return typeof obj; }; } else { _typeof = function _typeof(obj) { return obj && typeof Symbol === "function" && obj.constructor === Symbol && obj !== Symbol.prototype ? "symbol" : typeof obj; }; } return _typeof(obj); }
+
+function _toConsumableArray(arr) { return _arrayWithoutHoles(arr) || _iterableToArray(arr) || _nonIterableSpread(); }
+
+function _nonIterableSpread() { throw new TypeError("Invalid attempt to spread non-iterable instance"); }
+
+function _iterableToArray(iter) { if (Symbol.iterator in Object(iter) || Object.prototype.toString.call(iter) === "[object Arguments]") return Array.from(iter); }
+
+function _arrayWithoutHoles(arr) { if (Array.isArray(arr)) { for (var i = 0, arr2 = new Array(arr.length); i < arr.length; i++) { arr2[i] = arr[i]; } return arr2; } }
 
 function _classCallCheck(instance, Constructor) { if (!(instance instanceof Constructor)) { throw new TypeError("Cannot call a class as a function"); } }
 
@@ -10077,7 +10080,7 @@ function (_Emittable) {
   }], [{
     key: "get",
     value: function get() {
-      return typeof navigator.getGamepads === 'function' ? navigator.getGamepads() : [];
+      return _toConsumableArray(typeof navigator.getGamepads === 'function' ? navigator.getGamepads() : []);
     }
   }, {
     key: "isSupported",
@@ -10154,14 +10157,14 @@ function (_Emittable) {
   }, {
     key: "addListeners",
     value: function addListeners() {
-      window.addEventListener("gamepadconnected", this.onConnect, false);
-      window.addEventListener("gamepaddisconnected", this.onDisconnect, false);
+      window.addEventListener('gamepadconnected', this.onConnect, false);
+      window.addEventListener('gamepaddisconnected', this.onDisconnect, false);
     }
   }, {
     key: "removeListeners",
     value: function removeListeners() {
-      window.removeEventListener("gamepadconnected", this.onConnect, false);
-      window.removeEventListener("gamepaddisconnected", this.onDisconnect, false);
+      window.removeEventListener('gamepadconnected', this.onConnect, false);
+      window.removeEventListener('gamepaddisconnected', this.onDisconnect, false);
     }
   }, {
     key: "update",
@@ -10195,12 +10198,6 @@ var GAMEPAD_MODELS = {
   OCULUS_TOUCH: 0
 };
 exports.GAMEPAD_MODELS = GAMEPAD_MODELS;
-var GAMEPAD = {
-  RIGHT: 0,
-  LEFT: 1,
-  NONE: 3
-};
-exports.GAMEPAD = GAMEPAD;
 
 var Gamepad =
 /*#__PURE__*/

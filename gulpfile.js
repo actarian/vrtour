@@ -358,6 +358,7 @@ function watchAll() {
 function serveTask() {
 	const options = Object.assign({
 		src: './docs',
+		host: 'localhost',
 		port: 6001,
 		fallback: 'index.html',
 		open: true,

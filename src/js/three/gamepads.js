@@ -9,7 +9,7 @@ export const SUPPORTED_REGEXP = new RegExp(`/^(${SUPPORTED_GAMEPADS.join('|')})/
 export default class Gamepads extends Emittable {
 
 	static get() {
-		return typeof navigator.getGamepads === 'function' ? navigator.getGamepads() : [];
+		return [...typeof navigator.getGamepads === 'function' ? navigator.getGamepads() : []];
 	}
 
 	static isSupported(id) {
@@ -77,13 +77,13 @@ export default class Gamepads extends Emittable {
 	}
 
 	addListeners() {
-		window.addEventListener("gamepadconnected", this.onConnect, false);
-		window.addEventListener("gamepaddisconnected", this.onDisconnect, false);
+		window.addEventListener('gamepadconnected', this.onConnect, false);
+		window.addEventListener('gamepaddisconnected', this.onDisconnect, false);
 	}
 
 	removeListeners() {
-		window.removeEventListener("gamepadconnected", this.onConnect, false);
-		window.removeEventListener("gamepaddisconnected", this.onDisconnect, false);
+		window.removeEventListener('gamepadconnected', this.onConnect, false);
+		window.removeEventListener('gamepaddisconnected', this.onDisconnect, false);
 	}
 
 	update() {
@@ -101,11 +101,6 @@ export default class Gamepads extends Emittable {
 export const GAMEPAD_HANDS = { NONE: 'none', LEFT: 'left', RIGHT: 'right' };
 export const GAMEPAD_MODELS = {
 	OCULUS_TOUCH: 0,
-};
-export const GAMEPAD = {
-	RIGHT: 0,
-	LEFT: 1,
-	NONE: 3,
 };
 
 export class Gamepad extends Emittable {
