@@ -4,7 +4,7 @@
 import Emittable from './emittable';
 
 export const SUPPORTED_GAMEPADS = ['Gear VR Controller', 'Daydream Controller', 'Oculus Go Controller', 'OpenVR Gamepad', 'Oculus Touch', 'Spatial Controller'];
-export const SUPPORTED_REGEXP = new RegExp(`/^(${SUPPORTED_GAMEPADS.join('|')})/`, 'i');
+export const SUPPORTED_REGEXP = new RegExp(`^(${SUPPORTED_GAMEPADS.join('|')})`, 'i');
 
 export default class Gamepads extends Emittable {
 
@@ -13,7 +13,8 @@ export default class Gamepads extends Emittable {
 	}
 
 	static isSupported(id) {
-		return SUPPORTED_REGEXP.match(id);
+		// console.log(`isSupported|${id}|`);
+		return id.match(SUPPORTED_REGEXP);
 	}
 
 	set gamepads(gamepads) {
@@ -23,6 +24,7 @@ export default class Gamepads extends Emittable {
 	get gamepads() {
 		if (!this.gamepads_) {
 			this.gamepads_ = {};
+			console.log('gamepads', this.gamepads_);
 			const gamepads = Gamepads.get();
 			for (let i = 0; i < gamepads.length; i++) {
 				this.connect(gamepads[i]);
@@ -41,34 +43,45 @@ export default class Gamepads extends Emittable {
 		this.onEvent = this.onEvent.bind(this);
 	}
 
-	connect(gamepad) {
-		// Note: gamepad === navigator.getGamepads()[gamepad.index]
-		if (gamepad) {
-			const id = gamepad.id;
-			this.setText(`connect ${gamepad.id} ${Gamepads.isSupported(id)}`);
-			if (Gamepads.isSupported(id)) {
-				const index = gamepad.index;
-				gamepad = this.gamepads[index] ? this.gamepads[index] : (this.gamepads[index] = new Gamepad(gamepad));
-				this.hands[gamepad.hand] = gamepad;
-				this.emit('connect', gamepad);
-				gamepad.on('broadcast', this.onEvent);
+	connect($gamepad) {
+		console.log('connect', $gamepad);
+		try {
+			// Note: $gamepad === navigator.getGamepads()[$gamepad.index]
+			if ($gamepad) {
+				const id = $gamepad.id;
+				this.setText(`connect ${$gamepad.id} ${Gamepads.isSupported(id)}`);
+				if (Gamepads.isSupported(id)) {
+					const index = $gamepad.index;
+					const gamepad = this.gamepads[index] ? this.gamepads[index] : (this.gamepads[index] = new Gamepad($gamepad));
+					console.log(gamepad);
+					this.hands[gamepad.hand] = gamepad;
+					this.emit('connect', gamepad);
+					gamepad.on('broadcast', this.onEvent);
+				}
 			}
+		} catch (e) {
+			console.log(e);
 		}
 	}
 
-	disconnect(gamepad) {
-		// Note: gamepad === navigator.getGamepads()[gamepad.index]
-		const id = gamepad.id;
-		if (Gamepads.isSupported(id)) {
-			const index = gamepad.index;
-			const gamepad = this.gamepads[index] || gamepad;
-			if (gamepad instanceof Gamepad) {
-				gamepad.off('broadcast', this.onEvent);
-				gamepad.destroy();
+	disconnect($gamepad) {
+		console.log('disconnect', $gamepad);
+		try {
+			// Note: $gamepad === navigator.getGamepads()[$gamepad.index]
+			const id = $gamepad.id;
+			if (Gamepads.isSupported(id)) {
+				const index = $gamepad.index;
+				const gamepad = this.gamepads[index] || $gamepad;
+				if (gamepad instanceof Gamepad) {
+					gamepad.off('broadcast', this.onEvent);
+					gamepad.destroy();
+				}
+				delete this.gamepads[gamepad.index];
+				delete this.hands[gamepad.hand];
+				this.emit('disconnect', gamepad);
 			}
-			delete this.gamepads[gamepad.index];
-			delete this.hands[gamepad.hand];
-			this.emit('disconnect', gamepad);
+		} catch (e) {
+			console.log(e);
 		}
 	}
 
@@ -106,6 +119,7 @@ export const GAMEPAD_MODELS = {
 export class Gamepad extends Emittable {
 
 	constructor(gamepad) {
+		super();
 		this.gamepad = gamepad;
 		this.id = gamempad.id;
 		this.index = gamempad.index;

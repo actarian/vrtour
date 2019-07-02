@@ -34,11 +34,17 @@ export default class Controllers extends Emittable {
 			group.scale.set(5, 5, 5);
 			pivot.add(group);
 		}
+		console.log('controllers');
 		const text = this.text = this.addText(pivot);
-		const gamepads = this.gamepads = new Gamepads((text) => {
+		const gamepads = this.gamepads = this.addGamepads();
+	}
+
+	addGamepads() {
+		const gamepads = new Gamepads((text) => {
 			this.setText(text);
 		});
 		gamepads.on('connect', (gamepad) => {
+			console.log('connect', gamepad);
 			this.setText(`connect ${gamepad.hand} ${gamepad.index}`);
 			const controller = this.addController(renderer, scene, gamepad);
 			if (gamepad.hand === GAMEPAD_HANDS.LEFT) {
@@ -52,20 +58,25 @@ export default class Controllers extends Emittable {
 			}
 		});
 		gamepads.on('disconnect', (gamepad) => {
+			console.log('disconnect', gamepad);
 			this.setText(`disconnect ${gamepad.hand} ${gamepad.index}`);
 			this.removeController(gamepad);
 		});
 		gamepads.on('press', (button) => {
+			console.log('press', press);
 			this.setText(`press ${button.gamepad.hand} ${button.index}`);
 		});
 		gamepads.on('release', (button) => {
+			console.log('release', button);
 			this.setText(`release ${button.gamepad.hand} ${button.index}`);
 		});
 		gamepads.on('axis', (axis) => {
+			console.log('axis', axis);
 			this.setText(`axis ${axis.gamepad.hand} ${axis.index} { x:${axis.x}, y:${axis.y} }`);
 			// axisup, axisdown, axisleft, axisright
 			// this.menu.next();
 		});
+		return gamepads;
 	}
 
 	onMenuDown(event) {
@@ -115,6 +126,7 @@ export default class Controllers extends Emittable {
 	}
 
 	update() {
+		console.log('update');
 		this.gamepads.update();
 		if (this.left) {
 			const gamePadLeft = this.findGamepad_(this.left.index);

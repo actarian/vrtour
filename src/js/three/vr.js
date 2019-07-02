@@ -100,12 +100,16 @@ export class VR extends Emittable {
 
 	getVR() {
 		navigator.getVRDisplays().then((displays) => {
+			// console.log('navigator.getVRDisplays', displays);
 			if (displays.length > 0) {
 				this.setEnterVR(displays[0]);
 			} else {
 				this.setVRNotFound();
 			}
-		}).catch(() => this.setVRNotFound());
+		}).catch((e) => {
+			console.log('getVR.error', e);
+			this.setVRNotFound();
+		});
 	}
 
 	getXR() {
@@ -116,7 +120,10 @@ export class VR extends Emittable {
 			}).then(() => {
 				this.setEnterXR(device);
 			}).catch(() => this.setVRNotFound());
-		}).catch(() => this.setVRNotFound());
+		}).catch((e) => {
+			console.log('getXR.error', e);
+			this.setVRNotFound();
+		});
 	}
 
 	setEnterVR(device) {
@@ -204,6 +211,7 @@ export class VR extends Emittable {
 			if (device.isPresenting) {
 				device.exitPresent();
 			} else {
+				// console.log(this.renderer.domElement);
 				device.requestPresent([{
 					source: this.renderer.domElement
 				}]);
@@ -258,3 +266,26 @@ export class VR extends Emittable {
 	}
 
 }
+
+/*
+VRDisplays[0]: VRDisplay {
+	capabilities: VRDisplayCapabilities {
+		canPresent: true
+		hasExternalDisplay: false
+		hasOrientation: true
+		hasPosition: true
+		maxLayers: 1
+	}
+	depthFar: 10000
+	depthNear: 0.01
+	displayId: 1
+	displayName: "Oculus Quest"
+	isConnected: true
+	isPresenting: false
+	stageParameters: VRStageParameters {
+		sittingToStandingTransform: [1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1, 0, 0, 1.649999976158142, 0, 1]
+		sizeX: 0
+		sizeZ: 0
+	}
+}
+*/

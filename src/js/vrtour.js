@@ -48,7 +48,9 @@ class VRTour {
 		const camera = this.camera = this.addCamera();
 		const pivot = this.pivot = new Views(scene);
 		pivot.on('onEnterView', (view) => {
-			this.orbit.setOrientation(view.orientation);
+			if (this.orbit) {
+				this.orbit.setOrientation(view.orientation);
+			}
 		});
 		pivot.on('pointDown', (point) => {
 			const position = point.position;
