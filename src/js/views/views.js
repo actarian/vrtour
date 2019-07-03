@@ -2,9 +2,9 @@
 /* global window, document */
 
 import html2canvas from 'html2canvas';
-import { ORIGIN, PANEL_RADIUS, POINT_RADIUS, ROOM_RADIUS, TEST_ENABLED } from './const';
-import EmittableGroup from './emittable.group';
-import InteractiveMesh from './interactive.mesh';
+import { ORIGIN, PANEL_RADIUS, POINT_RADIUS, ROOM_RADIUS, TEST_ENABLED } from '../const';
+import EmittableGroup from '../interactive/emittable.group';
+import InteractiveMesh from '../interactive/interactive.mesh';
 
 export default class Views extends EmittableGroup {
 

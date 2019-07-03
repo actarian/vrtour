@@ -1,8 +1,8 @@
 /* jshint esversion: 6 */
 /* global window, document */
 
-import { POINT_RADIUS } from './const';
-import InteractiveMesh from './interactive.mesh';
+import { POINT_RADIUS } from '../const';
+import InteractiveMesh from '../interactive/interactive.mesh';
 
 const SIZE = 8;
 const RADIUS = POINT_RADIUS - 0.1;

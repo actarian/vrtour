@@ -1,12 +1,15 @@
 /* jshint esversion: 6 */
 /* global window, document, TweenMax, THREE, WEBVR */
 
-import { ORIGIN, POINTER_RADIUS, ROOM_RADIUS, TEST_ENABLED } from './three/const';
-import Controllers from './three/controllers';
-import InteractiveMesh from './three/interactive.mesh';
-import Orbit from './three/orbit';
-import Views from './three/views';
-import { VR, VR_MODE } from './three/vr';
+// import * as THREE from 'three';
+// import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js';
+
+import { ORIGIN, POINTER_RADIUS, ROOM_RADIUS, TEST_ENABLED } from './const';
+import InteractiveMesh from './interactive/interactive.mesh';
+import Orbit from './orbit/orbit';
+import Views from './views/views';
+import Controllers from './vr/controllers';
+import { VR, VR_MODE } from './vr/vr';
 
 class VRTour {
 

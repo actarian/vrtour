@@ -1,10 +1,10 @@
 /* jshint esversion: 6 */
 /* global window, document */
 
-import { cm } from './const';
-import EmittableGroup from './emittable.group';
-import { MenuGridPanel } from './menu/menu-grid';
-import { MenuListPanel } from './menu/menu-list';
+import { cm } from '../const';
+import EmittableGroup from '../interactive/emittable.group';
+import { MenuGridPanel } from './menu-grid';
+import { MenuListPanel } from './menu-list';
 
 export default class Menu extends EmittableGroup {
 

@@ -1,7 +1,7 @@
-import FreezableGroup from "./freezable.group";
-
 /* jshint esversion: 6 */
 /* global window, document */
+
+import FreezableGroup from "./freezable.group";
 
 export default class EmittableGroup extends FreezableGroup {
 

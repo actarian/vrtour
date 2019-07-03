@@ -1,7 +1,7 @@
 /* jshint esversion: 6 */
 /* global window, document */
 
-import Emittable from './emittable';
+import Emittable from '../interactive/emittable';
 
 export const SUPPORTED_GAMEPADS = ['Gear VR Controller', 'Daydream Controller', 'Oculus Go Controller', 'OpenVR Gamepad', 'Oculus Touch', 'Spatial Controller'];
 export const SUPPORTED_REGEXP = new RegExp(`^(${SUPPORTED_GAMEPADS.join('|')})`, 'i');

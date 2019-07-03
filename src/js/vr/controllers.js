@@ -1,10 +1,10 @@
 /* jshint esversion: 6 */
 /* global window, document */
 
-import { cm, mm, POINTER_RADIUS, TEST_ENABLED } from './const';
-import Emittable from './emittable';
+import { cm, mm, POINTER_RADIUS, TEST_ENABLED } from '../const';
+import Emittable from '../interactive/emittable';
+import Menu from '../menu/menu';
 import Gamepads, { GAMEPAD_HANDS } from './gamepads';
-import Menu from './menu';
 
 export default class Controllers extends Emittable {
 

@@ -1,7 +1,7 @@
 /* jshint esversion: 6 */
 /* global window, document */
 
-import DragListener from '../shared/drag.listener';
+import DragListener from './drag.listener';
 
 export default class Orbit {
 

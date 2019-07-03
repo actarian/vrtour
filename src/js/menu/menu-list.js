@@ -2,9 +2,9 @@
 /* global window, document */
 
 import { cm, mm } from '../const';
-import EmittableGroup from '../emittable.group';
-import FreezableMesh from '../freezable.mesh';
-import InteractiveMesh from '../interactive.mesh';
+import EmittableGroup from '../interactive/emittable.group';
+import FreezableMesh from '../interactive/freezable.mesh';
+import InteractiveMesh from '../interactive/interactive.mesh';
 
 const W = cm(10);
 const H = cm(20);

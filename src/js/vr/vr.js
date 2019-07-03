@@ -1,7 +1,7 @@
 /* jshint esversion: 6 */
 /* global window, document */
 
-import Emittable from './emittable';
+import Emittable from '../interactive/emittable';
 
 export const VR_MODE = {
 	NONE: 0,
