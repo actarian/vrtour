@@ -17,8 +17,7 @@
 					"node_modules/three/build/three.js",
 					"node_modules/three/examples/js/vr/WebVR.js",
 					"node_modules/three/examples/js/modifiers/SubdivisionModifier.js",
-					"node_modules/three/examples/js/loaders/OBJLoader.js",
-					"node_modules/tone/build/tone.js"
+					"node_modules/three/examples/js/loaders/OBJLoader.js"
 				],
 				"output": "docs/js/vrtour-vendors.js",
 				"minify": true
