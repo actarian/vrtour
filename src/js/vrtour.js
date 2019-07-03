@@ -444,8 +444,10 @@ class VRTour {
 				// console.log(position.x, position.y, position.z);
 			}
 		}
-		this.pointer.material.color.setHex(this.controllers.isControllerSelecting ? 0x0000ff : 0xffffff);
-		this.pointer.material.opacity = this.controllers.isControllerSelecting ? 1.0 : 0.5;
+		if (this.controllers) {
+			this.pointer.material.color.setHex(this.controllers.gamepads.button ? 0x0000ff : 0xffffff);
+			this.pointer.material.opacity = this.controllers.gamepads.button ? 1.0 : 0.5;
+		}
 		this.pointer.scale.setScalar(this.pivot.busy ? 0 : 1);
 		// this.pivot.rotation.y = (this.pivot.ery || 0);
 		// this.pivot.rotation.y += ((this.pivot.ery || 0) - this.pivot.rotation.y) / 10;
@@ -474,7 +476,7 @@ class VRTour {
 				const position = controller.position;
 				const rotation = controller.getWorldDirection(controllers.controllerDirection).multiplyScalar(-1);
 				raycaster.set(position, rotation);
-				const hit = InteractiveMesh.hittest(raycaster, controllers.isControllerSelecting);
+				const hit = InteractiveMesh.hittest(raycaster, controllers.gamepads.button);
 				if (hit && hit !== this.pivot.room.sphere) {
 					controllers.hapticFeedback();
 				}

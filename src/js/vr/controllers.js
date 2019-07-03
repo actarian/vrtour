@@ -16,10 +16,6 @@ export default class Controllers extends Emittable {
 		this.scene = scene;
 		this.pivot = pivot;
 		this.controllerDirection = new THREE.Vector3();
-		this.onLeftSelectStart = this.onLeftSelectStart.bind(this);
-		this.onLeftSelectEnd = this.onLeftSelectEnd.bind(this);
-		this.onRightSelectStart = this.onRightSelectStart.bind(this);
-		this.onRightSelectEnd = this.onRightSelectEnd.bind(this);
 		if (TEST_ENABLED) {
 			const right = this.right = this.addControllerTest(scene);
 			document.addEventListener('mousedown', this.onRightSelectStart);
@@ -40,13 +36,13 @@ export default class Controllers extends Emittable {
 	}
 
 	addGamepads() {
-		const gamepads = new Gamepads((text) => {
+		const gamepads = this.gamepads = new Gamepads((text) => {
 			this.setText(text);
 		});
 		gamepads.on('connect', (gamepad) => {
-			console.log('connect', gamepad);
+			// console.log('connect', gamepad);
 			this.setText(`connect ${gamepad.hand} ${gamepad.index}`);
-			const controller = this.addController(renderer, scene, gamepad);
+			const controller = this.addController(this.renderer, this.scene, gamepad);
 			if (gamepad.hand === GAMEPAD_HANDS.LEFT) {
 				this.left = controller;
 				const menu = this.menu = new Menu(controller);
@@ -58,25 +54,59 @@ export default class Controllers extends Emittable {
 			}
 		});
 		gamepads.on('disconnect', (gamepad) => {
-			console.log('disconnect', gamepad);
+			// console.log('disconnect', gamepad);
 			this.setText(`disconnect ${gamepad.hand} ${gamepad.index}`);
 			this.removeController(gamepad);
 		});
+		gamepads.on('hand', (gamepad) => {
+			this.setController(gamepad);
+		});
 		gamepads.on('press', (button) => {
-			console.log('press', press);
+			// console.log('press', press);
 			this.setText(`press ${button.gamepad.hand} ${button.index}`);
+			switch (button.gamepad.hand) {
+				case GAMEPAD_HANDS.LEFT:
+					// 0 trigger, 1 front, 2 side, 3 Y, 4 X
+					switch (button.index) {
+						case 1:
+							this.menu.exit();
+							break;
+						case 2:
+							this.menu.enter();
+							break;
+						case 3:
+							// this.menu.next();
+							break;
+					}
+					break;
+				case GAMEPAD_HANDS.RIGHT:
+					// 0 trigger, 1 front, 2 side, 3 A, 4 B
+					break;
+			}
 		});
 		gamepads.on('release', (button) => {
-			console.log('release', button);
-			this.setText(`release ${button.gamepad.hand} ${button.index}`);
+			// console.log('release', button);
+			// this.setText(`release ${button.gamepad.hand} ${button.index}`);
 		});
 		gamepads.on('axis', (axis) => {
-			console.log('axis', axis);
+			// console.log('axis', axis);
 			this.setText(`axis ${axis.gamepad.hand} ${axis.index} { x:${axis.x}, y:${axis.y} }`);
 			// axisup, axisdown, axisleft, axisright
 			// this.menu.next();
 		});
 		return gamepads;
+	}
+
+	setController(gamepad) {
+		const controller = gamepad.hand === GAMEPAD_HANDS.LEFT ? this.left : this.right;
+		const currentController = this.controller;
+		if (currentController !== controller) {
+			if (currentController) {
+				currentController.remove(currentController.indicator);
+			}
+			controller.add(controller.indicator);
+			this.controller = controller;
+		}
 	}
 
 	onMenuDown(event) {
@@ -106,6 +136,7 @@ export default class Controllers extends Emittable {
 	}
 
 	hapticFeedback() {
+		return;
 		const gamepad = this.findGamepad_(this.controller.index);
 		if (gamepad) {
 			// console.log('start');
@@ -126,30 +157,7 @@ export default class Controllers extends Emittable {
 	}
 
 	update() {
-		console.log('update');
 		this.gamepads.update();
-		if (this.left) {
-			const gamePadLeft = this.findGamepad_(this.left.index);
-			if (gamePadLeft) {
-				const triggerLeft = gamePadLeft ? gamePadLeft.buttons.reduce((p, b, i) => b.pressed ? i : p, -1) : -1;
-				if (triggerLeft !== -1) {
-					this.onLeftSelectStart(triggerLeft, gamePadLeft);
-				} else {
-					this.onLeftSelectEnd();
-				}
-			}
-		}
-		if (this.right) {
-			const gamePadRight = this.findGamepad_(this.right.index);
-			if (gamePadRight) {
-				const triggerRight = gamePadRight ? gamePadRight.buttons.reduce((p, b, i) => b.pressed ? i : p, -1) : -1;
-				if (triggerRight !== -1) {
-					this.onRightSelectStart(triggerRight, gamePadRight);
-				} else {
-					this.onRightSelectEnd();
-				}
-			}
-		}
 	}
 
 	updateTest(mouse) {
@@ -157,83 +165,6 @@ export default class Controllers extends Emittable {
 		if (controller) {
 			controller.rotation.y = -mouse.x * Math.PI;
 			controller.rotation.x = mouse.y * Math.PI / 2;
-		}
-	}
-
-	onLeftSelectStart(id, gamepad) {
-		try {
-			if (this.left.button !== id) {
-				this.left.button = id;
-				// 0 trigger, 1 front, 2 side, 3 Y, 4 X
-				switch (id) {
-					case 1:
-						this.menu.exit();
-						break;
-					case 2:
-						this.menu.enter();
-						break;
-					case 3:
-						// this.menu.next();
-						break;
-				}
-				// this.setText((gamepad ? gamepad.id : '') + ' ' + String(id));
-				this.isControllerSelecting = true;
-				this.isControllerSelectionDirty = true;
-			}
-			if (this.controller !== this.left) {
-				if (this.controller) {
-					this.controller.remove(this.controller.indicator);
-				}
-				this.controller = this.left;
-				this.controller.add(this.controller.indicator);
-			}
-		} catch (error) {
-			this.emit('error', error);
-		}
-	}
-
-	onLeftSelectEnd() {
-		try {
-			this.left.button = undefined;
-			if (this.controller === this.left) {
-				this.isControllerSelecting = false;
-				this.isControllerSelectionDirty = false;
-			}
-		} catch (error) {
-			this.emit('error', error);
-		}
-	}
-
-	onRightSelectStart(id, gamepad) {
-		try {
-			if (this.right.button !== id) {
-				this.right.button = id;
-				// 1 front, 2 side, 3 A, 4 B, 5?
-				// this.setText((gamepad ? gamepad.id : '') + ' ' + String(id));
-				this.isControllerSelecting = true;
-				this.isControllerSelectionDirty = true;
-			}
-			if (this.controller !== this.right) {
-				if (this.controller) {
-					this.controller.remove(this.controller.indicator);
-				}
-				this.controller = this.right;
-				this.controller.add(this.controller.indicator);
-			}
-		} catch (error) {
-			this.emit('error', error);
-		}
-	}
-
-	onRightSelectEnd() {
-		try {
-			this.right.button = undefined;
-			if (this.controller === this.right) {
-				this.isControllerSelecting = false;
-				this.isControllerSelectionDirty = false;
-			}
-		} catch (error) {
-			this.emit('error', error);
 		}
 	}
 
@@ -353,15 +284,18 @@ export default class Controllers extends Emittable {
 			this.text.parent.remove(this.text);
 			this.text.geometry.dispose();
 		}
-		const shapes = this.font.generateShapes(message, 5);
-		const geometry = new THREE.ShapeBufferGeometry(shapes);
-		geometry.computeBoundingBox();
-		const x = -0.5 * (geometry.boundingBox.max.x - geometry.boundingBox.min.x);
-		geometry.translate(x, 0, 0);
-		const text = new THREE.Mesh(geometry, this.fontMaterial);
-		text.position.set(0, 0, -POINTER_RADIUS);
-		this.text = text;
-		this.pivot.add(text);
+		if (this.font) {
+			// console.log(this.font.generateShapes);
+			const shapes = this.font.generateShapes(message, 5);
+			const geometry = new THREE.ShapeBufferGeometry(shapes);
+			geometry.computeBoundingBox();
+			const x = -0.5 * (geometry.boundingBox.max.x - geometry.boundingBox.min.x);
+			geometry.translate(x, 0, 0);
+			const text = new THREE.Mesh(geometry, this.fontMaterial);
+			text.position.set(0, 0, -POINTER_RADIUS);
+			this.text = text;
+			this.pivot.add(text);
+		}
 	}
 
 	findGamepad_(id) {

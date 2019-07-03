@@ -86,6 +86,20 @@ export default class Gamepads extends Emittable {
 	}
 
 	onEvent(type, event) {
+		switch (type) {
+			case 'press':
+				if (this.button !== event) {
+					this.button = event;
+					this.emit('hand', event.gamepad);
+				}
+				break;
+			case 'release':
+				if (this.button === event) {
+					this.button = null;
+					// this.emit('hand', event.gamepad);
+				}
+				break;
+		}
 		this.emit(type, event);
 	}
 
@@ -100,12 +114,22 @@ export default class Gamepads extends Emittable {
 	}
 
 	update() {
-		Object.keys(this.gamepads).forEach(x => x.update());
+		for (let k in this.gamepads) {
+			const gamepad = this.gamepads[k];
+			if (gamepad) {
+				gamepad.update();
+			}
+		}
 	}
 
 	destroy() {
 		this.removeListeners();
-		Object.keys(this.gamepads).forEach(x => x.destroy());
+		for (let k in this.gamepads) {
+			const gamepad = this.gamepads[k];
+			if (gamepad) {
+				gamepad.destroy();
+			}
+		}
 		this.gamepads = null;
 	}
 
@@ -121,8 +145,8 @@ export class Gamepad extends Emittable {
 	constructor(gamepad) {
 		super();
 		this.gamepad = gamepad;
-		this.id = gamempad.id;
-		this.index = gamempad.index;
+		this.id = gamepad.id;
+		this.index = gamepad.index;
 		this.hand = this.getHand();
 		this.type = this.getType();
 		this.buttons = {};
@@ -150,15 +174,14 @@ export class Gamepad extends Emittable {
 
 	updateButtons() {
 		this.gamepad.buttons.forEach((x, i) => {
+			const pressed = x.pressed;
 			const button = this.buttons[i] || (this.buttons[i] = new GamepadButton(i, this));
-			if (button.pressed !== x.pressed) {
-				button.pressed = x.pressed;
-				if (x.pressed) {
+			if (button.pressed !== pressed) {
+				button.pressed = pressed;
+				if (pressed) {
 					this.emit('press', button);
-					// this.onPress(i);
 				} else if (status !== undefined) {
 					this.emit('release', button);
-					// this.onRelease(i);
 				}
 			}
 		});
@@ -193,41 +216,13 @@ export class Gamepad extends Emittable {
 
 	}
 
-	onPress(id) {
-		if (this.button !== id) {
-			this.button = id;
-			// 0 trigger, 1 front, 2 side, 3 Y, 4 X
-			// this.setText((gamepad ? gamepad.id : '') + ' ' + String(id));
-			this.down = true;
-			this.emit('down', id);
-		}
-		/*
-		if (this.controller !== this.left) {
-			if (this.controller) {
-				this.controller.remove(this.controller.indicator);
-			}
-			this.controller = this.left;
-			this.controller.add(this.controller.indicator);
-		}
-		*/
-	}
-
-	onRelease() {
-		if (this.button !== undefined) {
-			const id = this.button;
-			this.button = undefined;
-			this.down = false;
-			this.emit('up', id);
-		}
-	}
-
 }
 
 export class GamepadButton {
 
 	constructor(index, gamepad) {
 		this.index = index;
-		this.gamempad = gamepad;
+		this.gamepad = gamepad;
 		this.pressed = false;
 	}
 
@@ -238,7 +233,7 @@ export class GamepadAxis extends THREE.Vector2 {
 	constructor(index, gamepad) {
 		super();
 		this.index = index;
-		this.gamempad = gamepad;
+		this.gamepad = gamepad;
 	}
 
 }

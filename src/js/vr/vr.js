@@ -17,7 +17,7 @@ export class VR extends Emittable {
 			renderer.vr.setFrameOfReferenceType(options.frameOfReferenceType);
 		}
 		if (onError) {
-			// console.log(onError);
+			console.log(onError);
 			this.on('error', onError);
 		}
 		this.renderer = renderer;
@@ -191,7 +191,14 @@ export class VR extends Emittable {
 
 	onVRDisplayActivate(event) {
 		try {
-			event.display.requestPresent([{ source: this.renderer.domElement }]);
+			event.display.requestPresent([{
+				source: this.renderer.domElement
+			}]).then(() => {
+				this.emit('presenting');
+			}, (error) => {
+				console.log(error);
+				this.emit('error', error);
+			});
 		} catch (error) {
 			this.emit('error', error);
 		}
@@ -214,7 +221,12 @@ export class VR extends Emittable {
 				// console.log(this.renderer.domElement);
 				device.requestPresent([{
 					source: this.renderer.domElement
-				}]);
+				}]).then(() => {
+					this.emit('presenting');
+				}, (error) => {
+					console.log(error);
+					this.emit('error', error);
+				});
 				/*
 				if (Tone.context.state !== 'running') {
 					Tone.context.resume();

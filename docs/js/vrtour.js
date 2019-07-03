@@ -11077,9 +11077,9 @@ function _createClass(Constructor, protoProps, staticProps) { if (protoProps) _d
 
 function _possibleConstructorReturn(self, call) { if (call && (_typeof(call) === "object" || typeof call === "function")) { return call; } return _assertThisInitialized(self); }
 
-function _getPrototypeOf(o) { _getPrototypeOf = Object.setPrototypeOf ? Object.getPrototypeOf : function _getPrototypeOf(o) { return o.__proto__ || Object.getPrototypeOf(o); }; return _getPrototypeOf(o); }
-
 function _assertThisInitialized(self) { if (self === void 0) { throw new ReferenceError("this hasn't been initialised - super() hasn't been called"); } return self; }
+
+function _getPrototypeOf(o) { _getPrototypeOf = Object.setPrototypeOf ? Object.getPrototypeOf : function _getPrototypeOf(o) { return o.__proto__ || Object.getPrototypeOf(o); }; return _getPrototypeOf(o); }
 
 function _inherits(subClass, superClass) { if (typeof superClass !== "function" && superClass !== null) { throw new TypeError("Super expression must either be null or a function"); } subClass.prototype = Object.create(superClass && superClass.prototype, { constructor: { value: subClass, writable: true, configurable: true } }); if (superClass) _setPrototypeOf(subClass, superClass); }
 
@@ -11102,10 +11102,6 @@ function (_Emittable) {
     _this.scene = scene;
     _this.pivot = pivot;
     _this.controllerDirection = new THREE.Vector3();
-    _this.onLeftSelectStart = _this.onLeftSelectStart.bind(_assertThisInitialized(_this));
-    _this.onLeftSelectEnd = _this.onLeftSelectEnd.bind(_assertThisInitialized(_this));
-    _this.onRightSelectStart = _this.onRightSelectStart.bind(_assertThisInitialized(_this));
-    _this.onRightSelectEnd = _this.onRightSelectEnd.bind(_assertThisInitialized(_this));
 
     if (_const.TEST_ENABLED) {
       var right = _this.right = _this.addControllerTest(scene);
@@ -11137,15 +11133,14 @@ function (_Emittable) {
     value: function addGamepads() {
       var _this2 = this;
 
-      var gamepads = new _gamepads.default(function (text) {
+      var gamepads = this.gamepads = new _gamepads.default(function (text) {
         _this2.setText(text);
       });
       gamepads.on('connect', function (gamepad) {
-        console.log('connect', gamepad);
-
+        // console.log('connect', gamepad);
         _this2.setText("connect ".concat(gamepad.hand, " ").concat(gamepad.index));
 
-        var controller = _this2.addController(renderer, scene, gamepad);
+        var controller = _this2.addController(_this2.renderer, _this2.scene, gamepad);
 
         if (gamepad.hand === _gamepads.GAMEPAD_HANDS.LEFT) {
           _this2.left = controller;
@@ -11158,30 +11153,69 @@ function (_Emittable) {
         }
       });
       gamepads.on('disconnect', function (gamepad) {
-        console.log('disconnect', gamepad);
-
+        // console.log('disconnect', gamepad);
         _this2.setText("disconnect ".concat(gamepad.hand, " ").concat(gamepad.index));
 
         _this2.removeController(gamepad);
       });
-      gamepads.on('press', function (button) {
-        console.log('press', press);
-
-        _this2.setText("press ".concat(button.gamepad.hand, " ").concat(button.index));
+      gamepads.on('hand', function (gamepad) {
+        _this2.setController(gamepad);
       });
-      gamepads.on('release', function (button) {
-        console.log('release', button);
+      gamepads.on('press', function (button) {
+        // console.log('press', press);
+        _this2.setText("press ".concat(button.gamepad.hand, " ").concat(button.index));
 
-        _this2.setText("release ".concat(button.gamepad.hand, " ").concat(button.index));
+        switch (button.gamepad.hand) {
+          case _gamepads.GAMEPAD_HANDS.LEFT:
+            // 0 trigger, 1 front, 2 side, 3 Y, 4 X
+            switch (button.index) {
+              case 1:
+                _this2.menu.exit();
+
+                break;
+
+              case 2:
+                _this2.menu.enter();
+
+                break;
+
+              case 3:
+                // this.menu.next();
+                break;
+            }
+
+            break;
+
+          case _gamepads.GAMEPAD_HANDS.RIGHT:
+            // 0 trigger, 1 front, 2 side, 3 A, 4 B
+            break;
+        }
+      });
+      gamepads.on('release', function (button) {// console.log('release', button);
+        // this.setText(`release ${button.gamepad.hand} ${button.index}`);
       });
       gamepads.on('axis', function (axis) {
-        console.log('axis', axis);
-
+        // console.log('axis', axis);
         _this2.setText("axis ".concat(axis.gamepad.hand, " ").concat(axis.index, " { x:").concat(axis.x, ", y:").concat(axis.y, " }")); // axisup, axisdown, axisleft, axisright
         // this.menu.next();
 
       });
       return gamepads;
+    }
+  }, {
+    key: "setController",
+    value: function setController(gamepad) {
+      var controller = gamepad.hand === _gamepads.GAMEPAD_HANDS.LEFT ? this.left : this.right;
+      var currentController = this.controller;
+
+      if (currentController !== controller) {
+        if (currentController) {
+          currentController.remove(currentController.indicator);
+        }
+
+        controller.add(controller.indicator);
+        this.controller = controller;
+      }
     }
   }, {
     key: "onMenuDown",
@@ -11216,6 +11250,7 @@ function (_Emittable) {
   }, {
     key: "hapticFeedback",
     value: function hapticFeedback() {
+      return;
       var gamepad = this.findGamepad_(this.controller.index);
 
       if (gamepad) {
@@ -11241,40 +11276,7 @@ function (_Emittable) {
   }, {
     key: "update",
     value: function update() {
-      console.log('update');
       this.gamepads.update();
-
-      if (this.left) {
-        var gamePadLeft = this.findGamepad_(this.left.index);
-
-        if (gamePadLeft) {
-          var triggerLeft = gamePadLeft ? gamePadLeft.buttons.reduce(function (p, b, i) {
-            return b.pressed ? i : p;
-          }, -1) : -1;
-
-          if (triggerLeft !== -1) {
-            this.onLeftSelectStart(triggerLeft, gamePadLeft);
-          } else {
-            this.onLeftSelectEnd();
-          }
-        }
-      }
-
-      if (this.right) {
-        var gamePadRight = this.findGamepad_(this.right.index);
-
-        if (gamePadRight) {
-          var triggerRight = gamePadRight ? gamePadRight.buttons.reduce(function (p, b, i) {
-            return b.pressed ? i : p;
-          }, -1) : -1;
-
-          if (triggerRight !== -1) {
-            this.onRightSelectStart(triggerRight, gamePadRight);
-          } else {
-            this.onRightSelectEnd();
-          }
-        }
-      }
     }
   }, {
     key: "updateTest",
@@ -11284,96 +11286,6 @@ function (_Emittable) {
       if (controller) {
         controller.rotation.y = -mouse.x * Math.PI;
         controller.rotation.x = mouse.y * Math.PI / 2;
-      }
-    }
-  }, {
-    key: "onLeftSelectStart",
-    value: function onLeftSelectStart(id, gamepad) {
-      try {
-        if (this.left.button !== id) {
-          this.left.button = id; // 0 trigger, 1 front, 2 side, 3 Y, 4 X
-
-          switch (id) {
-            case 1:
-              this.menu.exit();
-              break;
-
-            case 2:
-              this.menu.enter();
-              break;
-
-            case 3:
-              // this.menu.next();
-              break;
-          } // this.setText((gamepad ? gamepad.id : '') + ' ' + String(id));
-
-
-          this.isControllerSelecting = true;
-          this.isControllerSelectionDirty = true;
-        }
-
-        if (this.controller !== this.left) {
-          if (this.controller) {
-            this.controller.remove(this.controller.indicator);
-          }
-
-          this.controller = this.left;
-          this.controller.add(this.controller.indicator);
-        }
-      } catch (error) {
-        this.emit('error', error);
-      }
-    }
-  }, {
-    key: "onLeftSelectEnd",
-    value: function onLeftSelectEnd() {
-      try {
-        this.left.button = undefined;
-
-        if (this.controller === this.left) {
-          this.isControllerSelecting = false;
-          this.isControllerSelectionDirty = false;
-        }
-      } catch (error) {
-        this.emit('error', error);
-      }
-    }
-  }, {
-    key: "onRightSelectStart",
-    value: function onRightSelectStart(id, gamepad) {
-      try {
-        if (this.right.button !== id) {
-          this.right.button = id; // 1 front, 2 side, 3 A, 4 B, 5?
-          // this.setText((gamepad ? gamepad.id : '') + ' ' + String(id));
-
-          this.isControllerSelecting = true;
-          this.isControllerSelectionDirty = true;
-        }
-
-        if (this.controller !== this.right) {
-          if (this.controller) {
-            this.controller.remove(this.controller.indicator);
-          }
-
-          this.controller = this.right;
-          this.controller.add(this.controller.indicator);
-        }
-      } catch (error) {
-        this.emit('error', error);
-      }
-    }
-  }, {
-    key: "onRightSelectEnd",
-    value: function onRightSelectEnd() {
-      try {
-        this.right.button = undefined;
-
-        if (this.controller === this.right) {
-          this.isControllerSelecting = false;
-          this.isControllerSelectionDirty = false;
-        }
-      } catch (error) {
-        this.emit('error', error);
       }
     }
   }, {
@@ -11502,15 +11414,18 @@ function (_Emittable) {
         this.text.geometry.dispose();
       }
 
-      var shapes = this.font.generateShapes(message, 5);
-      var geometry = new THREE.ShapeBufferGeometry(shapes);
-      geometry.computeBoundingBox();
-      var x = -0.5 * (geometry.boundingBox.max.x - geometry.boundingBox.min.x);
-      geometry.translate(x, 0, 0);
-      var text = new THREE.Mesh(geometry, this.fontMaterial);
-      text.position.set(0, 0, -_const.POINTER_RADIUS);
-      this.text = text;
-      this.pivot.add(text);
+      if (this.font) {
+        // console.log(this.font.generateShapes);
+        var shapes = this.font.generateShapes(message, 5);
+        var geometry = new THREE.ShapeBufferGeometry(shapes);
+        geometry.computeBoundingBox();
+        var x = -0.5 * (geometry.boundingBox.max.x - geometry.boundingBox.min.x);
+        geometry.translate(x, 0, 0);
+        var text = new THREE.Mesh(geometry, this.fontMaterial);
+        text.position.set(0, 0, -_const.POINTER_RADIUS);
+        this.text = text;
+        this.pivot.add(text);
+      }
     }
   }, {
     key: "findGamepad_",
@@ -11703,6 +11618,23 @@ function (_Emittable) {
   }, {
     key: "onEvent",
     value: function onEvent(type, event) {
+      switch (type) {
+        case 'press':
+          if (this.button !== event) {
+            this.button = event;
+            this.emit('hand', event.gamepad);
+          }
+
+          break;
+
+        case 'release':
+          if (this.button === event) {
+            this.button = null; // this.emit('hand', event.gamepad);
+          }
+
+          break;
+      }
+
       this.emit(type, event);
     }
   }, {
@@ -11720,17 +11652,27 @@ function (_Emittable) {
   }, {
     key: "update",
     value: function update() {
-      Object.keys(this.gamepads).forEach(function (x) {
-        return x.update();
-      });
+      for (var k in this.gamepads) {
+        var gamepad = this.gamepads[k];
+
+        if (gamepad) {
+          gamepad.update();
+        }
+      }
     }
   }, {
     key: "destroy",
     value: function destroy() {
       this.removeListeners();
-      Object.keys(this.gamepads).forEach(function (x) {
-        return x.destroy();
-      });
+
+      for (var k in this.gamepads) {
+        var gamepad = this.gamepads[k];
+
+        if (gamepad) {
+          gamepad.destroy();
+        }
+      }
+
       this.gamepads = null;
     }
   }]);
@@ -11762,8 +11704,8 @@ function (_Emittable2) {
 
     _this2 = _possibleConstructorReturn(this, _getPrototypeOf(Gamepad).call(this));
     _this2.gamepad = gamepad;
-    _this2.id = gamempad.id;
-    _this2.index = gamempad.index;
+    _this2.id = gamepad.id;
+    _this2.index = gamepad.index;
     _this2.hand = _this2.getHand();
     _this2.type = _this2.getType();
     _this2.buttons = {};
@@ -11799,17 +11741,16 @@ function (_Emittable2) {
       var _this3 = this;
 
       this.gamepad.buttons.forEach(function (x, i) {
+        var pressed = x.pressed;
         var button = _this3.buttons[i] || (_this3.buttons[i] = new GamepadButton(i, _this3));
 
-        if (button.pressed !== x.pressed) {
-          button.pressed = x.pressed;
+        if (button.pressed !== pressed) {
+          button.pressed = pressed;
 
-          if (x.pressed) {
-            _this3.emit('press', button); // this.onPress(i);
-
+          if (pressed) {
+            _this3.emit('press', button);
           } else if (status !== undefined) {
-            _this3.emit('release', button); // this.onRelease(i);
-
+            _this3.emit('release', button);
           }
         }
       });
@@ -11849,37 +11790,6 @@ function (_Emittable2) {
   }, {
     key: "destroy",
     value: function destroy() {}
-  }, {
-    key: "onPress",
-    value: function onPress(id) {
-      if (this.button !== id) {
-        this.button = id; // 0 trigger, 1 front, 2 side, 3 Y, 4 X
-        // this.setText((gamepad ? gamepad.id : '') + ' ' + String(id));
-
-        this.down = true;
-        this.emit('down', id);
-      }
-      /*
-      if (this.controller !== this.left) {
-      	if (this.controller) {
-      		this.controller.remove(this.controller.indicator);
-      	}
-      	this.controller = this.left;
-      	this.controller.add(this.controller.indicator);
-      }
-      */
-
-    }
-  }, {
-    key: "onRelease",
-    value: function onRelease() {
-      if (this.button !== undefined) {
-        var id = this.button;
-        this.button = undefined;
-        this.down = false;
-        this.emit('up', id);
-      }
-    }
   }]);
 
   return Gamepad;
@@ -11891,7 +11801,7 @@ var GamepadButton = function GamepadButton(index, gamepad) {
   _classCallCheck(this, GamepadButton);
 
   this.index = index;
-  this.gamempad = gamepad;
+  this.gamepad = gamepad;
   this.pressed = false;
 };
 
@@ -11909,7 +11819,7 @@ function (_THREE$Vector) {
 
     _this4 = _possibleConstructorReturn(this, _getPrototypeOf(GamepadAxis).call(this));
     _this4.index = index;
-    _this4.gamempad = gamepad;
+    _this4.gamepad = gamepad;
     return _this4;
   }
 
@@ -11972,7 +11882,8 @@ function (_Emittable) {
     }
 
     if (onError) {
-      // console.log(onError);
+      console.log(onError);
+
       _this.on('error', onError);
     }
 
@@ -12178,10 +12089,18 @@ function (_Emittable) {
   }, {
     key: "onVRDisplayActivate",
     value: function onVRDisplayActivate(event) {
+      var _this4 = this;
+
       try {
         event.display.requestPresent([{
           source: this.renderer.domElement
-        }]);
+        }]).then(function () {
+          _this4.emit('presenting');
+        }, function (error) {
+          console.log(error);
+
+          _this4.emit('error', error);
+        });
       } catch (error) {
         this.emit('error', error);
       }
@@ -12199,6 +12118,8 @@ function (_Emittable) {
   }, {
     key: "onVRClick",
     value: function onVRClick(event) {
+      var _this5 = this;
+
       try {
         var device = this.device;
 
@@ -12208,7 +12129,13 @@ function (_Emittable) {
           // console.log(this.renderer.domElement);
           device.requestPresent([{
             source: this.renderer.domElement
-          }]);
+          }]).then(function () {
+            _this5.emit('presenting');
+          }, function (error) {
+            console.log(error);
+
+            _this5.emit('error', error);
+          });
           /*
           if (Tone.context.state !== 'running') {
           	Tone.context.resume();
@@ -12837,8 +12764,11 @@ function () {
         }
       }
 
-      this.pointer.material.color.setHex(this.controllers.isControllerSelecting ? 0x0000ff : 0xffffff);
-      this.pointer.material.opacity = this.controllers.isControllerSelecting ? 1.0 : 0.5;
+      if (this.controllers) {
+        this.pointer.material.color.setHex(this.controllers.gamepads.button ? 0x0000ff : 0xffffff);
+        this.pointer.material.opacity = this.controllers.gamepads.button ? 1.0 : 0.5;
+      }
+
       this.pointer.scale.setScalar(this.pivot.busy ? 0 : 1); // this.pivot.rotation.y = (this.pivot.ery || 0);
       // this.pivot.rotation.y += ((this.pivot.ery || 0) - this.pivot.rotation.y) / 10;
     }
@@ -12870,7 +12800,7 @@ function () {
           var rotation = controller.getWorldDirection(controllers.controllerDirection).multiplyScalar(-1);
           raycaster.set(position, rotation);
 
-          var hit = _interactive.default.hittest(raycaster, controllers.isControllerSelecting);
+          var hit = _interactive.default.hittest(raycaster, controllers.gamepads.button);
 
           if (hit && hit !== this.pivot.room.sphere) {
             controllers.hapticFeedback();
