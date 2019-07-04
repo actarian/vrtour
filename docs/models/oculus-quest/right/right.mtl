@@ -1,7 +1,7 @@
 # 3ds Max Wavefront OBJ Exporter v0.97b - (c)2007 guruware
 # File Created: 04.07.2019 17:41:23
 
-newmtl oculus_quest_controller
+newmtl controller
 	Ns 180.0000
 	Ni 1.5000
 	d 1.0000

@@ -402,7 +402,7 @@ class VRTour {
 			if (this.vr.mode !== VR_MODE.NONE) {
 				// this.dragListener.move();
 				this.controllers.update();
-				this.updateController();
+				this.updateRaycaster();
 				/*
 				this.topBar.active = this.controllers.controller && this.pointer.position.y > 15;
 				this.topBar.update(cameraDirection);
@@ -410,7 +410,7 @@ class VRTour {
 			} else if (TEST_ENABLED) {
 				// this.dragListener.move();
 				this.updateCamera();
-				this.updateController();
+				this.updateRaycaster();
 				/*
 				this.topBar.active = this.controllers.controller && this.pointer.position.y > 15;
 				this.topBar.update(cameraDirection);
@@ -467,20 +467,22 @@ class VRTour {
 		*/
 	}
 
-	updateController() {
+	updateRaycaster() {
 		try {
 			const controllers = this.controllers;
-			const controller = controllers.controller;
-			if (controller) {
-				const raycaster = this.raycaster;
-				const position = controller.position;
-				const rotation = controller.getWorldDirection(controllers.controllerDirection).multiplyScalar(-1);
-				raycaster.set(position, rotation);
+			const raycaster = controllers.setRaycaster(this.raycaster);
+			if (raycaster) {
 				const hit = InteractiveMesh.hittest(raycaster, controllers.gamepads.button);
 				if (hit && hit !== this.pivot.room.sphere) {
-					controllers.hapticFeedback();
+					controllers.feedback();
+					/*
+					if (Tone.context.state === 'running') {
+						const feedback = this.feedback = (this.feedback || new Tone.Player('audio/feedback.mp3').toMaster());
+						feedback.start();
+					}
+					*/
 				}
-				// this.updatePointer(raycaster);
+				this.updatePointer(raycaster);
 			}
 		} catch (error) {
 			this.debugInfo.innerHTML = error;
