@@ -23,6 +23,7 @@ export default class Controller extends THREE.Group {
 
 	constructor(parent, hand) {
 		super();
+		this.ready = false;
 		this.buttons = [];
 		this.tween = { value: 0 };
 		this.parent = parent;
@@ -44,6 +45,7 @@ export default class Controller extends THREE.Group {
 			// opacity: 1,
 		});
 		const mesh = new THREE.Mesh(geometry, material);
+		this.ready = true;
 		return mesh;
 	}
 
@@ -58,6 +60,10 @@ export default class Controller extends THREE.Group {
 		const mesh = new THREE.Mesh(geometry, material);
 		mesh.position.set(0, 0, -cm(18.5));
 		return mesh;
+	}
+
+	update(tick) {
+
 	}
 
 	press(index) {
@@ -86,5 +92,17 @@ export default class Controller extends THREE.Group {
 
 	move(axis) {
 
+	}
+
+	static getCos(tick, i = 0) {
+		return Math.cos(i + tick * 0.1);
+	}
+
+	static mixColor(color, a, b, value) {
+		return color.setRGB(
+			a.r + (b.r - a.r) * value,
+			a.g + (b.g - a.g) * value,
+			a.b + (b.b - a.b) * value
+		);
 	}
 }

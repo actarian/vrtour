@@ -11111,6 +11111,7 @@ function (_THREE$Group) {
     _classCallCheck(this, Controller);
 
     _this = _possibleConstructorReturn(this, _getPrototypeOf(Controller).call(this));
+    _this.ready = false;
     _this.buttons = [];
     _this.tween = {
       value: 0
@@ -11141,6 +11142,7 @@ function (_THREE$Group) {
 
       });
       var mesh = new THREE.Mesh(geometry, material);
+      this.ready = true;
       return mesh;
     }
   }, {
@@ -11158,6 +11160,9 @@ function (_THREE$Group) {
       mesh.position.set(0, 0, -(0, _const.cm)(18.5));
       return mesh;
     }
+  }, {
+    key: "update",
+    value: function update(tick) {}
   }, {
     key: "press",
     value: function press(index) {
@@ -11191,6 +11196,17 @@ function (_THREE$Group) {
   }, {
     key: "move",
     value: function move(axis) {}
+  }], [{
+    key: "getCos",
+    value: function getCos(tick) {
+      var i = arguments.length > 1 && arguments[1] !== undefined ? arguments[1] : 0;
+      return Math.cos(i + tick * 0.1);
+    }
+  }, {
+    key: "mixColor",
+    value: function mixColor(color, a, b, value) {
+      return color.setRGB(a.r + (b.r - a.r) * value, a.g + (b.g - a.g) * value, a.b + (b.b - a.b) * value);
+    }
   }]);
 
   return Controller;
@@ -11232,7 +11248,7 @@ function _inherits(subClass, superClass) { if (typeof superClass !== "function" 
 
 function _setPrototypeOf(o, p) { _setPrototypeOf = Object.setPrototypeOf || function _setPrototypeOf(o, p) { o.__proto__ = p; return o; }; return _setPrototypeOf(o, p); }
 
-var OFF = new THREE.Color(0xcccccc);
+var OFF = new THREE.Color(0x666666);
 var ON = new THREE.Color(0xffffff);
 
 var OculusQuestController =
@@ -11251,11 +11267,13 @@ function (_Controller) {
     value: function addModel(hand) {
       var _this = this;
 
+      var format = '.fbx'; // '.obj';
+
       var path = "".concat(OculusQuestController.FOLDER, "/").concat(hand, "/").concat(hand);
-      var matcap = new THREE.TextureLoader().load('img/matcap.jpg');
-      var texture = new THREE.TextureLoader().load("".concat(path, ".png"));
+      var matcap = new THREE.TextureLoader().load('img/matcap/matcap.jpg');
+      var texture = new THREE.TextureLoader().load("".concat(path, ".jpg"));
       var material = new THREE.MeshMatcapMaterial({
-        color: OFF,
+        color: ON,
         // hand === GAMEPAD_HANDS.RIGHT ? 0xffeeee : 0xeeeeff, // 0x991111 : 0x111199,
         map: texture,
         matcap: matcap,
@@ -11263,56 +11281,76 @@ function (_Controller) {
         opacity: 1
       });
       var mesh = new THREE.Group();
-      var loader = new THREE.OBJLoader();
+      var loader = format === '.fbx' ? new THREE.FBXLoader() : new THREE.OBJLoader();
       var i = 0;
-      loader.load("".concat(path, ".obj"), function (object) {
-        var x = hand === _gamepads.GAMEPAD_HANDS.RIGHT ? -(0, _const.cm)(1) : (0, _const.cm)(1);
+      loader.load("".concat(path).concat(format), function (object) {
+        /*
+        const mixer = new THREE.AnimationMixer(object);
+        const action = mixer.clipAction(object.animations[0]);
+        action.play();
+        */
         object.traverse(function (child) {
           if (child instanceof THREE.Mesh) {
-            child.material = material.clone(); // 0 joystick, 1 trigger, 2 grip, 3 Y, 4 X
-            // 0 joystick, 1 trigger, 2 grip, 3 A, 4 B
-
-            function onButton(value) {
-              child.position.set(0, -value * (0, _const.mm)(5), 0);
-              child.material.color.set(OFF.lerp(ON, value));
-            }
-
-            ;
+            child.material = material.clone();
+            child.geometry.rotateX(child.rotation.x);
+            child.geometry.rotateY(child.rotation.y);
+            child.geometry.rotateZ(child.rotation.z);
+            child.rotation.set(0, 0, 0);
+            var position = child.position.clone(); // left > 0 joystick, 1 trigger, 2 grip, 3 Y, 4 X
+            // right > 0 joystick, 1 trigger, 2 grip, 3 A, 4 B
 
             switch (child.name) {
               case 'joystick':
-                _this.buttons[0] = onButton;
+                _this.buttons[0] = function (value) {
+                  child.position.set(position.x, position.y - value * (0, _const.mm)(2), position.z);
+
+                  _controller.default.mixColor(child.material.color, OFF, ON, value);
+                };
 
                 _this.move = function (axis) {
-                  child.rotation.set(axis.y * (0, _const.deg)(20), 0, axis.x * (0, _const.deg)(20));
+                  child.rotation.set(axis.y * (0, _const.deg)(15), 0, axis.x * (0, _const.deg)(15));
                 };
 
                 break;
 
               case 'trigger':
                 _this.buttons[1] = function (value) {
-                  child.rotation.set(-value * (0, _const.deg)(10), 0, 0);
-                  child.material.color.set(OFF.lerp(ON, value));
+                  child.rotation.set(-value * (0, _const.deg)(20), 0, 0);
+
+                  _controller.default.mixColor(child.material.color, OFF, ON, value);
                 };
 
                 break;
 
               case 'grip':
-                _this.buttons[1] = function (value) {
-                  child.position.set(-value * (0, _const.mm)(5), 0, 0);
-                  child.material.color.set(OFF.lerp(ON, value));
+                var direction = hand === _gamepads.GAMEPAD_HANDS.RIGHT ? 1 : -1;
+
+                _this.buttons[2] = function (value) {
+                  child.position.set(position.x + value * (0, _const.mm)(2) * direction, position.y, position.z);
+
+                  _controller.default.mixColor(child.material.color, OFF, ON, value);
                 };
 
                 break;
 
               case 'buttonY':
               case 'buttonA':
-                _this.buttons[3] = onButton;
+                _this.buttons[3] = function (value) {
+                  child.position.set(position.x, position.y - value * (0, _const.mm)(2), position.z);
+
+                  _controller.default.mixColor(child.material.color, OFF, ON, value);
+                };
+
                 break;
 
               case 'buttonX':
               case 'buttonB':
-                _this.buttons[4] = onButton;
+                _this.buttons[4] = function (value) {
+                  child.position.set(position.x, position.y - value * (0, _const.mm)(2), position.z);
+
+                  _controller.default.mixColor(child.material.color, OFF, ON, value);
+                };
+
                 break;
 
               default:
@@ -11322,6 +11360,7 @@ function (_Controller) {
           }
         });
         mesh.add(object);
+        _this.ready = true;
       }, function (xhr) {
         _this.progress = xhr.loaded / xhr.total;
       }, function (error) {
@@ -11332,7 +11371,7 @@ function (_Controller) {
   }, {
     key: "addRay",
     value: function addRay(hand) {
-      var geometry = new THREE.CylinderBufferGeometry((0, _const.mm)(2), (0, _const.mm)(1), (0, _const.cm)(30), 5); // 10, 12
+      var geometry = new THREE.CylinderBufferGeometry((0, _const.mm)(1), (0, _const.mm)(0.5), (0, _const.cm)(30), 5); // 10, 12
 
       geometry.rotateX(Math.PI / 2);
       var material = new THREE.MeshBasicMaterial({
@@ -11343,6 +11382,29 @@ function (_Controller) {
       var mesh = new THREE.Mesh(geometry, material);
       mesh.position.set(this.hand === _gamepads.GAMEPAD_HANDS.RIGHT ? (0, _const.cm)(1) : -(0, _const.cm)(1), 0, -(0, _const.cm)(18.5));
       return mesh;
+    }
+  }, {
+    key: "update",
+    value: function update(tick) {
+      this.test(tick);
+    }
+  }, {
+    key: "test",
+    value: function test(tick) {
+      if (_const.TEST_ENABLED && this.ready) {
+        var x = _controller.default.getCos(tick, 0);
+
+        var y = _controller.default.getCos(tick, 1);
+
+        this.move({
+          x: x,
+          y: y
+        });
+        this.buttons[1](Math.abs(_controller.default.getCos(tick, 1)));
+        this.buttons[2](Math.abs(_controller.default.getCos(tick, 2)));
+        this.buttons[3](Math.abs(_controller.default.getCos(tick, 3)));
+        this.buttons[4](Math.abs(_controller.default.getCos(tick, 4)));
+      }
     }
   }]);
 
@@ -11403,6 +11465,7 @@ function (_Emittable) {
     _classCallCheck(this, Controllers);
 
     _this = _possibleConstructorReturn(this, _getPrototypeOf(Controllers).call(this));
+    _this.tick = 0;
     _this.controllers_ = {};
     _this.gamepads_ = {};
     _this.renderer = renderer;
@@ -11431,7 +11494,13 @@ function (_Emittable) {
   }, {
     key: "update",
     value: function update() {
-      this.gamepads.update();
+      var _this2 = this;
+
+      this.gamepads.update(this.tick);
+      Object.keys(this.controllers_).forEach(function (x) {
+        return _this2.controllers_[x].update(_this2.tick);
+      });
+      this.tick++;
     }
   }, {
     key: "updateTest",
@@ -11459,7 +11528,7 @@ function (_Emittable) {
   }, {
     key: "onMenuDown",
     value: function onMenuDown(event) {
-      var _this2 = this;
+      var _this3 = this;
 
       var item = event.item;
       var index = event.index; // console.log('Controllers.onMenuDown', item, index);
@@ -11473,7 +11542,7 @@ function (_Emittable) {
           y: y,
           ease: Power2.easeInOut,
           onComplete: function onComplete() {
-            _this2.pivot.busy = false;
+            _this3.pivot.busy = false;
           }
         });
       } else if (index === 1) {
@@ -11489,51 +11558,51 @@ function (_Emittable) {
   }, {
     key: "addGamepads_",
     value: function addGamepads_() {
-      var _this3 = this;
+      var _this4 = this;
 
       var gamepads = this.gamepads = new _gamepads.default(function (text) {
-        _this3.setText(text);
+        _this4.setText(text);
       });
       gamepads.on('connect', function (gamepad) {
         // console.log('connect', gamepad);
-        _this3.setText("connect ".concat(gamepad.hand, " ").concat(gamepad.index));
+        _this4.setText("connect ".concat(gamepad.hand, " ").concat(gamepad.index));
 
-        var controller = _this3.addController_(_this3.renderer, _this3.scene, gamepad);
+        var controller = _this4.addController_(_this4.renderer, _this4.scene, gamepad);
 
         if (gamepad.hand === _gamepads.GAMEPAD_HANDS.LEFT) {
-          _this3.left = controller;
-          var menu = _this3.menu = new _menu.default(controller);
+          _this4.left = controller;
+          var menu = _this4.menu = new _menu.default(controller);
           menu.on('down', function (event) {
-            _this3.onMenuDown(event);
+            _this4.onMenuDown(event);
           });
         } else {
-          _this3.right = controller;
+          _this4.right = controller;
         }
       });
       gamepads.on('disconnect', function (gamepad) {
         // console.log('disconnect', gamepad);
-        _this3.setText("disconnect ".concat(gamepad.hand, " ").concat(gamepad.index));
+        _this4.setText("disconnect ".concat(gamepad.hand, " ").concat(gamepad.index));
 
-        _this3.removeController_(gamepad);
+        _this4.removeController_(gamepad);
       });
       gamepads.on('hand', function (gamepad) {
-        _this3.gamepad = gamepad;
+        _this4.gamepad = gamepad;
       });
       gamepads.on('press', function (button) {
         // console.log('press', press);
-        _this3.setText("press ".concat(button.gamepad.hand, " ").concat(button.index));
+        _this4.setText("press ".concat(button.gamepad.hand, " ").concat(button.index));
 
         switch (button.gamepad.hand) {
           case _gamepads.GAMEPAD_HANDS.LEFT:
             // 0 joystick, 1 trigger, 2 grip, 3 Y, 4 X
             switch (button.index) {
               case 1:
-                _this3.menu.exit();
+                _this4.menu.exit();
 
                 break;
 
               case 2:
-                _this3.menu.enter();
+                _this4.menu.enter();
 
                 break;
 
@@ -11549,7 +11618,7 @@ function (_Emittable) {
             break;
         }
 
-        var controller = _this3.controllers_[button.gamepad.index];
+        var controller = _this4.controllers_[button.gamepad.index];
 
         if (controller) {
           controller.press(button.index);
@@ -11558,7 +11627,7 @@ function (_Emittable) {
       gamepads.on('release', function (button) {
         // console.log('release', button);
         // this.setText(`release ${button.gamepad.hand} ${button.index}`);
-        var controller = _this3.controllers_[button.gamepad.index];
+        var controller = _this4.controllers_[button.gamepad.index];
 
         if (controller) {
           controller.release(button.index);
@@ -11566,11 +11635,11 @@ function (_Emittable) {
       });
       gamepads.on('axis', function (axis) {
         // console.log('axis', axis);
-        _this3.setText("axis ".concat(axis.gamepad.hand, " ").concat(axis.index, " { x:").concat(axis.x, ", y:").concat(axis.y, " }")); // axisup, axisdown, axisleft, axisright
+        _this4.setText("axis ".concat(axis.gamepad.hand, " ").concat(axis.index, " { x:").concat(axis.x, ", y:").concat(axis.y, " }")); // axisup, axisdown, axisleft, axisright
         // this.menu.next();
 
 
-        var controller = _this3.controllers_[button.gamepad.index];
+        var controller = _this4.controllers_[button.gamepad.index];
 
         if (controller) {
           controller.move(axis);
@@ -11613,6 +11682,7 @@ function (_Emittable) {
         var controller = new _oculusQuestController.default(this.scene, _gamepads.GAMEPAD_HANDS.RIGHT);
         controller.scale.set(5, 5, 5);
         this.controller = controller;
+        this.controllers_[0] = controller;
         /*
         document.addEventListener('mousedown', this.onRightSelectStart);
         document.addEventListener('mouseup', this.onRightSelectEnd);
@@ -11631,11 +11701,11 @@ function (_Emittable) {
   }, {
     key: "addText_",
     value: function addText_(parent) {
-      var _this4 = this;
+      var _this5 = this;
 
       var loader = new THREE.FontLoader();
       loader.load('fonts/helvetiker_regular.typeface.json', function (font) {
-        _this4.font = font;
+        _this5.font = font;
         var material = new THREE.MeshBasicMaterial({
           color: 0x111111,
           // 0x33c5f6,
@@ -11643,7 +11713,7 @@ function (_Emittable) {
           opacity: 1,
           side: THREE.DoubleSide
         });
-        _this4.fontMaterial = material;
+        _this5.fontMaterial = material;
       });
     }
   }, {
@@ -12965,6 +13035,7 @@ function () {
           */
         } else if (_const.TEST_ENABLED) {
           // this.dragListener.move();
+          this.controllers.update();
           this.updateCamera();
           this.updateRaycaster();
           /*

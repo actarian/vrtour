@@ -12,6 +12,7 @@ export default class Controllers extends Emittable {
 
 	constructor(renderer, scene, pivot) {
 		super();
+		this.tick = 0;
 		this.controllers_ = {};
 		this.gamepads_ = {};
 		this.renderer = renderer;
@@ -56,7 +57,9 @@ export default class Controllers extends Emittable {
 	}
 
 	update() {
-		this.gamepads.update();
+		this.gamepads.update(this.tick);
+		Object.keys(this.controllers_).forEach(x => this.controllers_[x].update(this.tick));
+		this.tick++;
 	}
 
 	updateTest(mouse) {
@@ -206,6 +209,7 @@ export default class Controllers extends Emittable {
 			const controller = new OculusQuestController(this.scene, GAMEPAD_HANDS.RIGHT);
 			controller.scale.set(5, 5, 5);
 			this.controller = controller;
+			this.controllers_[0] = controller;
 			/*
 			document.addEventListener('mousedown', this.onRightSelectStart);
 			document.addEventListener('mouseup', this.onRightSelectEnd);

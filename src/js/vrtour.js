@@ -409,6 +409,7 @@ class VRTour {
 				*/
 			} else if (TEST_ENABLED) {
 				// this.dragListener.move();
+				this.controllers.update();
 				this.updateCamera();
 				this.updateRaycaster();
 				/*
