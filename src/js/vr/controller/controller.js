@@ -50,7 +50,7 @@ export default class Controller extends THREE.Group {
 	}
 
 	addRay(hand) {
-		const geometry = new THREE.CylinderBufferGeometry(mm(2), mm(1), cm(30), 5); // 10, 12
+		const geometry = new THREE.CylinderBufferGeometry(mm(1), mm(0.5), cm(30), 5); // 10, 12
 		geometry.rotateX(Math.PI / 2);
 		const material = new THREE.MeshBasicMaterial({
 			color: 0xffffff,
@@ -67,7 +67,7 @@ export default class Controller extends THREE.Group {
 	}
 
 	press(index) {
-		TweenMax.to(this.tween, 0.4, {
+		TweenMax.to(this.tween, 0.3, {
 			value: 1,
 			ease: Power2.easeOut,
 			onUpdate: () => {
@@ -79,7 +79,7 @@ export default class Controller extends THREE.Group {
 	}
 
 	release(index) {
-		TweenMax.to(this.tween, 0.4, {
+		TweenMax.to(this.tween, 0.3, {
 			value: 0,
 			ease: Power2.easeOut,
 			onUpdate: () => {

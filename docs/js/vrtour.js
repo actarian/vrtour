@@ -11148,7 +11148,7 @@ function (_THREE$Group) {
   }, {
     key: "addRay",
     value: function addRay(hand) {
-      var geometry = new THREE.CylinderBufferGeometry((0, _const.mm)(2), (0, _const.mm)(1), (0, _const.cm)(30), 5); // 10, 12
+      var geometry = new THREE.CylinderBufferGeometry((0, _const.mm)(1), (0, _const.mm)(0.5), (0, _const.cm)(30), 5); // 10, 12
 
       geometry.rotateX(Math.PI / 2);
       var material = new THREE.MeshBasicMaterial({
@@ -11168,7 +11168,7 @@ function (_THREE$Group) {
     value: function press(index) {
       var _this2 = this;
 
-      TweenMax.to(this.tween, 0.4, {
+      TweenMax.to(this.tween, 0.3, {
         value: 1,
         ease: Power2.easeOut,
         onUpdate: function onUpdate() {
@@ -11183,7 +11183,7 @@ function (_THREE$Group) {
     value: function release(index) {
       var _this3 = this;
 
-      TweenMax.to(this.tween, 0.4, {
+      TweenMax.to(this.tween, 0.3, {
         value: 0,
         ease: Power2.easeOut,
         onUpdate: function onUpdate() {
@@ -11248,8 +11248,8 @@ function _inherits(subClass, superClass) { if (typeof superClass !== "function" 
 
 function _setPrototypeOf(o, p) { _setPrototypeOf = Object.setPrototypeOf || function _setPrototypeOf(o, p) { o.__proto__ = p; return o; }; return _setPrototypeOf(o, p); }
 
-var OFF = new THREE.Color(0x666666);
-var ON = new THREE.Color(0xffffff);
+var OFF = new THREE.Color(0xffffff);
+var ON = new THREE.Color(0x8888ff);
 
 var OculusQuestController =
 /*#__PURE__*/
@@ -11270,10 +11270,10 @@ function (_Controller) {
       var format = '.fbx'; // '.obj';
 
       var path = "".concat(OculusQuestController.FOLDER, "/").concat(hand, "/").concat(hand);
-      var matcap = new THREE.TextureLoader().load('img/matcap/matcap.jpg');
+      var matcap = new THREE.TextureLoader().load('img/matcap/matcap-04.jpg');
       var texture = new THREE.TextureLoader().load("".concat(path, ".jpg"));
       var material = new THREE.MeshMatcapMaterial({
-        color: ON,
+        color: OFF,
         // hand === GAMEPAD_HANDS.RIGHT ? 0xffeeee : 0xeeeeff, // 0x991111 : 0x111199,
         map: texture,
         matcap: matcap,
@@ -11296,7 +11296,7 @@ function (_Controller) {
             child.geometry.rotateY(child.rotation.y);
             child.geometry.rotateZ(child.rotation.z);
             child.rotation.set(0, 0, 0);
-            var position = child.position.clone(); // left > 0 joystick, 1 trigger, 2 grip, 3 Y, 4 X
+            var position = child.position.clone(); // left > 0 joystick, 1 trigger, 2 grip, 3 X, 4 Y
             // right > 0 joystick, 1 trigger, 2 grip, 3 A, 4 B
 
             switch (child.name) {
@@ -11308,7 +11308,7 @@ function (_Controller) {
                 };
 
                 _this.move = function (axis) {
-                  child.rotation.set(axis.y * (0, _const.deg)(15), 0, axis.x * (0, _const.deg)(15));
+                  child.rotation.set(axis.y * (0, _const.deg)(15), 0, -axis.x * (0, _const.deg)(15));
                 };
 
                 break;
@@ -11333,7 +11333,7 @@ function (_Controller) {
 
                 break;
 
-              case 'buttonY':
+              case 'buttonX':
               case 'buttonA':
                 _this.buttons[3] = function (value) {
                   child.position.set(position.x, position.y - value * (0, _const.mm)(2), position.z);
@@ -11343,7 +11343,7 @@ function (_Controller) {
 
                 break;
 
-              case 'buttonX':
+              case 'buttonY':
               case 'buttonB':
                 _this.buttons[4] = function (value) {
                   child.position.set(position.x, position.y - value * (0, _const.mm)(2), position.z);
@@ -11594,7 +11594,7 @@ function (_Emittable) {
 
         switch (button.gamepad.hand) {
           case _gamepads.GAMEPAD_HANDS.LEFT:
-            // 0 joystick, 1 trigger, 2 grip, 3 Y, 4 X
+            // 0 joystick, 1 trigger, 2 grip, 3 X, 4 Y
             switch (button.index) {
               case 1:
                 _this4.menu.exit();
@@ -11639,7 +11639,7 @@ function (_Emittable) {
         // this.menu.next();
 
 
-        var controller = _this4.controllers_[button.gamepad.index];
+        var controller = _this4.controllers_[axis.gamepad.index];
 
         if (controller) {
           controller.move(axis);
@@ -13023,8 +13023,7 @@ function () {
     key: "render",
     value: function render(delta) {
       try {
-        var cameraDirection = this.camera.getWorldDirection(this.cameraDirection);
-
+        // const cameraDirection = this.camera.getWorldDirection(this.cameraDirection);
         if (this.vr.mode !== _vr.VR_MODE.NONE) {
           // this.dragListener.move();
           this.controllers.update();
@@ -13115,9 +13114,8 @@ function () {
             	feedback.start();
             }
             */
-          }
+          } // this.updatePointer(raycaster);
 
-          this.updatePointer(raycaster);
         }
       } catch (error) {
         this.debugInfo.innerHTML = error;

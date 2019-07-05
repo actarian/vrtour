@@ -398,7 +398,7 @@ class VRTour {
 
 	render(delta) {
 		try {
-			const cameraDirection = this.camera.getWorldDirection(this.cameraDirection);
+			// const cameraDirection = this.camera.getWorldDirection(this.cameraDirection);
 			if (this.vr.mode !== VR_MODE.NONE) {
 				// this.dragListener.move();
 				this.controllers.update();
@@ -483,7 +483,7 @@ class VRTour {
 					}
 					*/
 				}
-				this.updatePointer(raycaster);
+				// this.updatePointer(raycaster);
 			}
 		} catch (error) {
 			this.debugInfo.innerHTML = error;

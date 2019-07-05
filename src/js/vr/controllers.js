@@ -138,7 +138,7 @@ export default class Controllers extends Emittable {
 			this.setText(`press ${button.gamepad.hand} ${button.index}`);
 			switch (button.gamepad.hand) {
 				case GAMEPAD_HANDS.LEFT:
-					// 0 joystick, 1 trigger, 2 grip, 3 Y, 4 X
+					// 0 joystick, 1 trigger, 2 grip, 3 X, 4 Y
 					switch (button.index) {
 						case 1:
 							this.menu.exit();
@@ -173,7 +173,7 @@ export default class Controllers extends Emittable {
 			this.setText(`axis ${axis.gamepad.hand} ${axis.index} { x:${axis.x}, y:${axis.y} }`);
 			// axisup, axisdown, axisleft, axisright
 			// this.menu.next();
-			const controller = this.controllers_[button.gamepad.index];
+			const controller = this.controllers_[axis.gamepad.index];
 			if (controller) {
 				controller.move(axis);
 			}

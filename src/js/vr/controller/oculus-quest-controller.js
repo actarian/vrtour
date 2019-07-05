@@ -5,8 +5,8 @@ import { cm, deg, mm, TEST_ENABLED } from '../../const';
 import { GAMEPAD_HANDS } from '../gamepads';
 import Controller from './controller';
 
-const OFF = new THREE.Color(0x666666);
-const ON = new THREE.Color(0xffffff);
+const OFF = new THREE.Color(0xffffff);
+const ON = new THREE.Color(0x8888ff);
 
 export default class OculusQuestController extends Controller {
 
@@ -17,10 +17,10 @@ export default class OculusQuestController extends Controller {
 	addModel(hand) {
 		const format = '.fbx'; // '.obj';
 		const path = `${OculusQuestController.FOLDER}/${hand}/${hand}`;
-		const matcap = new THREE.TextureLoader().load('img/matcap/matcap.jpg');
+		const matcap = new THREE.TextureLoader().load('img/matcap/matcap-04.jpg');
 		const texture = new THREE.TextureLoader().load(`${path}.jpg`);
 		const material = new THREE.MeshMatcapMaterial({
-			color: ON, // hand === GAMEPAD_HANDS.RIGHT ? 0xffeeee : 0xeeeeff, // 0x991111 : 0x111199,
+			color: OFF, // hand === GAMEPAD_HANDS.RIGHT ? 0xffeeee : 0xeeeeff, // 0x991111 : 0x111199,
 			map: texture,
 			matcap: matcap,
 			transparent: true,
@@ -43,7 +43,7 @@ export default class OculusQuestController extends Controller {
 					child.geometry.rotateZ(child.rotation.z);
 					child.rotation.set(0, 0, 0);
 					const position = child.position.clone();
-					// left > 0 joystick, 1 trigger, 2 grip, 3 Y, 4 X
+					// left > 0 joystick, 1 trigger, 2 grip, 3 X, 4 Y
 					// right > 0 joystick, 1 trigger, 2 grip, 3 A, 4 B
 					switch (child.name) {
 						case 'joystick':
@@ -52,7 +52,7 @@ export default class OculusQuestController extends Controller {
 								Controller.mixColor(child.material.color, OFF, ON, value);
 							};
 							this.move = function(axis) {
-								child.rotation.set(axis.y * deg(15), 0, axis.x * deg(15));
+								child.rotation.set(axis.y * deg(15), 0, -axis.x * deg(15));
 							};
 							break;
 						case 'trigger':
@@ -68,14 +68,14 @@ export default class OculusQuestController extends Controller {
 								Controller.mixColor(child.material.color, OFF, ON, value);
 							};
 							break;
-						case 'buttonY':
+						case 'buttonX':
 						case 'buttonA':
 							this.buttons[3] = function(value) {
 								child.position.set(position.x, position.y - value * mm(2), position.z);
 								Controller.mixColor(child.material.color, OFF, ON, value);
 							};
 							break;
-						case 'buttonX':
+						case 'buttonY':
 						case 'buttonB':
 							this.buttons[4] = function(value) {
 								child.position.set(position.x, position.y - value * mm(2), position.z);
