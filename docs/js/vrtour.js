@@ -8850,7 +8850,7 @@ exports.ORIGIN = exports.POINTER_RADIUS = exports.POINT_RADIUS = exports.PANEL_R
 /* jshint esversion: 6 */
 
 /* global window, document */
-var TEST_ENABLED = true;
+var TEST_ENABLED = false;
 exports.TEST_ENABLED = TEST_ENABLED;
 var ROOM_RADIUS = 200;
 exports.ROOM_RADIUS = ROOM_RADIUS;
@@ -11058,6 +11058,18 @@ exports.NavPoint = NavPoint;
 Object.defineProperty(exports, "__esModule", {
   value: true
 });
+exports.ControllerFragGlsl = void 0;
+var ControllerFragGlsl =
+/* glsl */
+"\n#define MATCAP\nuniform vec3 diffuse;\nuniform vec3 emissive;\nuniform float opacity;\nuniform sampler2D matcap;\nvarying vec3 vViewPosition;\n#ifndef FLAT_SHADED\n\tvarying vec3 vNormal;\n#endif\n#include <common>\n#include <uv_pars_fragment>\n#include <map_pars_fragment>\n#include <alphamap_pars_fragment>\n#include <fog_pars_fragment>\n#include <bumpmap_pars_fragment>\n#include <normalmap_pars_fragment>\n#include <logdepthbuf_pars_fragment>\n#include <clipping_planes_pars_fragment>\nvoid main() {\n\t#include <clipping_planes_fragment>\n\tvec4 diffuseColor = vec4( diffuse, opacity );\n\tvec4 emissiveColor = vec4( emissive, opacity );\n\t#include <logdepthbuf_fragment>\n\t#include <map_fragment>\n\t#include <alphamap_fragment>\n\t#include <alphatest_fragment>\n\t#include <normal_fragment_begin>\n\t#include <normal_fragment_maps>\n\tvec3 viewDir = normalize( vViewPosition );\n\tvec3 x = normalize( vec3( viewDir.z, 0.0, - viewDir.x ) );\n\tvec3 y = cross( viewDir, x );\n\tvec2 uv = vec2( dot( x, normal ), dot( y, normal ) ) * 0.495 + 0.5;\n\t#ifdef USE_MATCAP\n\t\tvec4 matcapColor = texture2D( matcap, uv );\n\t\tmatcapColor = matcapTexelToLinear( matcapColor );\n\t#else\n\t\tvec4 matcapColor = vec4( 1.0 );\n\t#endif\n\tvec3 outgoingLight = diffuseColor.rgb * max(matcapColor.rgb, emissiveColor.rgb);\n\tgl_FragColor = vec4( outgoingLight, diffuseColor.a );\n\t#include <premultiplied_alpha_fragment>\n\t#include <tonemapping_fragment>\n\t#include <encodings_fragment>\n\t#include <fog_fragment>\n}\n";
+exports.ControllerFragGlsl = ControllerFragGlsl;
+
+},{}],16:[function(require,module,exports){
+"use strict";
+
+Object.defineProperty(exports, "__esModule", {
+  value: true
+});
 exports.default = void 0;
 
 var _const = require("../../const");
@@ -11225,7 +11237,7 @@ function (_THREE$Group) {
 
 exports.default = Controller;
 
-},{"../../const":2,"../gamepads":18}],16:[function(require,module,exports){
+},{"../../const":2,"../gamepads":19}],17:[function(require,module,exports){
 "use strict";
 
 Object.defineProperty(exports, "__esModule", {
@@ -11237,9 +11249,9 @@ var _const = require("../../const");
 
 var _gamepads = require("../gamepads");
 
-var _ControllerFrag = require("../material/mesh-gamepad-frag.glsl");
-
 var _controller = _interopRequireDefault(require("./controller"));
+
+var _controllerFrag = require("./controller-frag.glsl");
 
 function _interopRequireDefault(obj) { return obj && obj.__esModule ? obj : { default: obj }; }
 
@@ -11307,7 +11319,7 @@ function (_Controller) {
 
             child.material.onBeforeCompile = function (shader) {
               shader.uniforms.emissive = new THREE.Uniform(new THREE.Color(0x000000));
-              shader.fragmentShader = _ControllerFrag.ControllerFragGlsl;
+              shader.fragmentShader = _controllerFrag.ControllerFragGlsl;
               child.shader = shader;
             };
 
@@ -11440,7 +11452,7 @@ function (_Controller) {
 exports.default = OculusQuestController;
 OculusQuestController.FOLDER = "models/oculus-quest";
 
-},{"../../const":2,"../gamepads":18,"../material/mesh-gamepad-frag.glsl":19,"./controller":15}],17:[function(require,module,exports){
+},{"../../const":2,"../gamepads":19,"./controller":16,"./controller-frag.glsl":15}],18:[function(require,module,exports){
 "use strict";
 
 Object.defineProperty(exports, "__esModule", {
@@ -11798,7 +11810,7 @@ function (_Emittable) {
 
 exports.default = Controllers;
 
-},{"../const":2,"../interactive/emittable":4,"../menu/menu":11,"./controller/oculus-quest-controller":16,"./gamepads":18}],18:[function(require,module,exports){
+},{"../const":2,"../interactive/emittable":4,"../menu/menu":11,"./controller/oculus-quest-controller":17,"./gamepads":19}],19:[function(require,module,exports){
 "use strict";
 
 Object.defineProperty(exports, "__esModule", {
@@ -12189,19 +12201,7 @@ function (_THREE$Vector) {
 
 exports.GamepadAxis = GamepadAxis;
 
-},{"../interactive/emittable":4}],19:[function(require,module,exports){
-"use strict";
-
-Object.defineProperty(exports, "__esModule", {
-  value: true
-});
-exports.ControllerFragGlsl = void 0;
-var ControllerFragGlsl =
-/* glsl */
-"\n#define MATCAP\nuniform vec3 diffuse;\nuniform vec3 emissive;\nuniform float opacity;\nuniform sampler2D matcap;\nvarying vec3 vViewPosition;\n#ifndef FLAT_SHADED\n\tvarying vec3 vNormal;\n#endif\n#include <common>\n#include <uv_pars_fragment>\n#include <map_pars_fragment>\n#include <alphamap_pars_fragment>\n#include <fog_pars_fragment>\n#include <bumpmap_pars_fragment>\n#include <normalmap_pars_fragment>\n#include <logdepthbuf_pars_fragment>\n#include <clipping_planes_pars_fragment>\nvoid main() {\n\t#include <clipping_planes_fragment>\n\tvec4 diffuseColor = vec4( diffuse, opacity );\n\tvec4 emissiveColor = vec4( emissive, opacity );\n\t#include <logdepthbuf_fragment>\n\t#include <map_fragment>\n\t#include <alphamap_fragment>\n\t#include <alphatest_fragment>\n\t#include <normal_fragment_begin>\n\t#include <normal_fragment_maps>\n\tvec3 viewDir = normalize( vViewPosition );\n\tvec3 x = normalize( vec3( viewDir.z, 0.0, - viewDir.x ) );\n\tvec3 y = cross( viewDir, x );\n\tvec2 uv = vec2( dot( x, normal ), dot( y, normal ) ) * 0.495 + 0.5;\n\t#ifdef USE_MATCAP\n\t\tvec4 matcapColor = texture2D( matcap, uv );\n\t\tmatcapColor = matcapTexelToLinear( matcapColor );\n\t#else\n\t\tvec4 matcapColor = vec4( 1.0 );\n\t#endif\n\tvec3 outgoingLight = diffuseColor.rgb * max(matcapColor.rgb, emissiveColor.rgb);\n\tgl_FragColor = vec4( outgoingLight, diffuseColor.a );\n\t#include <premultiplied_alpha_fragment>\n\t#include <tonemapping_fragment>\n\t#include <encodings_fragment>\n\t#include <fog_fragment>\n}\n";
-exports.ControllerFragGlsl = ControllerFragGlsl;
-
-},{}],20:[function(require,module,exports){
+},{"../interactive/emittable":4}],20:[function(require,module,exports){
 "use strict";
 
 Object.defineProperty(exports, "__esModule", {
@@ -13462,5 +13462,5 @@ if (SHOW_HELPERS) {
 }
 */
 
-},{"./const":2,"./interactive/interactive.mesh":8,"./orbit/orbit":13,"./views/views":14,"./vr/controllers":17,"./vr/vr":20}]},{},[21]);
+},{"./const":2,"./interactive/interactive.mesh":8,"./orbit/orbit":13,"./views/views":14,"./vr/controllers":18,"./vr/vr":20}]},{},[21]);
 //# sourceMappingURL=vrtour.js.map
