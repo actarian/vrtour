@@ -8850,7 +8850,7 @@ exports.ORIGIN = exports.POINTER_RADIUS = exports.POINT_RADIUS = exports.PANEL_R
 /* jshint esversion: 6 */
 
 /* global window, document */
-var TEST_ENABLED = false;
+var TEST_ENABLED = true;
 exports.TEST_ENABLED = TEST_ENABLED;
 var ROOM_RADIUS = 200;
 exports.ROOM_RADIUS = ROOM_RADIUS;
@@ -11112,10 +11112,10 @@ function (_THREE$Group) {
 
     _this = _possibleConstructorReturn(this, _getPrototypeOf(Controller).call(this));
     _this.ready = false;
-    _this.buttons = [];
-    _this.tween = {
+    _this.buttons = new Array(10).fill({
       value: 0
-    };
+    });
+    _this.axis = new Array(2).fill(new THREE.Vector2());
     _this.parent = parent;
     _this.hand = hand;
 
@@ -11166,36 +11166,40 @@ function (_THREE$Group) {
   }, {
     key: "press",
     value: function press(index) {
-      var _this2 = this;
-
-      TweenMax.to(this.tween, 0.3, {
+      TweenMax.to(this.buttons[index], 0.3, {
         value: 1,
-        ease: Power2.easeOut,
-        onUpdate: function onUpdate() {
-          if (typeof _this2.buttons[index] === 'function') {
-            _this2.buttons[index](_this2.tween.value);
-          }
+        ease: Power2.easeOut
+        /*
+        onUpdate: () => {
+        	if (typeof this.buttons[index] === 'function') {
+        		this.buttons[index](this.tween.value);
+        	}
         }
+        */
+
       });
     }
   }, {
     key: "release",
     value: function release(index) {
-      var _this3 = this;
-
-      TweenMax.to(this.tween, 0.3, {
+      TweenMax.to(this.buttons[index], 0.3, {
         value: 0,
-        ease: Power2.easeOut,
-        onUpdate: function onUpdate() {
-          if (typeof _this3.buttons[index] === 'function') {
-            _this3.buttons[index](_this3.tween.value);
-          }
+        ease: Power2.easeOut
+        /*
+        onUpdate: () => {
+        	if (typeof this.buttons[index] === 'function') {
+        		this.buttons[index](this.tween.value);
+        	}
         }
+        */
+
       });
     }
   }, {
     key: "move",
-    value: function move(axis) {}
+    value: function move(axis) {
+      this.axis[axis.index] = axis;
+    }
   }], [{
     key: "getCos",
     value: function getCos(tick) {
@@ -11206,6 +11210,13 @@ function (_THREE$Group) {
     key: "mixColor",
     value: function mixColor(color, a, b, value) {
       return color.setRGB(a.r + (b.r - a.r) * value, a.g + (b.g - a.g) * value, a.b + (b.b - a.b) * value);
+    }
+  }, {
+    key: "mixUniformColor",
+    value: function mixUniformColor(uniform, a, b, value) {
+      uniform.value.r = a.r + (b.r - a.r) * value;
+      uniform.value.g = a.g + (b.g - a.g) * value;
+      uniform.value.b = a.b + (b.b - a.b) * value;
     }
   }]);
 
@@ -11225,6 +11236,8 @@ exports.default = void 0;
 var _const = require("../../const");
 
 var _gamepads = require("../gamepads");
+
+var _ControllerFrag = require("../material/mesh-gamepad-frag.glsl");
 
 var _controller = _interopRequireDefault(require("./controller"));
 
@@ -11248,8 +11261,8 @@ function _inherits(subClass, superClass) { if (typeof superClass !== "function" 
 
 function _setPrototypeOf(o, p) { _setPrototypeOf = Object.setPrototypeOf || function _setPrototypeOf(o, p) { o.__proto__ = p; return o; }; return _setPrototypeOf(o, p); }
 
-var OFF = new THREE.Color(0xffffff);
-var ON = new THREE.Color(0x8888ff);
+var OFF = new THREE.Color(0x000000);
+var ON = new THREE.Color(0xffffff);
 
 var OculusQuestController =
 /*#__PURE__*/
@@ -11273,8 +11286,7 @@ function (_Controller) {
       var matcap = new THREE.TextureLoader().load('img/matcap/matcap-04.jpg');
       var texture = new THREE.TextureLoader().load("".concat(path, ".jpg"));
       var material = new THREE.MeshMatcapMaterial({
-        color: OFF,
-        // hand === GAMEPAD_HANDS.RIGHT ? 0xffeeee : 0xeeeeff, // 0x991111 : 0x111199,
+        color: 0xffffff,
         map: texture,
         matcap: matcap,
         transparent: true,
@@ -11292,6 +11304,13 @@ function (_Controller) {
         object.traverse(function (child) {
           if (child instanceof THREE.Mesh) {
             child.material = material.clone();
+
+            child.material.onBeforeCompile = function (shader) {
+              shader.uniforms.emissive = new THREE.Uniform(new THREE.Color(0x000000));
+              shader.fragmentShader = _ControllerFrag.ControllerFragGlsl;
+              child.shader = shader;
+            };
+
             child.geometry.rotateX(child.rotation.x);
             child.geometry.rotateY(child.rotation.y);
             child.geometry.rotateZ(child.rotation.z);
@@ -11301,23 +11320,27 @@ function (_Controller) {
 
             switch (child.name) {
               case 'joystick':
-                _this.buttons[0] = function (value) {
+                child.onBeforeRender = function (renderer, scene, camera, geometry, material, group) {
+                  var axis = _this.axis[0];
+                  child.rotation.set(axis.y * (0, _const.deg)(15), 0, -axis.x * (0, _const.deg)(15));
+                  var value = _this.buttons[0].value;
                   child.position.set(position.x, position.y - value * (0, _const.mm)(2), position.z);
 
-                  _controller.default.mixColor(child.material.color, OFF, ON, value);
-                };
-
-                _this.move = function (axis) {
-                  child.rotation.set(axis.y * (0, _const.deg)(15), 0, -axis.x * (0, _const.deg)(15));
+                  if (child.shader) {
+                    _controller.default.mixUniformColor(child.shader.uniforms.emissive, OFF, ON, value);
+                  }
                 };
 
                 break;
 
               case 'trigger':
-                _this.buttons[1] = function (value) {
+                child.onBeforeRender = function (renderer, scene, camera, geometry, material, group) {
+                  var value = _this.buttons[1].value;
                   child.rotation.set(-value * (0, _const.deg)(20), 0, 0);
 
-                  _controller.default.mixColor(child.material.color, OFF, ON, value);
+                  if (child.shader) {
+                    _controller.default.mixUniformColor(child.shader.uniforms.emissive, OFF, ON, value);
+                  }
                 };
 
                 break;
@@ -11325,30 +11348,39 @@ function (_Controller) {
               case 'grip':
                 var direction = hand === _gamepads.GAMEPAD_HANDS.RIGHT ? 1 : -1;
 
-                _this.buttons[2] = function (value) {
+                child.onBeforeRender = function (renderer, scene, camera, geometry, material, group) {
+                  var value = _this.buttons[2].value;
                   child.position.set(position.x + value * (0, _const.mm)(2) * direction, position.y, position.z);
 
-                  _controller.default.mixColor(child.material.color, OFF, ON, value);
+                  if (child.shader) {
+                    _controller.default.mixUniformColor(child.shader.uniforms.emissive, OFF, ON, value);
+                  }
                 };
 
                 break;
 
               case 'buttonX':
               case 'buttonA':
-                _this.buttons[3] = function (value) {
+                child.onBeforeRender = function (renderer, scene, camera, geometry, material, group) {
+                  var value = _this.buttons[3].value;
                   child.position.set(position.x, position.y - value * (0, _const.mm)(2), position.z);
 
-                  _controller.default.mixColor(child.material.color, OFF, ON, value);
+                  if (child.shader) {
+                    _controller.default.mixUniformColor(child.shader.uniforms.emissive, OFF, ON, value);
+                  }
                 };
 
                 break;
 
               case 'buttonY':
               case 'buttonB':
-                _this.buttons[4] = function (value) {
+                child.onBeforeRender = function (renderer, scene, camera, geometry, material, group) {
+                  var value = _this.buttons[4].value;
                   child.position.set(position.x, position.y - value * (0, _const.mm)(2), position.z);
 
-                  _controller.default.mixColor(child.material.color, OFF, ON, value);
+                  if (child.shader) {
+                    _controller.default.mixUniformColor(child.shader.uniforms.emissive, OFF, ON, value);
+                  }
                 };
 
                 break;
@@ -11392,18 +11424,12 @@ function (_Controller) {
     key: "test",
     value: function test(tick) {
       if (_const.TEST_ENABLED && this.ready) {
-        var x = _controller.default.getCos(tick, 0);
-
-        var y = _controller.default.getCos(tick, 1);
-
-        this.move({
-          x: x,
-          y: y
-        });
-        this.buttons[1](Math.abs(_controller.default.getCos(tick, 1)));
-        this.buttons[2](Math.abs(_controller.default.getCos(tick, 2)));
-        this.buttons[3](Math.abs(_controller.default.getCos(tick, 3)));
-        this.buttons[4](Math.abs(_controller.default.getCos(tick, 4)));
+        this.axis[0].x = _controller.default.getCos(tick, 0);
+        this.axis[0].y = _controller.default.getCos(tick, 1);
+        this.buttons[1].value = Math.abs(_controller.default.getCos(tick, 1));
+        this.buttons[2].value = Math.abs(_controller.default.getCos(tick, 2));
+        this.buttons[3].value = Math.abs(_controller.default.getCos(tick, 3));
+        this.buttons[4].value = Math.abs(_controller.default.getCos(tick, 4));
       }
     }
   }]);
@@ -11414,7 +11440,7 @@ function (_Controller) {
 exports.default = OculusQuestController;
 OculusQuestController.FOLDER = "models/oculus-quest";
 
-},{"../../const":2,"../gamepads":18,"./controller":15}],17:[function(require,module,exports){
+},{"../../const":2,"../gamepads":18,"../material/mesh-gamepad-frag.glsl":19,"./controller":15}],17:[function(require,module,exports){
 "use strict";
 
 Object.defineProperty(exports, "__esModule", {
@@ -12078,6 +12104,31 @@ function (_Emittable2) {
         if (axis.x !== x || axis.y !== y) {
           axis.x = x;
           axis.y = y;
+          var left = axis.x < -0.5;
+          var right = axis.x > 0.5;
+          var up = axis.y < -0.5;
+          var down = axis.y > 0.5;
+
+          if (axis.left !== left) {
+            axis.left = left;
+            this.emit(left ? 'left' : 'none', axis);
+          }
+
+          if (axis.right !== right) {
+            axis.right = right;
+            this.emit(right ? 'right' : 'none', axis);
+          }
+
+          if (axis.up !== up) {
+            axis.up = up;
+            this.emit(up ? 'up' : 'none', axis);
+          }
+
+          if (axis.down !== down) {
+            axis.down = down;
+            this.emit(down ? 'down' : 'none', axis);
+          }
+
           this.emit('axis', axis);
         }
       }
@@ -12129,6 +12180,7 @@ function (_THREE$Vector) {
     _this4 = _possibleConstructorReturn(this, _getPrototypeOf(GamepadAxis).call(this));
     _this4.index = index;
     _this4.gamepad = gamepad;
+    _this4.left = _this4.right = _this4.up = _this4.down = false;
     return _this4;
   }
 
@@ -12138,6 +12190,18 @@ function (_THREE$Vector) {
 exports.GamepadAxis = GamepadAxis;
 
 },{"../interactive/emittable":4}],19:[function(require,module,exports){
+"use strict";
+
+Object.defineProperty(exports, "__esModule", {
+  value: true
+});
+exports.ControllerFragGlsl = void 0;
+var ControllerFragGlsl =
+/* glsl */
+"\n#define MATCAP\nuniform vec3 diffuse;\nuniform vec3 emissive;\nuniform float opacity;\nuniform sampler2D matcap;\nvarying vec3 vViewPosition;\n#ifndef FLAT_SHADED\n\tvarying vec3 vNormal;\n#endif\n#include <common>\n#include <uv_pars_fragment>\n#include <map_pars_fragment>\n#include <alphamap_pars_fragment>\n#include <fog_pars_fragment>\n#include <bumpmap_pars_fragment>\n#include <normalmap_pars_fragment>\n#include <logdepthbuf_pars_fragment>\n#include <clipping_planes_pars_fragment>\nvoid main() {\n\t#include <clipping_planes_fragment>\n\tvec4 diffuseColor = vec4( diffuse, opacity );\n\tvec4 emissiveColor = vec4( emissive, opacity );\n\t#include <logdepthbuf_fragment>\n\t#include <map_fragment>\n\t#include <alphamap_fragment>\n\t#include <alphatest_fragment>\n\t#include <normal_fragment_begin>\n\t#include <normal_fragment_maps>\n\tvec3 viewDir = normalize( vViewPosition );\n\tvec3 x = normalize( vec3( viewDir.z, 0.0, - viewDir.x ) );\n\tvec3 y = cross( viewDir, x );\n\tvec2 uv = vec2( dot( x, normal ), dot( y, normal ) ) * 0.495 + 0.5;\n\t#ifdef USE_MATCAP\n\t\tvec4 matcapColor = texture2D( matcap, uv );\n\t\tmatcapColor = matcapTexelToLinear( matcapColor );\n\t#else\n\t\tvec4 matcapColor = vec4( 1.0 );\n\t#endif\n\tvec3 outgoingLight = diffuseColor.rgb * max(matcapColor.rgb, emissiveColor.rgb);\n\tgl_FragColor = vec4( outgoingLight, diffuseColor.a );\n\t#include <premultiplied_alpha_fragment>\n\t#include <tonemapping_fragment>\n\t#include <encodings_fragment>\n\t#include <fog_fragment>\n}\n";
+exports.ControllerFragGlsl = ControllerFragGlsl;
+
+},{}],20:[function(require,module,exports){
 "use strict";
 
 Object.defineProperty(exports, "__esModule", {
@@ -12534,7 +12598,7 @@ VRDisplays[0]: VRDisplay {
 
 exports.VR = VR;
 
-},{"../interactive/emittable":4}],20:[function(require,module,exports){
+},{"../interactive/emittable":4}],21:[function(require,module,exports){
 "use strict";
 
 var _const = require("./const");
@@ -13398,5 +13462,5 @@ if (SHOW_HELPERS) {
 }
 */
 
-},{"./const":2,"./interactive/interactive.mesh":8,"./orbit/orbit":13,"./views/views":14,"./vr/controllers":17,"./vr/vr":19}]},{},[20]);
+},{"./const":2,"./interactive/interactive.mesh":8,"./orbit/orbit":13,"./views/views":14,"./vr/controllers":17,"./vr/vr":20}]},{},[21]);
 //# sourceMappingURL=vrtour.js.map

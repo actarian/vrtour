@@ -197,6 +197,26 @@ export class Gamepad extends Emittable {
 			if (axis.x !== x || axis.y !== y) {
 				axis.x = x;
 				axis.y = y;
+				const left = axis.x < -0.5;
+				const right = axis.x > 0.5;
+				const up = axis.y < -0.5;
+				const down = axis.y > 0.5;
+				if (axis.left !== left) {
+					axis.left = left;
+					this.emit(left ? 'left' : 'none', axis);
+				}
+				if (axis.right !== right) {
+					axis.right = right;
+					this.emit(right ? 'right' : 'none', axis);
+				}
+				if (axis.up !== up) {
+					axis.up = up;
+					this.emit(up ? 'up' : 'none', axis);
+				}
+				if (axis.down !== down) {
+					axis.down = down;
+					this.emit(down ? 'down' : 'none', axis);
+				}
 				this.emit('axis', axis);
 			}
 		}
@@ -234,6 +254,7 @@ export class GamepadAxis extends THREE.Vector2 {
 		super();
 		this.index = index;
 		this.gamepad = gamepad;
+		this.left = this.right = this.up = this.down = false;
 	}
 
 }

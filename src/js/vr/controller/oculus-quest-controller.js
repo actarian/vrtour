@@ -4,9 +4,10 @@
 import { cm, deg, mm, TEST_ENABLED } from '../../const';
 import { GAMEPAD_HANDS } from '../gamepads';
 import Controller from './controller';
+import { ControllerFragGlsl } from './controller-frag.glsl';
 
-const OFF = new THREE.Color(0xffffff);
-const ON = new THREE.Color(0x8888ff);
+const OFF = new THREE.Color(0x000000);
+const ON = new THREE.Color(0xffffff);
 
 export default class OculusQuestController extends Controller {
 
@@ -20,7 +21,7 @@ export default class OculusQuestController extends Controller {
 		const matcap = new THREE.TextureLoader().load('img/matcap/matcap-04.jpg');
 		const texture = new THREE.TextureLoader().load(`${path}.jpg`);
 		const material = new THREE.MeshMatcapMaterial({
-			color: OFF, // hand === GAMEPAD_HANDS.RIGHT ? 0xffeeee : 0xeeeeff, // 0x991111 : 0x111199,
+			color: 0xffffff,
 			map: texture,
 			matcap: matcap,
 			transparent: true,
@@ -38,6 +39,11 @@ export default class OculusQuestController extends Controller {
 			object.traverse((child) => {
 				if (child instanceof THREE.Mesh) {
 					child.material = material.clone();
+					child.material.onBeforeCompile = (shader) => {
+						shader.uniforms.emissive = new THREE.Uniform(new THREE.Color(0x000000));
+						shader.fragmentShader = ControllerFragGlsl;
+						child.shader = shader;
+					};
 					child.geometry.rotateX(child.rotation.x);
 					child.geometry.rotateY(child.rotation.y);
 					child.geometry.rotateZ(child.rotation.z);
@@ -47,39 +53,53 @@ export default class OculusQuestController extends Controller {
 					// right > 0 joystick, 1 trigger, 2 grip, 3 A, 4 B
 					switch (child.name) {
 						case 'joystick':
-							this.buttons[0] = function(value) {
-								child.position.set(position.x, position.y - value * mm(2), position.z);
-								Controller.mixColor(child.material.color, OFF, ON, value);
-							};
-							this.move = function(axis) {
+							child.onBeforeRender = (renderer, scene, camera, geometry, material, group) => {
+								const axis = this.axis[0];
 								child.rotation.set(axis.y * deg(15), 0, -axis.x * deg(15));
+								const value = this.buttons[0].value;
+								child.position.set(position.x, position.y - value * mm(2), position.z);
+								if (child.shader) {
+									Controller.mixUniformColor(child.shader.uniforms.emissive, OFF, ON, value);
+								}
 							};
 							break;
 						case 'trigger':
-							this.buttons[1] = function(value) {
+							child.onBeforeRender = (renderer, scene, camera, geometry, material, group) => {
+								const value = this.buttons[1].value;
 								child.rotation.set(-value * deg(20), 0, 0);
-								Controller.mixColor(child.material.color, OFF, ON, value);
+								if (child.shader) {
+									Controller.mixUniformColor(child.shader.uniforms.emissive, OFF, ON, value);
+								}
 							};
 							break;
 						case 'grip':
 							const direction = hand === GAMEPAD_HANDS.RIGHT ? 1 : -1;
-							this.buttons[2] = function(value) {
+							child.onBeforeRender = (renderer, scene, camera, geometry, material, group) => {
+								const value = this.buttons[2].value;
 								child.position.set(position.x + value * mm(2) * direction, position.y, position.z);
-								Controller.mixColor(child.material.color, OFF, ON, value);
+								if (child.shader) {
+									Controller.mixUniformColor(child.shader.uniforms.emissive, OFF, ON, value);
+								}
 							};
 							break;
 						case 'buttonX':
 						case 'buttonA':
-							this.buttons[3] = function(value) {
+							child.onBeforeRender = (renderer, scene, camera, geometry, material, group) => {
+								const value = this.buttons[3].value;
 								child.position.set(position.x, position.y - value * mm(2), position.z);
-								Controller.mixColor(child.material.color, OFF, ON, value);
+								if (child.shader) {
+									Controller.mixUniformColor(child.shader.uniforms.emissive, OFF, ON, value);
+								}
 							};
 							break;
 						case 'buttonY':
 						case 'buttonB':
-							this.buttons[4] = function(value) {
+							child.onBeforeRender = (renderer, scene, camera, geometry, material, group) => {
+								const value = this.buttons[4].value;
 								child.position.set(position.x, position.y - value * mm(2), position.z);
-								Controller.mixColor(child.material.color, OFF, ON, value);
+								if (child.shader) {
+									Controller.mixUniformColor(child.shader.uniforms.emissive, OFF, ON, value);
+								}
 							};
 							break;
 						default:
@@ -116,13 +136,12 @@ export default class OculusQuestController extends Controller {
 
 	test(tick) {
 		if (TEST_ENABLED && this.ready) {
-			const x = Controller.getCos(tick, 0);
-			const y = Controller.getCos(tick, 1);
-			this.move({ x, y });
-			this.buttons[1](Math.abs(Controller.getCos(tick, 1)));
-			this.buttons[2](Math.abs(Controller.getCos(tick, 2)));
-			this.buttons[3](Math.abs(Controller.getCos(tick, 3)));
-			this.buttons[4](Math.abs(Controller.getCos(tick, 4)));
+			this.axis[0].x = Controller.getCos(tick, 0);
+			this.axis[0].y = Controller.getCos(tick, 1);
+			this.buttons[1].value = Math.abs(Controller.getCos(tick, 1));
+			this.buttons[2].value = Math.abs(Controller.getCos(tick, 2));
+			this.buttons[3].value = Math.abs(Controller.getCos(tick, 3));
+			this.buttons[4].value = Math.abs(Controller.getCos(tick, 4));
 		}
 	}
 
