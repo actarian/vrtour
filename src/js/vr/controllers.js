@@ -178,6 +178,9 @@ export default class Controllers extends Emittable {
 				controller.move(axis);
 			}
 		});
+		gamepads.on('broadcast', (type, event) => {
+			this.emit(type, event);
+		});
 		return gamepads;
 	}
 
