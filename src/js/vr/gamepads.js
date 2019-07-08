@@ -24,7 +24,7 @@ export default class Gamepads extends Emittable {
 	get gamepads() {
 		if (!this.gamepads_) {
 			this.gamepads_ = {};
-			console.log('gamepads', this.gamepads_);
+			// console.log('gamepads', this.gamepads_);
 			const gamepads = Gamepads.get();
 			for (let i = 0; i < gamepads.length; i++) {
 				this.connect(gamepads[i]);
@@ -44,7 +44,7 @@ export default class Gamepads extends Emittable {
 	}
 
 	connect($gamepad) {
-		console.log('connect', $gamepad);
+		// console.log('connect', $gamepad);
 		try {
 			// Note: $gamepad === navigator.getGamepads()[$gamepad.index]
 			if ($gamepad) {
@@ -53,7 +53,7 @@ export default class Gamepads extends Emittable {
 				if (Gamepads.isSupported(id)) {
 					const index = $gamepad.index;
 					const gamepad = this.gamepads[index] ? this.gamepads[index] : (this.gamepads[index] = new Gamepad($gamepad));
-					console.log(gamepad);
+					// console.log(gamepad);
 					this.hands[gamepad.hand] = gamepad;
 					this.emit('connect', gamepad);
 					gamepad.on('broadcast', this.onEvent);
@@ -65,7 +65,7 @@ export default class Gamepads extends Emittable {
 	}
 
 	disconnect($gamepad) {
-		console.log('disconnect', $gamepad);
+		// console.log('disconnect', $gamepad);
 		try {
 			// Note: $gamepad === navigator.getGamepads()[$gamepad.index]
 			const id = $gamepad.id;
@@ -197,25 +197,32 @@ export class Gamepad extends Emittable {
 			if (axis.x !== x || axis.y !== y) {
 				axis.x = x;
 				axis.y = y;
-				const left = axis.x < -0.5;
-				const right = axis.x > 0.5;
-				const up = axis.y < -0.5;
-				const down = axis.y > 0.5;
-				if (axis.left !== left) {
-					axis.left = left;
-					this.emit(left ? 'left' : 'none', axis);
-				}
-				if (axis.right !== right) {
-					axis.right = right;
-					this.emit(right ? 'right' : 'none', axis);
-				}
-				if (axis.up !== up) {
-					axis.up = up;
-					this.emit(up ? 'up' : 'none', axis);
-				}
-				if (axis.down !== down) {
-					axis.down = down;
-					this.emit(down ? 'down' : 'none', axis);
+				if (Math.abs(x) > Math.abs(y)) {
+					const left = x < -0.85;
+					const right = x > 0.85;
+					if (axis.left !== left) {
+						axis.left = left;
+						this.emit((left ? 'left' : 'none'), axis);
+						console.log(`${axis.gamepad.hand} ${axis.gamepad.index} left ${left}`);
+					}
+					if (axis.right !== right) {
+						axis.right = right;
+						this.emit((right ? 'right' : 'none'), axis);
+						console.log(`${axis.gamepad.hand} ${axis.gamepad.index} right ${right}`);
+					}
+				} else {
+					const up = y < -0.85;
+					const down = y > 0.85;
+					if (axis.up !== up) {
+						axis.up = up;
+						this.emit((up ? 'up' : 'none'), axis);
+						console.log(`${axis.gamepad.hand} ${axis.gamepad.index} up ${up}`);
+					}
+					if (axis.down !== down) {
+						axis.down = down;
+						this.emit((down ? 'down' : 'none'), axis);
+						console.log(`${axis.gamepad.hand} ${axis.gamepad.index} down ${down}`);
+					}
 				}
 				this.emit('axis', axis);
 			}

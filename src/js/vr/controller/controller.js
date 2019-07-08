@@ -24,8 +24,10 @@ export default class Controller extends THREE.Group {
 	constructor(parent, hand) {
 		super();
 		this.ready = false;
-		this.buttons = new Array(10).fill({ value: 0 });
-		this.axis = new Array(2).fill(new THREE.Vector2());
+		this.buttons = new Array(10).fill(0).map(x => {
+			return { value: 0 };
+		});
+		this.axis = new Array(2).fill(0).map(x => new THREE.Vector2());
 		this.parent = parent;
 		this.hand = hand;
 		const model = this.model = this.addModel(hand);

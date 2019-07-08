@@ -11061,7 +11061,7 @@ Object.defineProperty(exports, "__esModule", {
 exports.ControllerFragGlsl = void 0;
 var ControllerFragGlsl =
 /* glsl */
-"\n#define MATCAP\nuniform vec3 diffuse;\nuniform vec3 emissive;\nuniform float opacity;\nuniform sampler2D matcap;\nvarying vec3 vViewPosition;\n#ifndef FLAT_SHADED\n\tvarying vec3 vNormal;\n#endif\n#include <common>\n#include <uv_pars_fragment>\n#include <map_pars_fragment>\n#include <alphamap_pars_fragment>\n#include <fog_pars_fragment>\n#include <bumpmap_pars_fragment>\n#include <normalmap_pars_fragment>\n#include <logdepthbuf_pars_fragment>\n#include <clipping_planes_pars_fragment>\nvoid main() {\n\t#include <clipping_planes_fragment>\n\tvec4 diffuseColor = vec4( diffuse, opacity );\n\tvec4 emissiveColor = vec4( emissive, opacity );\n\t#include <logdepthbuf_fragment>\n\t#include <map_fragment>\n\t#include <alphamap_fragment>\n\t#include <alphatest_fragment>\n\t#include <normal_fragment_begin>\n\t#include <normal_fragment_maps>\n\tvec3 viewDir = normalize( vViewPosition );\n\tvec3 x = normalize( vec3( viewDir.z, 0.0, - viewDir.x ) );\n\tvec3 y = cross( viewDir, x );\n\tvec2 uv = vec2( dot( x, normal ), dot( y, normal ) ) * 0.495 + 0.5;\n\t#ifdef USE_MATCAP\n\t\tvec4 matcapColor = texture2D( matcap, uv );\n\t\tmatcapColor = matcapTexelToLinear( matcapColor );\n\t#else\n\t\tvec4 matcapColor = vec4( 1.0 );\n\t#endif\n\tvec3 outgoingLight = diffuseColor.rgb * max(matcapColor.rgb, emissiveColor.rgb);\n\tgl_FragColor = vec4( outgoingLight, diffuseColor.a );\n\t#include <premultiplied_alpha_fragment>\n\t#include <tonemapping_fragment>\n\t#include <encodings_fragment>\n\t#include <fog_fragment>\n}\n";
+"\n#define MATCAP\nuniform vec3 diffuse;\nuniform vec3 emissive;\nuniform float emissiveIntensity;\nuniform float opacity;\nuniform sampler2D matcap;\nvarying vec3 vViewPosition;\n#ifndef FLAT_SHADED\n\tvarying vec3 vNormal;\n#endif\n#include <common>\n#include <uv_pars_fragment>\n#include <map_pars_fragment>\n#include <alphamap_pars_fragment>\n#include <fog_pars_fragment>\n#include <bumpmap_pars_fragment>\n#include <normalmap_pars_fragment>\n#include <logdepthbuf_pars_fragment>\n#include <clipping_planes_pars_fragment>\nvoid main() {\n\t#include <clipping_planes_fragment>\n\tvec4 diffuseColor = vec4( diffuse, opacity );\n\tvec4 emissiveColor = vec4( emissive, opacity );\n\t#include <logdepthbuf_fragment>\n\t/* #include <map_fragment> */\n\t#ifdef USE_MAP\n\t\tvec4 texelColor = texture2D( map, vUv );\n\t\ttexelColor = mapTexelToLinear( texelColor );\n\t\tdiffuseColor *= texelColor;\n\t\tdiffuseColor = mix(diffuseColor, emissiveColor, emissiveIntensity);\n\t#endif\n\t#include <alphamap_fragment>\n\t#include <alphatest_fragment>\n\t#include <normal_fragment_begin>\n\t#include <normal_fragment_maps>\n\tvec3 viewDir = normalize( vViewPosition );\n\tvec3 x = normalize( vec3( viewDir.z, 0.0, - viewDir.x ) );\n\tvec3 y = cross( viewDir, x );\n\tvec2 uv = vec2( dot( x, normal ), dot( y, normal ) ) * 0.495 + 0.5;\n\t#ifdef USE_MATCAP\n\t\tvec4 matcapColor = texture2D( matcap, uv );\n\t\tmatcapColor = matcapTexelToLinear( matcapColor );\n\t#else\n\t\tvec4 matcapColor = vec4( 1.0 );\n\t#endif\n\tvec3 outgoingLight = diffuseColor.rgb * (matcapColor.rgb + emissiveIntensity * 0.5); // max(matcapColor.rgb, emissiveColor.rgb);\n\tgl_FragColor = vec4( outgoingLight, diffuseColor.a );\n\t#include <premultiplied_alpha_fragment>\n\t#include <tonemapping_fragment>\n\t#include <encodings_fragment>\n\t#include <fog_fragment>\n}\n";
 exports.ControllerFragGlsl = ControllerFragGlsl;
 
 },{}],16:[function(require,module,exports){
@@ -11124,10 +11124,14 @@ function (_THREE$Group) {
 
     _this = _possibleConstructorReturn(this, _getPrototypeOf(Controller).call(this));
     _this.ready = false;
-    _this.buttons = new Array(10).fill({
-      value: 0
+    _this.buttons = new Array(10).fill(0).map(function (x) {
+      return {
+        value: 0
+      };
     });
-    _this.axis = new Array(2).fill(new THREE.Vector2());
+    _this.axis = new Array(2).fill(0).map(function (x) {
+      return new THREE.Vector2();
+    });
     _this.parent = parent;
     _this.hand = hand;
 
@@ -11274,7 +11278,7 @@ function _inherits(subClass, superClass) { if (typeof superClass !== "function" 
 function _setPrototypeOf(o, p) { _setPrototypeOf = Object.setPrototypeOf || function _setPrototypeOf(o, p) { o.__proto__ = p; return o; }; return _setPrototypeOf(o, p); }
 
 var OFF = new THREE.Color(0x000000);
-var ON = new THREE.Color(0xffffff);
+var ON = new THREE.Color(0x2196f3);
 
 var OculusQuestController =
 /*#__PURE__*/
@@ -11318,7 +11322,11 @@ function (_Controller) {
             child.material = material.clone();
 
             child.material.onBeforeCompile = function (shader) {
-              shader.uniforms.emissive = new THREE.Uniform(new THREE.Color(0x000000));
+              // shader.uniforms.emissive = new THREE.Uniform(new THREE.Color(0x000000));
+              shader.uniforms.emissive = new THREE.Uniform(ON);
+              shader.uniforms.emissiveIntensity = {
+                value: 0
+              };
               shader.fragmentShader = _controllerFrag.ControllerFragGlsl;
               child.shader = shader;
             };
@@ -11339,7 +11347,7 @@ function (_Controller) {
                   child.position.set(position.x, position.y - value * (0, _const.mm)(2), position.z);
 
                   if (child.shader) {
-                    _controller.default.mixUniformColor(child.shader.uniforms.emissive, OFF, ON, value);
+                    child.shader.uniforms.emissiveIntensity.value = value; // Controller.mixUniformColor(child.shader.uniforms.emissive, OFF, ON, value);
                   }
                 };
 
@@ -11351,7 +11359,7 @@ function (_Controller) {
                   child.rotation.set(-value * (0, _const.deg)(20), 0, 0);
 
                   if (child.shader) {
-                    _controller.default.mixUniformColor(child.shader.uniforms.emissive, OFF, ON, value);
+                    child.shader.uniforms.emissiveIntensity.value = value; // Controller.mixUniformColor(child.shader.uniforms.emissive, OFF, ON, value);
                   }
                 };
 
@@ -11365,7 +11373,7 @@ function (_Controller) {
                   child.position.set(position.x + value * (0, _const.mm)(2) * direction, position.y, position.z);
 
                   if (child.shader) {
-                    _controller.default.mixUniformColor(child.shader.uniforms.emissive, OFF, ON, value);
+                    child.shader.uniforms.emissiveIntensity.value = value; // Controller.mixUniformColor(child.shader.uniforms.emissive, OFF, ON, value);
                   }
                 };
 
@@ -11378,7 +11386,7 @@ function (_Controller) {
                   child.position.set(position.x, position.y - value * (0, _const.mm)(2), position.z);
 
                   if (child.shader) {
-                    _controller.default.mixUniformColor(child.shader.uniforms.emissive, OFF, ON, value);
+                    child.shader.uniforms.emissiveIntensity.value = value; // Controller.mixUniformColor(child.shader.uniforms.emissive, OFF, ON, value);
                   }
                 };
 
@@ -11391,7 +11399,7 @@ function (_Controller) {
                   child.position.set(position.x, position.y - value * (0, _const.mm)(2), position.z);
 
                   if (child.shader) {
-                    _controller.default.mixUniformColor(child.shader.uniforms.emissive, OFF, ON, value);
+                    child.shader.uniforms.emissiveIntensity.value = value; // Controller.mixUniformColor(child.shader.uniforms.emissive, OFF, ON, value);
                   }
                 };
 
@@ -11673,15 +11681,17 @@ function (_Emittable) {
       });
       gamepads.on('axis', function (axis) {
         // console.log('axis', axis);
-        _this4.setText("axis ".concat(axis.gamepad.hand, " ").concat(axis.index, " { x:").concat(axis.x, ", y:").concat(axis.y, " }")); // axisup, axisdown, axisleft, axisright
+        // this.setText(`axis ${axis.gamepad.hand} ${axis.index} { x:${axis.x}, y:${axis.y} }`);
+        // axisup, axisdown, axisleft, axisright
         // this.menu.next();
-
-
         var controller = _this4.controllers_[axis.gamepad.index];
 
         if (controller) {
-          controller.move(axis);
+          controller.axis[axis.index] = axis;
         }
+      });
+      gamepads.on('broadcast', function (type, event) {
+        _this4.emit(type, event);
       });
       return gamepads;
     }
@@ -11865,8 +11875,8 @@ function (_Emittable) {
     },
     get: function get() {
       if (!this.gamepads_) {
-        this.gamepads_ = {};
-        console.log('gamepads', this.gamepads_);
+        this.gamepads_ = {}; // console.log('gamepads', this.gamepads_);
+
         var gamepads = Gamepads.get();
 
         for (var i = 0; i < gamepads.length; i++) {
@@ -11915,8 +11925,7 @@ function (_Emittable) {
   _createClass(Gamepads, [{
     key: "connect",
     value: function connect($gamepad) {
-      console.log('connect', $gamepad);
-
+      // console.log('connect', $gamepad);
       try {
         // Note: $gamepad === navigator.getGamepads()[$gamepad.index]
         if ($gamepad) {
@@ -11925,8 +11934,8 @@ function (_Emittable) {
 
           if (Gamepads.isSupported(id)) {
             var index = $gamepad.index;
-            var gamepad = this.gamepads[index] ? this.gamepads[index] : this.gamepads[index] = new Gamepad($gamepad);
-            console.log(gamepad);
+            var gamepad = this.gamepads[index] ? this.gamepads[index] : this.gamepads[index] = new Gamepad($gamepad); // console.log(gamepad);
+
             this.hands[gamepad.hand] = gamepad;
             this.emit('connect', gamepad);
             gamepad.on('broadcast', this.onEvent);
@@ -11939,8 +11948,7 @@ function (_Emittable) {
   }, {
     key: "disconnect",
     value: function disconnect($gamepad) {
-      console.log('disconnect', $gamepad);
-
+      // console.log('disconnect', $gamepad);
       try {
         // Note: $gamepad === navigator.getGamepads()[$gamepad.index]
         var id = $gamepad.id;
@@ -12116,29 +12124,37 @@ function (_Emittable2) {
         if (axis.x !== x || axis.y !== y) {
           axis.x = x;
           axis.y = y;
-          var left = axis.x < -0.5;
-          var right = axis.x > 0.5;
-          var up = axis.y < -0.5;
-          var down = axis.y > 0.5;
 
-          if (axis.left !== left) {
-            axis.left = left;
-            this.emit(left ? 'left' : 'none', axis);
-          }
+          if (Math.abs(x) > Math.abs(y)) {
+            var left = x < -0.85;
+            var right = x > 0.85;
 
-          if (axis.right !== right) {
-            axis.right = right;
-            this.emit(right ? 'right' : 'none', axis);
-          }
+            if (axis.left !== left) {
+              axis.left = left;
+              this.emit(left ? 'left' : 'none', axis);
+              console.log("".concat(axis.gamepad.hand, " ").concat(axis.gamepad.index, " left ").concat(left));
+            }
 
-          if (axis.up !== up) {
-            axis.up = up;
-            this.emit(up ? 'up' : 'none', axis);
-          }
+            if (axis.right !== right) {
+              axis.right = right;
+              this.emit(right ? 'right' : 'none', axis);
+              console.log("".concat(axis.gamepad.hand, " ").concat(axis.gamepad.index, " right ").concat(right));
+            }
+          } else {
+            var up = y < -0.85;
+            var down = y > 0.85;
 
-          if (axis.down !== down) {
-            axis.down = down;
-            this.emit(down ? 'down' : 'none', axis);
+            if (axis.up !== up) {
+              axis.up = up;
+              this.emit(up ? 'up' : 'none', axis);
+              console.log("".concat(axis.gamepad.hand, " ").concat(axis.gamepad.index, " up ").concat(up));
+            }
+
+            if (axis.down !== down) {
+              axis.down = down;
+              this.emit(down ? 'down' : 'none', axis);
+              console.log("".concat(axis.gamepad.hand, " ").concat(axis.gamepad.index, " down ").concat(down));
+            }
           }
 
           this.emit('axis', axis);

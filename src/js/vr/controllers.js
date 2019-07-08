@@ -170,12 +170,12 @@ export default class Controllers extends Emittable {
 		});
 		gamepads.on('axis', (axis) => {
 			// console.log('axis', axis);
-			this.setText(`axis ${axis.gamepad.hand} ${axis.index} { x:${axis.x}, y:${axis.y} }`);
+			// this.setText(`axis ${axis.gamepad.hand} ${axis.index} { x:${axis.x}, y:${axis.y} }`);
 			// axisup, axisdown, axisleft, axisright
 			// this.menu.next();
 			const controller = this.controllers_[axis.gamepad.index];
 			if (controller) {
-				controller.move(axis);
+				controller.axis[axis.index] = axis;
 			}
 		});
 		gamepads.on('broadcast', (type, event) => {

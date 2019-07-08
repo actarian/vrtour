@@ -7,7 +7,7 @@ import Controller from './controller';
 import { ControllerFragGlsl } from './controller-frag.glsl';
 
 const OFF = new THREE.Color(0x000000);
-const ON = new THREE.Color(0xffffff);
+const ON = new THREE.Color(0x2196f3);
 
 export default class OculusQuestController extends Controller {
 
@@ -40,7 +40,9 @@ export default class OculusQuestController extends Controller {
 				if (child instanceof THREE.Mesh) {
 					child.material = material.clone();
 					child.material.onBeforeCompile = (shader) => {
-						shader.uniforms.emissive = new THREE.Uniform(new THREE.Color(0x000000));
+						// shader.uniforms.emissive = new THREE.Uniform(new THREE.Color(0x000000));
+						shader.uniforms.emissive = new THREE.Uniform(ON);
+						shader.uniforms.emissiveIntensity = { value: 0 };
 						shader.fragmentShader = ControllerFragGlsl;
 						child.shader = shader;
 					};
@@ -59,7 +61,8 @@ export default class OculusQuestController extends Controller {
 								const value = this.buttons[0].value;
 								child.position.set(position.x, position.y - value * mm(2), position.z);
 								if (child.shader) {
-									Controller.mixUniformColor(child.shader.uniforms.emissive, OFF, ON, value);
+									child.shader.uniforms.emissiveIntensity.value = value;
+									// Controller.mixUniformColor(child.shader.uniforms.emissive, OFF, ON, value);
 								}
 							};
 							break;
@@ -68,7 +71,8 @@ export default class OculusQuestController extends Controller {
 								const value = this.buttons[1].value;
 								child.rotation.set(-value * deg(20), 0, 0);
 								if (child.shader) {
-									Controller.mixUniformColor(child.shader.uniforms.emissive, OFF, ON, value);
+									child.shader.uniforms.emissiveIntensity.value = value;
+									// Controller.mixUniformColor(child.shader.uniforms.emissive, OFF, ON, value);
 								}
 							};
 							break;
@@ -78,7 +82,8 @@ export default class OculusQuestController extends Controller {
 								const value = this.buttons[2].value;
 								child.position.set(position.x + value * mm(2) * direction, position.y, position.z);
 								if (child.shader) {
-									Controller.mixUniformColor(child.shader.uniforms.emissive, OFF, ON, value);
+									child.shader.uniforms.emissiveIntensity.value = value;
+									// Controller.mixUniformColor(child.shader.uniforms.emissive, OFF, ON, value);
 								}
 							};
 							break;
@@ -88,7 +93,8 @@ export default class OculusQuestController extends Controller {
 								const value = this.buttons[3].value;
 								child.position.set(position.x, position.y - value * mm(2), position.z);
 								if (child.shader) {
-									Controller.mixUniformColor(child.shader.uniforms.emissive, OFF, ON, value);
+									child.shader.uniforms.emissiveIntensity.value = value;
+									// Controller.mixUniformColor(child.shader.uniforms.emissive, OFF, ON, value);
 								}
 							};
 							break;
@@ -98,7 +104,8 @@ export default class OculusQuestController extends Controller {
 								const value = this.buttons[4].value;
 								child.position.set(position.x, position.y - value * mm(2), position.z);
 								if (child.shader) {
-									Controller.mixUniformColor(child.shader.uniforms.emissive, OFF, ON, value);
+									child.shader.uniforms.emissiveIntensity.value = value;
+									// Controller.mixUniformColor(child.shader.uniforms.emissive, OFF, ON, value);
 								}
 							};
 							break;

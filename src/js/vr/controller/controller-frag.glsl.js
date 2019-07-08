@@ -2,6 +2,7 @@ export const ControllerFragGlsl = /* glsl */ `
 #define MATCAP
 uniform vec3 diffuse;
 uniform vec3 emissive;
+uniform float emissiveIntensity;
 uniform float opacity;
 uniform sampler2D matcap;
 varying vec3 vViewPosition;
@@ -22,7 +23,13 @@ void main() {
 	vec4 diffuseColor = vec4( diffuse, opacity );
 	vec4 emissiveColor = vec4( emissive, opacity );
 	#include <logdepthbuf_fragment>
-	#include <map_fragment>
+	/* #include <map_fragment> */
+	#ifdef USE_MAP
+		vec4 texelColor = texture2D( map, vUv );
+		texelColor = mapTexelToLinear( texelColor );
+		diffuseColor *= texelColor;
+		diffuseColor = mix(diffuseColor, emissiveColor, emissiveIntensity);
+	#endif
 	#include <alphamap_fragment>
 	#include <alphatest_fragment>
 	#include <normal_fragment_begin>
@@ -37,7 +44,7 @@ void main() {
 	#else
 		vec4 matcapColor = vec4( 1.0 );
 	#endif
-	vec3 outgoingLight = diffuseColor.rgb * max(matcapColor.rgb, emissiveColor.rgb);
+	vec3 outgoingLight = diffuseColor.rgb * (matcapColor.rgb + emissiveIntensity * 0.5); // max(matcapColor.rgb, emissiveColor.rgb);
 	gl_FragColor = vec4( outgoingLight, diffuseColor.a );
 	#include <premultiplied_alpha_fragment>
 	#include <tonemapping_fragment>
